@@ -1,10 +1,10 @@
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { format } from 'date-fns'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ShoppingCart, Trophy, Users, Calendar } from 'lucide-react'
 import Header from '@/components/header'
+import { formatDeadlineForUser, getTimeRemaining, formatGameTime } from '@/lib/timezone'
 
 export default async function DashboardPage() {
   const user = await requireAuth()
@@ -203,34 +203,14 @@ export default async function DashboardPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Picks Deadline</h3>
                   <p className="text-yellow-200">
-                    Deadline: {format(new Date(deadline), 'MMM d, h:mm a')}
+                    Deadline: {formatDeadlineForUser(deadline)}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm text-yellow-200">Time Remaining</p>
                 <p className="text-2xl font-bold text-white">
-                  {(() => {
-                    const now = new Date()
-                    const deadlineDate = new Date(deadline)
-                    const diff = deadlineDate.getTime() - now.getTime()
-                    
-                    if (diff <= 0) {
-                      return 'EXPIRED'
-                    }
-                    
-                    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-                    
-                    if (days > 0) {
-                      return `${days}d ${hours}h`
-                    } else if (hours > 0) {
-                      return `${hours}h ${minutes}m`
-                    } else {
-                      return `${minutes}m`
-                    }
-                  })()}
+                  {getTimeRemaining(deadline)}
                 </p>
               </div>
             </div>
@@ -256,7 +236,7 @@ export default async function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
                           <span className="text-sm text-blue-200">
-                            {format(new Date(matchup.game_time), 'MMM d, h:mm a')}
+                            {formatGameTime(matchup.game_time)}
                           </span>
                           <span className="font-medium text-white">
                             {matchup.away_team} @ {matchup.home_team}

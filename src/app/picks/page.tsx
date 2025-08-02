@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { format } from 'date-fns'
+import { formatDeadlineForUser, isDeadlinePassed, formatGameTime } from '@/lib/timezone'
 import { Save, Clock, AlertTriangle } from 'lucide-react'
 import Header from '@/components/header'
 
@@ -187,17 +187,13 @@ export default function PicksPage() {
     }
   }
 
-  const isDeadlinePassed = () => {
+  const checkDeadlinePassed = () => {
     if (!deadline) return false
-    return new Date() > new Date(deadline)
+    return isDeadlinePassed(deadline)
   }
 
   const formatDeadline = (deadlineStr: string) => {
-    try {
-      return format(new Date(deadlineStr), 'MMM d, h:mm a')
-    } catch {
-      return deadlineStr
-    }
+    return formatDeadlineForUser(deadlineStr)
   }
 
   if (loading) {
@@ -232,11 +228,11 @@ export default function PicksPage() {
               </div>
               <button
                 onClick={handleSave}
-                disabled={saving || isDeadlinePassed()}
+                disabled={saving || checkDeadlinePassed()}
                 className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : isDeadlinePassed() ? 'Locked' : 'Save'}
+                {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save'}
               </button>
             </div>
           </div>
@@ -253,18 +249,18 @@ export default function PicksPage() {
         {/* Compact Deadline Warning */}
         {deadline && (
           <div className={`mb-4 p-3 rounded-lg border text-sm ${
-            isDeadlinePassed() 
+            checkDeadlinePassed() 
               ? 'bg-red-500/20 border-red-500/30 text-red-200' 
               : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200'
           }`}>
             <div className="flex items-center">
-              {isDeadlinePassed() ? (
+              {checkDeadlinePassed() ? (
                 <AlertTriangle className="w-4 h-4 mr-2" />
               ) : (
                 <Clock className="w-4 h-4 mr-2" />
               )}
               <span>
-                {isDeadlinePassed() 
+                {checkDeadlinePassed() 
                   ? 'Picks are locked' 
                   : `Deadline: ${formatDeadline(deadline)}`
                 }
@@ -287,7 +283,7 @@ export default function PicksPage() {
                       {matchup.away_team} @ {matchup.home_team}
                     </h3>
                     <div className="flex items-center space-x-2 text-xs text-blue-200">
-                      <span>{format(new Date(matchup.game_time), 'EEE, MMM d, h:mm a')}</span>
+                                              <span>{formatGameTime(matchup.game_time)}</span>
                       {isThursdayGame && (
                         <span className="flex items-center text-orange-300">
                           <Clock className="w-3 h-3 mr-1" />
@@ -306,7 +302,7 @@ export default function PicksPage() {
                     <select
                       value={userPick?.team_picked || ''}
                       onChange={(e) => updatePick(matchup.id, e.target.value, userPick?.picks_count || 0)}
-                      disabled={isDeadlinePassed()}
+                      disabled={checkDeadlinePassed()}
                       className="w-full px-2 py-1 border border-white/30 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     >
                       <option value="">Select team</option>
@@ -325,7 +321,7 @@ export default function PicksPage() {
                       max={picksRemaining + (userPick?.picks_count || 0)}
                       value={userPick?.picks_count || 0}
                       onChange={(e) => updatePick(matchup.id, userPick?.team_picked || '', parseInt(e.target.value) || 0)}
-                      disabled={isDeadlinePassed()}
+                      disabled={checkDeadlinePassed()}
                       className="w-full px-2 py-1 border border-white/30 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     />
                   </div>
