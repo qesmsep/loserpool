@@ -1,11 +1,15 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, Settings, Users, Calendar, DollarSign } from 'lucide-react'
+import { ArrowLeft, Settings, Users, Calendar, DollarSign, Lock, Unlock } from 'lucide-react'
+import { getPoolStatus } from '@/lib/pool-status'
 
 export default async function AdminSettingsPage() {
   await requireAdmin()
   const supabase = await createServerSupabaseClient()
+
+  // Get pool status
+  const poolStatus = await getPoolStatus()
 
   // Get global settings
   const { data: settings } = await supabase
@@ -188,6 +192,68 @@ export default async function AdminSettingsPage() {
                   className="text-blue-200 hover:text-white transition-colors text-sm"
                 >
                   Edit Rules →
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Pool Lock Controls */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+            <div className="px-6 py-4 border-b border-white/20">
+              <h2 className="text-xl font-semibold text-white">Pool Lock</h2>
+              <p className="text-blue-100">Control pool registration and purchases</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Current Status</div>
+                  <div className="text-sm text-blue-200">Pool registration status</div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-lg font-semibold ${poolStatus.isLocked ? 'text-red-400' : 'text-green-400'}`}>
+                    {poolStatus.isLocked ? '🔒 Locked' : '🔓 Open'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Lock Date</div>
+                  <div className="text-sm text-blue-200">Automatic lock date</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-white">
+                    {poolStatus.lockDate ? new Date(poolStatus.lockDate).toLocaleDateString() : 'Not set'}
+                  </div>
+                </div>
+              </div>
+
+              {poolStatus.timeUntilLock && poolStatus.timeUntilLock > 0 && (
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-sm font-medium text-white">Time Until Lock</div>
+                    <div className="text-sm text-blue-200">Automatic lock countdown</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-yellow-400">
+                      {Math.floor(poolStatus.timeUntilLock / (1000 * 60 * 60 * 24))} days
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 space-y-2">
+                <Link
+                  href="/admin/settings/pool-lock"
+                  className="text-blue-200 hover:text-white transition-colors text-sm block"
+                >
+                  Manage Pool Lock →
+                </Link>
+                <Link
+                  href="/api/admin/pool-lock/preview"
+                  className="text-blue-200 hover:text-white transition-colors text-sm block"
+                >
+                  Preview Lock Effects →
                 </Link>
               </div>
             </div>
