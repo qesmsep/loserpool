@@ -7,12 +7,12 @@ export default async function AdminUsersPage() {
   await requireAdmin()
   const supabase = await createServerSupabaseClient()
 
-  // Get all users with their stats
+  // Get all users with their stats (including admins who may not have purchases)
   const { data: users } = await supabase
     .from('users')
     .select(`
       *,
-      purchases!inner(
+      purchases(
         picks_count,
         status
       )
@@ -172,6 +172,11 @@ export default async function AdminUsersPage() {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-white">
                             {user.username || 'No username'}
+                            {user.is_admin && (
+                              <span className="ml-2 inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-200">
+                                Admin
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-blue-200">
                             {user.first_name} {user.last_name}
@@ -200,9 +205,11 @@ export default async function AdminUsersPage() {
                           ? 'bg-red-500/20 text-red-200'
                           : user.totalPurchased > 0
                           ? 'bg-green-500/20 text-green-200'
+                          : user.is_admin
+                          ? 'bg-yellow-500/20 text-yellow-200'
                           : 'bg-gray-500/20 text-gray-200'
                       }`}>
-                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Active' : 'No Picks'}
+                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Active' : user.is_admin ? 'Admin' : 'No Picks'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-200">

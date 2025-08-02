@@ -217,120 +217,116 @@ export default function PicksPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Header */}
+      {/* Compact Header */}
       <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <Link
                 href="/dashboard"
                 className="flex items-center text-blue-100 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                Back
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-white">Make Your Picks</h1>
-                <p className="text-blue-100">Week {currentWeek} - Picks lock at deadline</p>
+                <h1 className="text-2xl font-bold text-white">Week {currentWeek} Picks</h1>
+                <p className="text-sm text-blue-100">Pick teams to lose</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm text-blue-200">Picks Remaining</p>
-                <p className="text-2xl font-bold text-blue-300">{picksRemaining}</p>
+                <p className="text-xs text-blue-200">Picks Left</p>
+                <p className="text-xl font-bold text-blue-300">{picksRemaining}</p>
               </div>
               <button
                 onClick={handleSave}
                 disabled={saving || isDeadlinePassed()}
-                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : isDeadlinePassed() ? 'Deadline Passed' : 'Save Picks'}
+                {saving ? 'Saving...' : isDeadlinePassed() ? 'Locked' : 'Save'}
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {error && (
-          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded mb-6">
+          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded mb-4 text-sm">
             {error}
           </div>
         )}
 
-        {/* Deadline Warning */}
+        {/* Compact Deadline Warning */}
         {deadline && (
-          <div className={`mb-6 p-4 rounded-lg border ${
+          <div className={`mb-4 p-3 rounded-lg border text-sm ${
             isDeadlinePassed() 
               ? 'bg-red-500/20 border-red-500/30 text-red-200' 
               : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200'
           }`}>
             <div className="flex items-center">
               {isDeadlinePassed() ? (
-                <AlertTriangle className="w-5 h-5 mr-2" />
+                <AlertTriangle className="w-4 h-4 mr-2" />
               ) : (
-                <Clock className="w-5 h-5 mr-2" />
+                <Clock className="w-4 h-4 mr-2" />
               )}
-              <div>
-                <p className="font-medium">
-                  {isDeadlinePassed() ? 'Picks Deadline Passed' : 'Picks Deadline'}
-                </p>
-                <p className="text-sm opacity-75">
-                  {isDeadlinePassed() 
-                    ? 'Picks are now locked and cannot be changed.' 
-                    : `Deadline: ${formatDeadline(deadline)}`
-                  }
-                </p>
-              </div>
+              <span>
+                {isDeadlinePassed() 
+                  ? 'Picks are locked' 
+                  : `Deadline: ${formatDeadline(deadline)}`
+                }
+              </span>
             </div>
           </div>
         )}
 
-        <div className="space-y-6">
+        {/* Compact Games Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {matchups.map((matchup) => {
             const userPick = getPickForMatchup(matchup.id)
-            const isThursdayGame = new Date(matchup.game_time).getDay() === 4 // Thursday
+            const isThursdayGame = new Date(matchup.game_time).getDay() === 4
             
             return (
-              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
+              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-white mb-0.5">
                       {matchup.away_team} @ {matchup.home_team}
                     </h3>
-                    <p className="text-blue-200">
-                      {format(new Date(matchup.game_time), 'EEEE, MMM d, h:mm a')}
-                    </p>
-                  </div>
-                  {isThursdayGame && (
-                    <div className="flex items-center text-orange-300">
-                      <Clock className="w-4 h-4 mr-1" />
-                      <span className="text-sm font-medium">Lock Time</span>
+                    <div className="flex items-center space-x-2 text-xs text-blue-200">
+                      <span>{format(new Date(matchup.game_time), 'EEE, MMM d, h:mm a')}</span>
+                      {isThursdayGame && (
+                        <span className="flex items-center text-orange-300">
+                          <Clock className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Lock</span>
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-white">
-                      Pick Team to Lose
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-white mb-0.5">
+                      Pick to Lose
                     </label>
                     <select
                       value={userPick?.team_picked || ''}
                       onChange={(e) => updatePick(matchup.id, e.target.value, userPick?.picks_count || 0)}
                       disabled={isDeadlinePassed()}
-                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
+                      className="w-full px-2 py-1 border border-white/30 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     >
-                      <option value="">Select a team</option>
+                      <option value="">Select team</option>
                       <option value={matchup.away_team}>{matchup.away_team}</option>
                       <option value={matchup.home_team}>{matchup.home_team}</option>
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-white">
-                      Number of Picks
+                  <div>
+                    <label className="block text-xs font-medium text-white mb-0.5">
+                      Picks Used
                     </label>
                     <input
                       type="number"
@@ -339,7 +335,7 @@ export default function PicksPage() {
                       value={userPick?.picks_count || 0}
                       onChange={(e) => updatePick(matchup.id, userPick?.team_picked || '', parseInt(e.target.value) || 0)}
                       disabled={isDeadlinePassed()}
-                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
+                      className="w-full px-2 py-1 border border-white/30 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -348,15 +344,15 @@ export default function PicksPage() {
           })}
         </div>
 
-        <div className="mt-8 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-2">How it works:</h3>
-          <ul className="text-blue-200 space-y-1">
-            <li>• Pick the team you think will LOSE the game</li>
-            <li>• If your pick wins, you&apos;re eliminated</li>
-            <li>• If your pick loses, you survive to next week</li>
-            <li>• Ties are safe - your pick carries over</li>
-            <li>• Last person standing wins the pool!</li>
-          </ul>
+        {/* Compact Instructions */}
+        <div className="mt-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-white mb-2">How it works:</h3>
+          <div className="text-xs text-blue-200 space-y-1">
+            <p>• Pick the team you think will LOSE the game</p>
+            <p>• If your pick wins, you're eliminated</p>
+            <p>• If your pick loses, you survive to next week</p>
+            <p>• Last person standing wins!</p>
+          </div>
         </div>
       </div>
     </div>

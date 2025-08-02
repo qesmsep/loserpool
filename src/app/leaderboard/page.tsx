@@ -204,7 +204,7 @@ export default async function LeaderboardPage() {
                 <li>• Pick the team that will LOSE</li>
                 <li>• If your pick wins, you&apos;re eliminated</li>
                 <li>• If your pick loses, you survive</li>
-                <li>• Ties are safe - pick carries over</li>
+                <li>• Ties are eliminations - pick is eliminated</li>
               </ul>
             </div>
             <div>

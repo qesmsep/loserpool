@@ -32,22 +32,22 @@ export default async function AdminPage() {
   const activePicks = picks?.filter(p => p.status === 'active').length || 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Link
                 href="/dashboard"
-                className="flex items-center text-gray-600 hover:text-gray-900"
+                className="flex items-center text-blue-100 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-                <p className="text-gray-600">Manage The Loser Pool</p>
+                <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
+                <p className="text-blue-100">Manage The Loser Pool</p>
               </div>
             </div>
           </div>
@@ -57,50 +57,50 @@ export default async function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Users className="w-6 h-6 text-blue-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users?.length || 0}</p>
+                <p className="text-sm font-medium text-blue-100">Total Users</p>
+                <p className="text-2xl font-bold text-white">{users?.length || 0}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Trophy className="w-6 h-6 text-green-600" />
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Trophy className="w-6 h-6 text-green-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">${totalRevenue}</p>
+                <p className="text-sm font-medium text-green-100">Total Revenue</p>
+                <p className="text-2xl font-bold text-white">${(totalRevenue / 100).toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Calendar className="w-6 h-6 text-purple-600" />
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <Calendar className="w-6 h-6 text-purple-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Picks Purchased</p>
-                <p className="text-2xl font-bold text-gray-900">{totalPicksPurchased}</p>
+                <p className="text-sm font-medium text-purple-100">Picks Purchased</p>
+                <p className="text-2xl font-bold text-white">{totalPicksPurchased}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Settings className="w-6 h-6 text-orange-600" />
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <Settings className="w-6 h-6 text-orange-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Picks</p>
-                <p className="text-2xl font-bold text-gray-900">{activePicks}</p>
+                <p className="text-sm font-medium text-orange-100">Active Picks</p>
+                <p className="text-2xl font-bold text-white">{activePicks}</p>
               </div>
             </div>
           </div>
@@ -110,77 +110,77 @@ export default async function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link
             href="/admin/users"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Users</h3>
-            <p className="text-gray-600">View and manage user accounts</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Manage Users</h3>
+            <p className="text-blue-200">View and manage user accounts</p>
           </Link>
 
           <Link
             href="/admin/matchups"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Matchups</h3>
-            <p className="text-gray-600">Add and edit weekly matchups</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Manage Matchups</h3>
+            <p className="text-blue-200">Add and edit weekly matchups</p>
           </Link>
 
           <Link
             href="/admin/results"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Update Results</h3>
-            <p className="text-gray-600">Update game scores and results</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Update Results</h3>
+            <p className="text-blue-200">Update game scores and results</p>
           </Link>
 
           <Link
             href="/admin/purchases"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Purchase History</h3>
-            <p className="text-gray-600">View all purchase transactions</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Purchase History</h3>
+            <p className="text-blue-200">View all purchase transactions</p>
           </Link>
 
           <Link
             href="/admin/invitations"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Invitations</h3>
-            <p className="text-gray-600">Manage user invitations</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Invitations</h3>
+            <p className="text-blue-200">Manage user invitations</p>
           </Link>
 
           <Link
             href="/admin/settings"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Pool Settings</h3>
-            <p className="text-gray-600">Configure pool rules and dates</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Pool Settings</h3>
+            <p className="text-blue-200">Configure pool rules and dates</p>
           </Link>
         </div>
 
         {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Matchups */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Matchups</h2>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+            <div className="px-6 py-4 border-b border-white/20">
+              <h2 className="text-xl font-semibold text-white">Recent Matchups</h2>
             </div>
             <div className="p-6">
               {matchups && matchups.length > 0 ? (
                 <div className="space-y-4">
                   {matchups.map((matchup) => (
-                    <div key={matchup.id} className="flex items-center justify-between p-3 border border-gray-200 rounded">
+                    <div key={matchup.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-white">
                           Week {matchup.week}: {matchup.away_team} @ {matchup.home_team}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-blue-200">
                           {matchup.status} - {matchup.game_time}
                         </p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        matchup.status === 'final' ? 'bg-green-100 text-green-800' :
-                        matchup.status === 'live' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
+                        matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
+                        matchup.status === 'live' ? 'bg-yellow-500/20 text-yellow-200' :
+                        'bg-gray-500/20 text-gray-200'
                       }`}>
                         {matchup.status}
                       </span>
@@ -188,33 +188,33 @@ export default async function AdminPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No matchups found</p>
+                <p className="text-blue-200 text-center py-4">No matchups found</p>
               )}
             </div>
           </div>
 
           {/* Recent Purchases */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Purchases</h2>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+            <div className="px-6 py-4 border-b border-white/20">
+              <h2 className="text-xl font-semibold text-white">Recent Purchases</h2>
             </div>
             <div className="p-6">
               {purchases && purchases.length > 0 ? (
                 <div className="space-y-4">
                   {purchases.slice(0, 5).map((purchase) => (
-                    <div key={purchase.id} className="flex items-center justify-between p-3 border border-gray-200 rounded">
+                    <div key={purchase.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-white">
                           {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
                         </p>
-                        <p className="text-sm text-gray-500">
-                          ${purchase.amount} - {purchase.created_at}
+                        <p className="text-sm text-blue-200">
+                          ${(purchase.amount / 100).toFixed(2)} - {purchase.created_at}
                         </p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                        purchase.status === 'completed' ? 'bg-green-500/20 text-green-200' :
+                        purchase.status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
+                        'bg-red-500/20 text-red-200'
                       }`}>
                         {purchase.status}
                       </span>
@@ -222,7 +222,7 @@ export default async function AdminPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No purchases found</p>
+                <p className="text-blue-200 text-center py-4">No purchases found</p>
               )}
             </div>
           </div>

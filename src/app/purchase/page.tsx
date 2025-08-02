@@ -177,7 +177,7 @@ export default function PurchasePage() {
               <li>• Each pick costs $21 ($20 to pool, $1 for fees)</li>
               <li>• Maximum 10 picks per purchase</li>
               <li>• Picks are used to make selections each week</li>
-              <li>• Unused picks carry over to future weeks</li>
+              <li>• Unused picks are given the default pick</li>
             </ul>
           </div>
         </div>

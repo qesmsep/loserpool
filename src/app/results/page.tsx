@@ -88,7 +88,7 @@ export default async function ResultsPage() {
       case 'incorrect':
         return 'Eliminated'
       case 'tie':
-        return 'Safe (Tie)'
+        return 'Eliminated (Tie)'
       default:
         return 'Pending'
     }
@@ -223,7 +223,7 @@ export default async function ResultsPage() {
             </div>
             <div className="flex items-center space-x-2">
               <Minus className="w-4 h-4 text-yellow-600" />
-              <span>Safe - Game ended in tie</span>
+                                  <span>Eliminated - Game ended in tie</span>
             </div>
           </div>
         </div>

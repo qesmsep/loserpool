@@ -24,11 +24,11 @@ export default async function AdminSettingsPage() {
 
   const { data: purchases } = await supabase
     .from('purchases')
-    .select('amount')
+    .select('amount, picks_count')
     .eq('status', 'completed')
 
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
-  const currentEntries = userCount || 0
+  const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
   // Create settings map
   const settingsMap = settings?.reduce((acc, setting) => {
@@ -38,7 +38,7 @@ export default async function AdminSettingsPage() {
 
   const maxTotalEntries = parseInt(settingsMap.max_total_entries || '2100')
   const entriesPerUser = parseInt(settingsMap.entries_per_user || '10')
-  const entriesRemaining = maxTotalEntries - currentEntries
+  const entriesRemaining = maxTotalEntries - totalPicksPurchased
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
@@ -73,7 +73,7 @@ export default async function AdminSettingsPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-blue-100">Current Entries</p>
-                <p className="text-2xl font-bold text-white">{currentEntries}</p>
+                <p className="text-2xl font-bold text-white">{totalPicksPurchased}</p>
               </div>
             </div>
           </div>

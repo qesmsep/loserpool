@@ -7,7 +7,7 @@ A full-stack web application for managing a "Loser Pool" - a unique NFL betting 
 - **Objective**: Pick teams that will LOSE each week
 - **Elimination**: If your pick wins, you're eliminated
 - **Survival**: If your pick loses, you survive to next week
-- **Ties**: Safe - your pick carries over to next week
+- **Ties**: Eliminations - your pick is eliminated
 - **Winning**: Last person with active picks wins the pool
 
 ## 🚀 Tech Stack
@@ -47,7 +47,7 @@ A full-stack web application for managing a "Loser Pool" - a unique NFL betting 
 ### 📊 Game Logic
 - Wrong picks = eliminated
 - Correct picks = survive
-- Ties = safe
+- Ties = eliminations
 - Cross-week pick tracking
 
 ### 🏆 Dashboard
