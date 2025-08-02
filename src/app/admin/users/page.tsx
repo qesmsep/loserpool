@@ -27,7 +27,7 @@ export default function AdminUsersPage() {
   const [authLoading, setAuthLoading] = useState(true)
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
-  const [showAddPicks, setShowAddPicks] = useState<string | null>(null)
+
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')

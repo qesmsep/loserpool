@@ -1,16 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, Lock } from 'lucide-react'
 
 export default function ChangePasswordPage() {
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -21,9 +19,9 @@ export default function ChangePasswordPage() {
 
   useEffect(() => {
     checkPasswordChangeStatus()
-  }, [])
+  }, [checkPasswordChangeStatus])
 
-  const checkPasswordChangeStatus = async () => {
+  const checkPasswordChangeStatus = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -48,7 +46,7 @@ export default function ChangePasswordPage() {
       console.error('Error checking password change status:', error)
       router.push('/login')
     }
-  }
+  }, [router])
 
   const handlePasswordChange = async () => {
     if (newPassword !== confirmPassword) {

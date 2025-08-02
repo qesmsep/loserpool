@@ -19,7 +19,7 @@ export default async function AdminSettingsPage() {
 
   const { data: purchases } = await supabase
     .from('purchases')
-    .select('amount, picks_count')
+    .select('amount_paid, picks_count')
     .eq('status', 'completed')
 
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
