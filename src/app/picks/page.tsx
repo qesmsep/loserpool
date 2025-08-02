@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
-import Link from 'next/link'
-import { ArrowLeft, Save, Clock, AlertTriangle } from 'lucide-react'
+import { Save, Clock, AlertTriangle } from 'lucide-react'
 import Header from '@/components/header'
 
 interface Matchup {

@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { ArrowLeft, Users, Mail, Calendar, Plus, Edit, Trash2, Save, X } from 'lucide-react'
+import { Users, Mail, Calendar, Plus, Edit, Trash2, Save, X } from 'lucide-react'
 import Header from '@/components/header'
 
 interface User {

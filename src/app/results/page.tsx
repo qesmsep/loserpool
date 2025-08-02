@@ -1,7 +1,6 @@
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import Link from 'next/link'
-import { Trophy, Users, Calendar } from 'lucide-react'
+import { Trophy, Users, Calendar, CheckCircle, XCircle, Minus } from 'lucide-react'
 import Header from '@/components/header'
 
 interface Pick {
