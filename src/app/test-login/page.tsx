@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function TestLoginPage() {
+  const [email, setEmail] = useState('tim@828.life')
+  const [password, setPassword] = useState('')
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
@@ -13,8 +15,8 @@ export default function TestLoginPage() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'tim@828.life',
-        password: 'password123' // You'll need to provide the actual password
+        email,
+        password,
       })
 
       setResult({ data, error })
@@ -59,12 +61,38 @@ export default function TestLoginPage() {
         <h1 className="text-2xl font-bold mb-6">Test Login</h1>
         
         <div className="space-y-4 mb-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
           <button
             onClick={testLogin}
-            disabled={loading}
+            disabled={loading || !password}
             className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
           >
-            Test Login (tim@828.life)
+            Test Login
           </button>
           
           <button
@@ -95,7 +123,7 @@ export default function TestLoginPage() {
         
         <div className="mt-6">
           <p className="text-sm text-gray-600">
-            Note: You'll need to provide the actual password for the user tim@828.life
+            Enter the password you used when creating the account for tim@828.life
           </p>
         </div>
       </div>
