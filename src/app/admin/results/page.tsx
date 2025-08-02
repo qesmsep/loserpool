@@ -91,6 +91,27 @@ export default async function AdminResultsPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Actions */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => window.location.href = '/api/admin/assign-default-picks'}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Assign Default Picks
+            </button>
+            <Link
+              href="/api/admin/assign-default-picks"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Preview Default Picks
+            </Link>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">

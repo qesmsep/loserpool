@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS public.matchups (
   away_score INTEGER,
   home_score INTEGER,
   status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'final')),
+  away_spread DECIMAL(4,1) DEFAULT 0, -- Point spread for away team (negative = underdog, positive = favorite)
+  home_spread DECIMAL(4,1) DEFAULT 0, -- Point spread for home team (negative = underdog, positive = favorite)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
