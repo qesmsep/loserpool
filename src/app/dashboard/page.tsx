@@ -194,6 +194,22 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
+        {/* Admin Section - Only show for admin users */}
+        {profile?.is_admin && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4">Admin Tools</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Link
+                href="/admin"
+                className="bg-red-500/20 backdrop-blur-sm rounded-lg border border-red-500/30 p-6 hover:bg-red-500/30 transition-all"
+              >
+                <h3 className="text-lg font-semibold text-white mb-2">Admin Dashboard</h3>
+                <p className="text-red-200">Manage users, matchups, and pool settings</p>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Deadline Countdown */}
         {deadline && (
           <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-6 mb-8">
