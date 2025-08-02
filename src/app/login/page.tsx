@@ -56,6 +56,13 @@ export default function LoginPage() {
             break
           }
         } else {
+          // Wait a moment for the session to be properly set
+          await delay(1000)
+          
+          // Verify the session was set
+          const { data: { session } } = await supabase.auth.getSession()
+          console.log('Login successful, session:', !!session)
+          
           router.push('/dashboard')
           return
         }
