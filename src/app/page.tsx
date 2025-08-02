@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import { getPoolStatus } from '@/lib/pool-status'
 
 export default async function HomePage() {
   const user = await getCurrentUser()
+  const poolStatus = await getPoolStatus()
 
   if (user) {
     redirect('/dashboard')
@@ -29,18 +31,37 @@ export default async function HomePage() {
           </p>
           
           <div className="space-y-4">
-            <Link
-              href="/login"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors"
-            >
-              Sign In
-            </Link>
-            <div className="text-gray-400">
-              or{' '}
-              <Link href="/signup" className="text-blue-400 hover:text-blue-300 underline">
-                create an account
-              </Link>
-            </div>
+            {poolStatus.isLocked ? (
+              <div className="bg-red-500/20 backdrop-blur-sm rounded-lg p-4 border border-red-300">
+                <p className="text-red-200 font-semibold">🚫 Pool is Locked</p>
+                <p className="text-red-100 text-sm">
+                  Registration is closed. The pool is now locked and no new entries are allowed.
+                </p>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors"
+                >
+                  Sign In
+                </Link>
+                <div className="text-gray-400">
+                  or{' '}
+                  <Link href="/signup" className="text-blue-400 hover:text-blue-300 underline">
+                    create an account
+                  </Link>
+                </div>
+                {poolStatus.timeUntilLock && poolStatus.timeUntilLock < 24 * 60 * 60 * 1000 && (
+                  <div className="bg-yellow-500/20 backdrop-blur-sm rounded-lg p-4 border border-yellow-300">
+                    <p className="text-yellow-200 font-semibold">⏰ Pool Locks Soon!</p>
+                    <p className="text-yellow-100 text-sm">
+                      Pool locks in {Math.floor(poolStatus.timeUntilLock / (1000 * 60 * 60))} hours. Register now!
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div className="mt-16 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">

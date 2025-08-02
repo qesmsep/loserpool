@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { checkPoolLock } from '@/lib/pool-status'
 
 function SignupForm() {
   const [email, setEmail] = useState('')
@@ -28,6 +29,14 @@ function SignupForm() {
     setError('')
 
     try {
+      // Check pool lock status
+      const poolStatus = await checkPoolLock()
+      if (!poolStatus.allowed) {
+        setError(poolStatus.message)
+        setLoading(false)
+        return
+      }
+
       // Check total entries limit
       const { data: totalEntries } = await supabase
         .from('global_settings')

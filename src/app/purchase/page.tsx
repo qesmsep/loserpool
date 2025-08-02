@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
+import { checkPoolLock } from '@/lib/pool-status'
 
 export default function PurchasePage() {
   const [picksCount, setPicksCount] = useState(1)
@@ -29,6 +30,14 @@ export default function PurchasePage() {
     setError('')
 
     try {
+      // Check pool lock status
+      const poolStatus = await checkPoolLock()
+      if (!poolStatus.allowed) {
+        setError(poolStatus.message)
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {

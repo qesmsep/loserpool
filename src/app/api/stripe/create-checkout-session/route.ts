@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { getPoolStatus } from '@/lib/pool-status'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,10 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if pool has started (purchases should be locked)
-    const poolStartDate = new Date(process.env.POOL_START_DATE || '2024-09-05')
-    if (new Date() >= poolStartDate) {
-      return NextResponse.json({ error: 'Purchases are locked - pool has started' }, { status: 400 })
+    // Check pool lock status
+    const poolStatus = await getPoolStatus()
+    if (poolStatus.isLocked) {
+      return NextResponse.json({ error: 'Pool is locked - no new purchases allowed' }, { status: 400 })
     }
 
     // Create Stripe checkout session

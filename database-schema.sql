@@ -90,7 +90,9 @@ CREATE TABLE IF NOT EXISTS public.global_settings (
 -- Insert initial global settings
 INSERT INTO public.global_settings (key, value) VALUES 
   ('max_total_entries', '2100'),
-  ('entries_per_user', '10')
+  ('entries_per_user', '10'),
+  ('pool_lock_date', '2025-08-31 23:59:00'),
+  ('pool_locked', 'false')
 ON CONFLICT (key) DO NOTHING;
 
 -- Create updated_at trigger function

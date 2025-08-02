@@ -68,5 +68,7 @@ INSERT INTO global_settings (key, value) VALUES
 ('season_start_date', '2025-08-04'),
 ('week1_picks_deadline', '2025-08-03 23:59:00'),
 ('current_week', '1'),
-('pool_status', 'active')
+('pool_status', 'active'),
+('pool_lock_date', '2025-08-31 23:59:00'),
+('pool_locked', 'false')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value; 
