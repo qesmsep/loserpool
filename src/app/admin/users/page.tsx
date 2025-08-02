@@ -28,6 +28,7 @@ export default function AdminUsersPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [showAddPicks, setShowAddPicks] = useState<string | null>(null)
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState<{email: string, password: string} | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const router = useRouter()
@@ -162,6 +163,15 @@ export default function AdminUsersPage() {
 
       setSuccess('User added successfully')
       setShowAddUser(false)
+      
+      // Show temporary password if provided
+      if (result.temporaryPassword) {
+        setShowTemporaryPassword({
+          email: newUser.email,
+          password: result.temporaryPassword
+        })
+      }
+      
       setNewUser({
         email: '',
         username: '',
@@ -733,6 +743,72 @@ export default function AdminUsersPage() {
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
                   Add Picks
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Temporary Password Modal */}
+        {showTemporaryPassword && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-white">Temporary Password Generated</h3>
+                <button
+                  onClick={() => setShowTemporaryPassword(null)}
+                  className="text-blue-200 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-yellow-500/20 border border-yellow-500/30 rounded p-4">
+                  <p className="text-sm text-yellow-200 mb-2">
+                    A temporary password has been generated for the new user. Please provide this to the user securely.
+                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm font-medium text-white">Email:</span>
+                      <span className="text-sm text-blue-200 ml-2">{showTemporaryPassword.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-white">Temporary Password:</span>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input
+                          type="text"
+                          value={showTemporaryPassword.password}
+                          readOnly
+                          className="flex-1 px-2 py-1 bg-white/10 border border-white/30 rounded text-sm text-white font-mono"
+                        />
+                        <button
+                          onClick={() => navigator.clipboard.writeText(showTemporaryPassword.password)}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-blue-200">
+                  <p className="mb-2">Important:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>The user will be prompted to change their password on first login</li>
+                    <li>Share this password securely with the user</li>
+                    <li>The password will not be shown again</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowTemporaryPassword(null)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Got it
                 </button>
               </div>
             </div>

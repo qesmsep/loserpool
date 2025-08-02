@@ -6,6 +6,16 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Generate a secure temporary password
+function generateTemporaryPassword(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
+  let password = ''
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return password
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('API route called')
@@ -25,6 +35,9 @@ export async function POST(request: NextRequest) {
 
     console.log('Creating user with email:', email)
 
+    // Generate temporary password
+    const temporaryPassword = generateTemporaryPassword()
+
     // Try service role approach first
     if (supabaseServiceKey) {
       try {
@@ -36,10 +49,10 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Create auth user using service role
+        // Create auth user using service role with temporary password
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email,
-          password: 'tempPassword123!', // Temporary password
+          password: temporaryPassword,
           email_confirm: true
         })
 
@@ -57,7 +70,7 @@ export async function POST(request: NextRequest) {
         // Wait a moment for the trigger to create the profile
         await new Promise(resolve => setTimeout(resolve, 1000))
 
-        // Update the user profile with admin-provided data
+        // Update the user profile with admin-provided data and password change flag
         const { data: user, error: userError } = await supabaseAdmin
           .from('users')
           .update({
@@ -65,7 +78,8 @@ export async function POST(request: NextRequest) {
             first_name: first_name || null,
             last_name: last_name || null,
             phone: phone || null,
-            is_admin: is_admin || false
+            is_admin: is_admin || false,
+            needs_password_change: true // Add this flag
           })
           .eq('id', authData.user.id)
           .select()
@@ -77,7 +91,11 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('User profile updated successfully')
-        return NextResponse.json({ user })
+        return NextResponse.json({ 
+          user,
+          temporaryPassword,
+          message: 'User created successfully. Temporary password has been generated.'
+        })
       } catch (serviceRoleError) {
         console.error('Service role approach failed:', serviceRoleError)
         // Fall back to manual approach
@@ -101,7 +119,8 @@ export async function POST(request: NextRequest) {
         first_name: first_name || null,
         last_name: last_name || null,
         phone: phone || null,
-        is_admin: is_admin || false
+        is_admin: is_admin || false,
+        needs_password_change: true
       })
       .select()
       .single()
@@ -114,6 +133,7 @@ export async function POST(request: NextRequest) {
     console.log('User profile created successfully (fallback)')
     return NextResponse.json({ 
       user,
+      temporaryPassword,
       message: 'User profile created. Note: Auth user will need to be created separately if login is required.'
     })
   } catch (error) {

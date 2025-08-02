@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { LogOut, ShoppingCart, Trophy, Users, Calendar } from 'lucide-react'
 
 export default async function DashboardPage() {
@@ -51,6 +52,11 @@ export default async function DashboardPage() {
         is_admin: false,
       }
     }
+  }
+
+  // Check if user needs to change password
+  if (profile?.needs_password_change) {
+    redirect('/change-password')
   }
 
   // Get user's total picks purchased
