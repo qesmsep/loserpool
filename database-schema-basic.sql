@@ -96,6 +96,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Drop existing triggers if they exist, then recreate them
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_purchases_updated_at ON purchases;
+DROP TRIGGER IF EXISTS update_matchups_updated_at ON matchups;
+DROP TRIGGER IF EXISTS update_picks_updated_at ON picks;
+DROP TRIGGER IF EXISTS update_weekly_results_updated_at ON weekly_results;
+DROP TRIGGER IF EXISTS update_invitations_updated_at ON invitations;
+
 -- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_purchases_updated_at BEFORE UPDATE ON purchases FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -113,6 +121,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Drop existing trigger if it exists, then recreate it
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- Create trigger for new user creation
 CREATE TRIGGER on_auth_user_created
