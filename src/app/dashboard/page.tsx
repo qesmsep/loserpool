@@ -3,7 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { LogOut, ShoppingCart, Trophy, Users, Calendar } from 'lucide-react'
+import { ShoppingCart, Trophy, Users, Calendar } from 'lucide-react'
+import Header from '@/components/header'
 
 export default async function DashboardPage() {
   const user = await requireAuth()
@@ -99,34 +100,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-              <p className="text-blue-100">Welcome back, {profile?.username || user.email}</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/admin"
-                className="text-blue-100 hover:text-white transition-colors"
-              >
-                Admin
-              </Link>
-              <form action="/api/auth/signout" method="post">
-                <button
-                  type="submit"
-                  className="flex items-center text-blue-100 hover:text-white transition-colors"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
+             <Header 
+         title="Dashboard"
+         subtitle={`Welcome back, ${profile?.username || user.email}`}
+       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}

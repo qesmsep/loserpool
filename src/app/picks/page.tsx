@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { ArrowLeft, Save, Clock, AlertTriangle } from 'lucide-react'
+import Header from '@/components/header'
 
 interface Matchup {
   id: string
@@ -213,23 +214,18 @@ export default function PicksPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Compact Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+      <Header 
+        title={`Week ${currentWeek} Picks`}
+        subtitle="Pick teams to lose"
+        showBackButton={true}
+        backHref="/dashboard"
+        backText="Back"
+      />
+      
+      {/* Picks Remaining and Save Button */}
+      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Week {currentWeek} Picks</h1>
-                <p className="text-sm text-blue-100">Pick teams to lose</p>
-              </div>
-            </div>
+          <div className="flex justify-end items-center py-2">
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-xs text-blue-200">Picks Left</p>
@@ -246,7 +242,7 @@ export default function PicksPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {error && (

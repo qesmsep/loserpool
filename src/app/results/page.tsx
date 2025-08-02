@@ -1,7 +1,8 @@
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, XCircle, Minus } from 'lucide-react'
+import { Trophy, Users, Calendar } from 'lucide-react'
+import Header from '@/components/header'
 
 interface Pick {
   id: string
@@ -96,26 +97,13 @@ export default async function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-white">Your Results</h1>
-                <p className="text-blue-100">Track your performance in The Loser Pool</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        title="Your Results"
+        subtitle="Track your performance in The Loser Pool"
+        showBackButton={true}
+        backHref="/dashboard"
+        backText="Back to Dashboard"
+      />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Week Results */}

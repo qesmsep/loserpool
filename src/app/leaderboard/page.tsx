@@ -1,7 +1,8 @@
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, Trophy, Users, TrendingUp } from 'lucide-react'
+import { Trophy, Users, Calendar } from 'lucide-react'
+import Header from '@/components/header'
 
 export default async function LeaderboardPage() {
   await requireAuth()
@@ -56,25 +57,13 @@ export default async function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
-                <p className="text-blue-100">Current standings in The Loser Pool</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+             <Header 
+         title="Leaderboard"
+         subtitle="Current standings in The Loser Pool"
+         showBackButton={true}
+         backHref="/dashboard"
+         backText="Back to Dashboard"
+       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
@@ -108,7 +97,7 @@ export default async function LeaderboardPage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
               <div className="p-2 bg-red-500/20 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-red-200" />
+                <Calendar className="w-6 h-6 text-red-200" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-red-100">Eliminated</p>

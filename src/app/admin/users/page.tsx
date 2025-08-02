@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Users, Mail, Calendar, Plus, Edit, Trash2, Save, X } from 'lucide-react'
+import Header from '@/components/header'
 
 interface User {
   id: string
@@ -298,23 +299,18 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+      <Header 
+        title="Manage Users"
+        subtitle="View and manage user accounts"
+        showBackButton={true}
+        backHref="/admin"
+        backText="Back to Admin"
+      />
+      
+      {/* Add User Button */}
+      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/admin"
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Admin
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-white">Manage Users</h1>
-                <p className="text-blue-100">View and manage user accounts</p>
-              </div>
-            </div>
+          <div className="flex justify-end py-2">
             <button
               onClick={() => setShowAddUser(true)}
               className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -324,7 +320,7 @@ export default function AdminUsersPage() {
             </button>
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Messages */}
