@@ -131,10 +131,6 @@ export default function PicksPage() {
     return userPicks.find(p => p.matchup_id === matchupId)
   }
 
-  const getTotalPicksUsed = () => {
-    return userPicks.reduce((sum, pick) => sum + pick.picks_count, 0)
-  }
-
   const handleSave = async () => {
     setSaving(true)
     setError('')
@@ -349,7 +345,7 @@ export default function PicksPage() {
           <h3 className="text-sm font-semibold text-white mb-2">How it works:</h3>
           <div className="text-xs text-blue-200 space-y-1">
             <p>• Pick the team you think will LOSE the game</p>
-            <p>• If your pick wins, you're eliminated</p>
+            <p>• If your pick wins, you&apos;re eliminated</p>
             <p>• If your pick loses, you survive to next week</p>
             <p>• Last person standing wins!</p>
           </div>

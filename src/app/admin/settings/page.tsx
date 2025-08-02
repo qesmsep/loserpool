@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, Settings, Users, Calendar, DollarSign, Lock, Unlock } from 'lucide-react'
+import { ArrowLeft, Settings, Users, Calendar, DollarSign } from 'lucide-react'
 import { getPoolStatus } from '@/lib/pool-status'
 
 export default async function AdminSettingsPage() {
@@ -16,11 +16,6 @@ export default async function AdminSettingsPage() {
     .from('global_settings')
     .select('*')
     .order('key')
-
-  // Get user stats
-  const { count: userCount } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
 
   const { data: purchases } = await supabase
     .from('purchases')

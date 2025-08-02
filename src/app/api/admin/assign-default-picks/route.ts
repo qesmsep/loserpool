@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Verify admin access
     await requireAdmin()
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Also allow GET for manual testing
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Verify admin access
     await requireAdmin()

@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getPoolStatus } from '@/lib/pool-status'
 import Link from 'next/link'
-import { ArrowLeft, Lock, Unlock, Calendar, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Settings, Clock, Lock, Unlock } from 'lucide-react'
 
 export default async function PoolLockPage() {
   await requireAdmin()
@@ -21,7 +21,6 @@ export default async function PoolLockPage() {
   }, {} as Record<string, string>) || {}
 
   const lockDate = settingsMap.pool_lock_date || '2025-08-31 23:59:00'
-  const isManuallyLocked = settingsMap.pool_locked === 'true'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">

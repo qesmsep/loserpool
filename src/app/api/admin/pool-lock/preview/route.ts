@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
 import { getPoolStatus } from '@/lib/pool-status'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requireAdmin()
     const supabase = await createServerSupabaseClient()

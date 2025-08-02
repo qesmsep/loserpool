@@ -51,17 +51,11 @@ export async function POST(request: NextRequest) {
 }
 
 // Also allow GET for manual testing
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // For manual testing, we'll skip the Thursday/time checks
-    console.log('Manual trigger of Thursday reminders...')
+    console.log('Thursday reminders cron job started')
     await sendThursdayPickReminders()
-
-    return NextResponse.json({ 
-      message: 'Thursday reminders sent successfully (manual trigger)',
-      timestamp: new Date().toISOString()
-    })
-
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error in manual Thursday reminders:', error)
     return NextResponse.json(
