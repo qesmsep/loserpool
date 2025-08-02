@@ -134,7 +134,28 @@ function SignupForm() {
           }
         }
 
-        router.push('/dashboard')
+        // Automatically sign in the user after successful signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (signInError) {
+          console.warn('Auto sign-in failed:', signInError.message)
+          // If auto sign-in fails, it might be due to email confirmation
+          if (signInError.message.includes('Email not confirmed')) {
+            setError('Please check your email and confirm your account before signing in.')
+          } else {
+            setError('Signup successful! Please sign in with your credentials.')
+          }
+          setLoading(false)
+          // Redirect to login page
+          router.push('/login')
+        } else {
+          console.log('User automatically signed in')
+          // Redirect to dashboard
+          router.push('/dashboard')
+        }
       }
     } catch (err) {
       console.error('Signup error:', err)
