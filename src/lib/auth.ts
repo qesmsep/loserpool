@@ -46,6 +46,8 @@ export async function requireAdmin() {
   const user = await requireAuth()
   const supabase = await createServerSupabaseClient()
   
+  // Temporarily disable RLS check for admin verification
+  // We'll handle admin checks in application code instead
   const { data: userProfile, error } = await supabase
     .from('users')
     .select('is_admin')
@@ -54,6 +56,7 @@ export async function requireAdmin() {
   
   if (error) {
     console.error('Admin check error:', error)
+    // If we can't check admin status due to RLS, redirect to dashboard
     redirect('/dashboard')
   }
   

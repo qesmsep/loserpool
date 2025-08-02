@@ -31,18 +31,18 @@ export async function POST() {
       .single()
 
     if (error) {
-      console.error('Failed to create user profile:', error)
+      console.error('Failed to create user profile:', error, JSON.stringify(error));
       return NextResponse.json(
-        { error: 'Failed to create user profile' },
+        { error: 'Failed to create user profile', details: error },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ profile })
   } catch (error) {
-    console.error('Create profile error:', error)
+    console.error('Create profile error:', error, JSON.stringify(error))
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error },
       { status: 500 }
     )
   }
