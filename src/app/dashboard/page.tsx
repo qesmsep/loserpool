@@ -272,7 +272,7 @@ export default async function DashboardPage() {
                           <span className="text-sm text-blue-200">No picks made</span>
                         )}
                         <Link
-                          href={`/picks/${matchup.id}`}
+                          href="/picks"
                           className="text-blue-200 hover:text-white text-sm font-medium transition-colors"
                         >
                           {userPick ? 'Edit' : 'Pick'}
