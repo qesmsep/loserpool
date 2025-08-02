@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getPoolStatus } from '@/lib/pool-status'
 import Link from 'next/link'
-import { ArrowLeft, Settings, Clock, Lock, Unlock } from 'lucide-react'
+import { ArrowLeft, Lock, Unlock, AlertTriangle } from 'lucide-react'
 
 export default async function PoolLockPage() {
   await requireAdmin()

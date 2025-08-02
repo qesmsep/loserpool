@@ -21,15 +21,6 @@ interface User {
   isEliminated: boolean
 }
 
-interface Purchase {
-  id: string
-  user_id: string
-  picks_count: number
-  amount: number
-  status: string
-  created_at: string
-}
-
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -726,7 +717,7 @@ export default function AdminUsersPage() {
                 </div>
                 
                 <div className="text-sm text-blue-200">
-                  This will add {picksToAdd} picks to the user's account as a completed purchase.
+                  This will add {picksToAdd} picks to the user&apos;s account as a completed purchase.
                 </div>
               </div>
               
