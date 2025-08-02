@@ -37,8 +37,10 @@ SELECT 'Trigger created:' as status, trigger_name, event_manipulation, event_obj
 FROM information_schema.triggers 
 WHERE trigger_name = 'on_auth_user_created';
 
--- Test the function (this won't actually create a user, just test the function)
-SELECT 'Function test:' as status, handle_new_user() IS NOT NULL as function_works;
-
 -- Show current users
-SELECT 'Current users:' as status, COUNT(*) as count FROM users; 
+SELECT 'Current users:' as status, COUNT(*) as count FROM users;
+
+-- Show function definition
+SELECT 'Function created:' as status, routine_name, routine_type
+FROM information_schema.routines 
+WHERE routine_name = 'handle_new_user'; 
