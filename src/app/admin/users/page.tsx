@@ -222,24 +222,29 @@ export default function AdminUsersPage() {
         return
       }
 
-      // Add purchase record
-      const { error } = await supabase
-        .from('purchases')
-        .insert({
-          user_id: userId,
-          picks_count: picksToAdd,
-          amount: picksToAdd * 2100, // $21 per pick in cents
-          status: 'completed'
+      const response = await fetch('/api/admin/add-picks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId, 
+          picksCount: picksToAdd 
         })
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add picks')
+      }
 
       setSuccess(`${picksToAdd} picks added successfully`)
       setPicksToAdd(0)
       loadUsers()
     } catch (error) {
       console.error('Error adding picks:', error)
-      setError('Failed to add picks')
+      setError(`Failed to add picks: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
