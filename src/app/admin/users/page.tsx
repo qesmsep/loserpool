@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Users, Mail, Calendar, Plus, Edit, Trash2, Save, X } from 'lucide-react'
-import Header from '@/components/header'
+import AdminHeader from '@/components/admin-header'
 
 interface User {
   id: string
@@ -298,7 +298,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      <Header 
+      <AdminHeader 
         title="Manage Users"
         subtitle="View and manage user accounts"
         showBackButton={true}

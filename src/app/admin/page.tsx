@@ -1,7 +1,8 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, Settings, Users, Calendar, Trophy } from 'lucide-react'
+import { ArrowLeft, Settings, Users, Calendar, Trophy, LogOut } from 'lucide-react'
+import AdminHeader from '@/components/admin-header'
 
 export default async function AdminPage() {
   await requireAdmin()
@@ -33,26 +34,13 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold text-white">Admin Panel</h1>
-                <p className="text-blue-100">Manage The Loser Pool</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminHeader 
+        title="Admin Panel"
+        subtitle="Manage The Loser Pool"
+        showBackButton={true}
+        backHref="/dashboard"
+        backText="Back to Dashboard"
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
