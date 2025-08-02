@@ -81,18 +81,32 @@ function SignupForm() {
 
         // Manual fallback: Create user profile to ensure it exists
         try {
-          const { error: userInsertError } = await supabase.from('users').insert({
-            id: user.id,
-            email: user.email!,
-            username: username || null,
-            is_admin: false,
-          })
+          // First check if user profile already exists
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', user.id)
+            .single()
 
-          if (userInsertError) {
-            console.warn('Manual user creation failed:', userInsertError.message)
-            // Don't fail signup, the trigger might have worked
+          if (!existingUser) {
+            // Only create if user doesn't exist
+            const { error: userInsertError } = await supabase
+              .from('users')
+              .insert({
+                id: user.id,
+                email: user.email!,
+                username: username || null,
+                is_admin: false,
+              })
+
+            if (userInsertError) {
+              console.warn('Manual user creation failed:', userInsertError.message)
+              // Don't fail signup, the trigger might have worked
+            } else {
+              console.log('User profile created manually')
+            }
           } else {
-            console.log('User profile created manually')
+            console.log('User profile already exists')
           }
         } catch (err) {
           console.warn('Manual user creation error:', err)
