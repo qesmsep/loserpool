@@ -59,11 +59,23 @@ export default async function DashboardPage() {
 
   const totalPicksPurchased = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
+  // Get current week and deadline from global settings
+  const { data: settings } = await supabase
+    .from('global_settings')
+    .select('key, value')
+    .in('key', ['current_week', 'week1_picks_deadline'])
+
+  const weekSetting = settings?.find(s => s.key === 'current_week')
+  const deadlineSetting = settings?.find(s => s.key === 'week1_picks_deadline')
+  
+  const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
+  const deadline = deadlineSetting?.value || null
+
   // Get current week matchups
   const { data: matchups } = await supabase
     .from('matchups')
     .select('*')
-    .eq('week', 1) // TODO: Get current week dynamically
+    .eq('week', currentWeek)
     .order('game_time')
 
   // Get user's picks for current week
@@ -155,7 +167,7 @@ export default async function DashboardPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-2xl font-bold text-white">1</p>
+                <p className="text-2xl font-bold text-white">{currentWeek}</p>
               </div>
             </div>
           </div>
@@ -171,13 +183,13 @@ export default async function DashboardPage() {
             <p className="text-blue-100">Allocate your picks for this week&apos;s games</p>
           </Link>
 
-          <Link
-            href="/purchase"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/20 transition-all"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Buy Picks</h3>
-            <p className="text-blue-100">Purchase more picks for $10 each</p>
-          </Link>
+                      <Link
+              href="/purchase"
+              className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/20 transition-all"
+            >
+              <h3 className="text-lg font-semibold text-white mb-2">Buy Picks</h3>
+              <p className="text-blue-100">Purchase more picks for $21 each</p>
+            </Link>
 
           <Link
             href="/leaderboard"
@@ -196,11 +208,54 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
+        {/* Deadline Countdown */}
+        {deadline && (
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Calendar className="w-6 h-6 text-yellow-200 mr-3" />
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Picks Deadline</h3>
+                  <p className="text-yellow-200">
+                    Deadline: {format(new Date(deadline), 'MMM d, h:mm a')}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-yellow-200">Time Remaining</p>
+                <p className="text-2xl font-bold text-white">
+                  {(() => {
+                    const now = new Date()
+                    const deadlineDate = new Date(deadline)
+                    const diff = deadlineDate.getTime() - now.getTime()
+                    
+                    if (diff <= 0) {
+                      return 'EXPIRED'
+                    }
+                    
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+                    
+                    if (days > 0) {
+                      return `${days}d ${hours}h`
+                    } else if (hours > 0) {
+                      return `${hours}h ${minutes}m`
+                    } else {
+                      return `${minutes}m`
+                    }
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Current Week Matchups */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-6 py-4 border-b border-white/20">
             <h2 className="text-xl font-semibold text-white">This Week&apos;s Games</h2>
-            <p className="text-blue-100">Picks lock at Thursday Night Football kickoff</p>
+            <p className="text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
           </div>
           <div className="p-6">
             {matchups && matchups.length > 0 ? (

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { ArrowLeft, Save, Clock } from 'lucide-react'
+import { ArrowLeft, Save, Clock, AlertTriangle } from 'lucide-react'
 
 interface Matchup {
   id: string
@@ -31,6 +31,8 @@ export default function PicksPage() {
   const [matchups, setMatchups] = useState<Matchup[]>([])
   const [userPicks, setUserPicks] = useState<Pick[]>([])
   const [picksRemaining, setPicksRemaining] = useState(0)
+  const [currentWeek, setCurrentWeek] = useState(1)
+  const [deadline, setDeadline] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +47,21 @@ export default function PicksPage() {
         return
       }
 
+      // Get current week and deadline from global settings
+      const { data: settings } = await supabase
+        .from('global_settings')
+        .select('key, value')
+        .in('key', ['current_week', 'week1_picks_deadline'])
+
+      const weekSetting = settings?.find(s => s.key === 'current_week')
+      const deadlineSetting = settings?.find(s => s.key === 'week1_picks_deadline')
+      
+      const week = weekSetting ? parseInt(weekSetting.value) : 1
+      const deadlineTime = deadlineSetting?.value || null
+      
+      setCurrentWeek(week)
+      setDeadline(deadlineTime)
+
       // Get user's total picks purchased
       const { data: purchases } = await supabase
         .from('purchases')
@@ -58,7 +75,7 @@ export default function PicksPage() {
       const { data: matchupsData } = await supabase
         .from('matchups')
         .select('*')
-        .eq('week', 1) // TODO: Get current week dynamically
+        .eq('week', week)
         .order('game_time')
 
       // Get user's picks for current week
@@ -124,19 +141,22 @@ export default function PicksPage() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        router.push('/login')
+        return
+      }
 
-      const totalUsed = getTotalPicksUsed()
-      if (totalUsed > picksRemaining + totalUsed) {
-        setError('You don&apos;t have enough picks remaining')
+      // Check if deadline has passed
+      if (deadline && new Date() > new Date(deadline)) {
+        setError('Picks deadline has passed. Picks are now locked.')
         setSaving(false)
         return
       }
 
-      // Save all picks
+      // Save each pick
       for (const pick of userPicks) {
         if (pick.id.startsWith('temp-')) {
-          // New pick
+          // Create new pick
           const { error } = await supabase
             .from('picks')
             .insert({
@@ -171,6 +191,19 @@ export default function PicksPage() {
     }
   }
 
+  const isDeadlinePassed = () => {
+    if (!deadline) return false
+    return new Date() > new Date(deadline)
+  }
+
+  const formatDeadline = (deadlineStr: string) => {
+    try {
+      return format(new Date(deadlineStr), 'MMM d, h:mm a')
+    } catch {
+      return deadlineStr
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
@@ -198,7 +231,7 @@ export default function PicksPage() {
               </Link>
               <div>
                 <h1 className="text-3xl font-bold text-white">Make Your Picks</h1>
-                <p className="text-blue-100">Week 1 - Picks lock at Thursday Night Football kickoff</p>
+                <p className="text-blue-100">Week {currentWeek} - Picks lock at deadline</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -208,11 +241,11 @@ export default function PicksPage() {
               </div>
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || isDeadlinePassed()}
                 className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Picks'}
+                {saving ? 'Saving...' : isDeadlinePassed() ? 'Deadline Passed' : 'Save Picks'}
               </button>
             </div>
           </div>
@@ -223,6 +256,34 @@ export default function PicksPage() {
         {error && (
           <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+
+        {/* Deadline Warning */}
+        {deadline && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            isDeadlinePassed() 
+              ? 'bg-red-500/20 border-red-500/30 text-red-200' 
+              : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200'
+          }`}>
+            <div className="flex items-center">
+              {isDeadlinePassed() ? (
+                <AlertTriangle className="w-5 h-5 mr-2" />
+              ) : (
+                <Clock className="w-5 h-5 mr-2" />
+              )}
+              <div>
+                <p className="font-medium">
+                  {isDeadlinePassed() ? 'Picks Deadline Passed' : 'Picks Deadline'}
+                </p>
+                <p className="text-sm opacity-75">
+                  {isDeadlinePassed() 
+                    ? 'Picks are now locked and cannot be changed.' 
+                    : `Deadline: ${formatDeadline(deadline)}`
+                  }
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -258,7 +319,8 @@ export default function PicksPage() {
                     <select
                       value={userPick?.team_picked || ''}
                       onChange={(e) => updatePick(matchup.id, e.target.value, userPick?.picks_count || 0)}
-                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      disabled={isDeadlinePassed()}
+                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     >
                       <option value="">Select a team</option>
                       <option value={matchup.away_team}>{matchup.away_team}</option>
@@ -276,7 +338,8 @@ export default function PicksPage() {
                       max={picksRemaining + (userPick?.picks_count || 0)}
                       value={userPick?.picks_count || 0}
                       onChange={(e) => updatePick(matchup.id, userPick?.team_picked || '', parseInt(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      disabled={isDeadlinePassed()}
+                      className="w-full px-3 py-2 border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white disabled:opacity-50"
                     />
                   </div>
                 </div>
