@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Mail, CheckCircle, ArrowRight } from 'lucide-react'
+import { Mail, ArrowRight } from 'lucide-react'
 
 export default function ConfirmEmailPage() {
   return (

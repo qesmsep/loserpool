@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentUser } from '@/lib/auth'
+import Link from 'next/link'
 
 export default async function DebugAuthPage() {
   const supabase = await createServerSupabaseClient()
@@ -65,15 +66,15 @@ export default async function DebugAuthPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold mb-4">Actions</h2>
             <div className="space-y-2">
-              <a href="/dashboard" className="block text-blue-600 hover:text-blue-500">
+              <Link href="/dashboard" className="block text-blue-600 hover:text-blue-500">
                 Try Dashboard
-              </a>
-              <a href="/login" className="block text-blue-600 hover:text-blue-500">
+              </Link>
+              <Link href="/login" className="block text-blue-600 hover:text-blue-500">
                 Go to Login
-              </a>
-              <a href="/" className="block text-blue-600 hover:text-blue-500">
+              </Link>
+              <Link href="/" className="block text-blue-600 hover:text-blue-500">
                 Go to Home
-              </a>
+              </Link>
             </div>
           </div>
         </div>

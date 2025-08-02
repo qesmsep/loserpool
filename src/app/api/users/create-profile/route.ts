@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const user = await requireAuth()
     const supabase = await createServerSupabaseClient()

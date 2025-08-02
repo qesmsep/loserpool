@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import Link from 'next/link'
 
 export default async function DebugSessionPage() {
   const supabase = await createServerSupabaseClient()
@@ -55,9 +56,9 @@ export default async function DebugSessionPage() {
         </div>
         
         <div className="mt-6 space-y-2">
-          <a href="/login" className="block text-blue-600 hover:underline">Go to Login</a>
-          <a href="/dashboard" className="block text-blue-600 hover:underline">Go to Dashboard</a>
-          <a href="/" className="block text-blue-600 hover:underline">Go to Home</a>
+          <Link href="/login" className="block text-blue-600 hover:underline">Go to Login</Link>
+          <Link href="/dashboard" className="block text-blue-600 hover:underline">Go to Dashboard</Link>
+          <Link href="/" className="block text-blue-600 hover:underline">Go to Home</Link>
         </div>
       </div>
     </div>
