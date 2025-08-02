@@ -29,16 +29,16 @@ export default async function AdminUsersPage() {
     const userPicks = picks?.filter(p => p.user_id === user.id) || []
     
     const totalPurchased = userPurchases
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + p.picks_count, 0)
+      .filter((p: { status: string }) => p.status === 'completed')
+      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
     
     const activePicks = userPicks
-      .filter(p => p.status === 'active')
-      .reduce((sum, p) => sum + p.picks_count, 0)
+      .filter((p: { status: string }) => p.status === 'active')
+      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
     
     const eliminatedPicks = userPicks
-      .filter(p => p.status === 'eliminated')
-      .reduce((sum, p) => sum + p.picks_count, 0)
+      .filter((p: { status: string }) => p.status === 'eliminated')
+      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
 
     return {
       ...user,

@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { checkPoolLock } from '@/lib/pool-status'
+import { checkPoolLock } from '@/lib/pool-status-client'
 
 function SignupForm() {
   const [email, setEmail] = useState('')

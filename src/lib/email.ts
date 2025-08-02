@@ -133,7 +133,7 @@ export async function sendThursdayPickReminders() {
 
     for (const user of usersNeedingReminders) {
       // Calculate total available picks for this user
-      const totalPurchased = user.purchases.reduce((sum: number, purchase: any) => {
+      const totalPurchased = user.purchases.reduce((sum: number, purchase: { status: string; picks_count: number }) => {
         return sum + (purchase.status === 'completed' ? purchase.picks_count : 0)
       }, 0)
 
@@ -151,7 +151,7 @@ export async function sendThursdayPickReminders() {
 
       // If user has no picks for current week, send reminder
       if (!existingPicks || existingPicks.length === 0) {
-        const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User'
+        // const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || 'User'
         
         await sendPickReminder({
           userEmail: user.email,

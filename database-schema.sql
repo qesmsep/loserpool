@@ -72,10 +72,12 @@ CREATE TABLE IF NOT EXISTS public.weekly_results (
 -- Invitations table
 CREATE TABLE IF NOT EXISTS public.invitations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   invite_code TEXT UNIQUE NOT NULL,
-  used_by UUID REFERENCES public.users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  used_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Global settings table for entry limits
@@ -120,6 +122,12 @@ CREATE TRIGGER update_picks_updated_at
 DROP TRIGGER IF EXISTS update_global_settings_updated_at ON public.global_settings;
 CREATE TRIGGER update_global_settings_updated_at
   BEFORE UPDATE ON public.global_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_invitations_updated_at ON public.invitations;
+CREATE TRIGGER update_invitations_updated_at
+  BEFORE UPDATE ON public.invitations
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
@@ -235,13 +243,21 @@ CREATE POLICY "Admins can view all results" ON public.weekly_results
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own invitations" ON public.invitations
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (auth.uid() = created_by);
 
 CREATE POLICY "Users can create invitations" ON public.invitations
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.uid() = created_by);
 
 CREATE POLICY "Anyone can view invitations for signup" ON public.invitations
   FOR SELECT USING (true);
+
+CREATE POLICY "Admins can view all invitations" ON public.invitations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE id = auth.uid() AND is_admin = true
+    )
+  );
 
 -- Global settings table policies
 ALTER TABLE public.global_settings ENABLE ROW LEVEL SECURITY;

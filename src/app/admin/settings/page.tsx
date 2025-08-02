@@ -18,10 +18,9 @@ export default async function AdminSettingsPage() {
     .order('key')
 
   // Get user stats
-  const { data: users } = await supabase
+  const { count: userCount } = await supabase
     .from('users')
-    .select('id')
-    .count()
+    .select('*', { count: 'exact', head: true })
 
   const { data: purchases } = await supabase
     .from('purchases')
@@ -29,7 +28,7 @@ export default async function AdminSettingsPage() {
     .eq('status', 'completed')
 
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
-  const currentEntries = users?.count || 0
+  const currentEntries = userCount || 0
 
   // Create settings map
   const settingsMap = settings?.reduce((acc, setting) => {

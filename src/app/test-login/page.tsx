@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 export default function TestLoginPage() {
   const [email, setEmail] = useState('tim@828.life')
   const [password, setPassword] = useState('')
-  const [result, setResult] = useState<{ data?: any; error?: any } | null>(null)
+  const [result, setResult] = useState<{ data?: unknown; error?: unknown } | null>(null)
   const [loading, setLoading] = useState(false)
 
   const testLogin = async () => {
@@ -33,7 +33,7 @@ export default function TestLoginPage() {
 
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
-      setResult({ session: !!session, error })
+      setResult({ data: { session: !!session }, error })
     } catch (err) {
       setResult({ error: err })
     } finally {

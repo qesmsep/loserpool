@@ -109,11 +109,11 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching users needing picks:', usersError)
     }
 
-    let usersToAssign = []
+    const usersToAssign = []
     if (usersNeedingPicks) {
       for (const user of usersNeedingPicks) {
         // Calculate available picks
-        const totalPurchased = user.purchases.reduce((sum: number, purchase: any) => {
+        const totalPurchased = user.purchases.reduce((sum: number, purchase: { status: string; picks_count: number }) => {
           return sum + (purchase.status === 'completed' ? purchase.picks_count : 0)
         }, 0)
 

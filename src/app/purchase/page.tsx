@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
-import { checkPoolLock } from '@/lib/pool-status'
+import { checkPoolLock } from '@/lib/pool-status-client'
 
 export default function PurchasePage() {
   const [picksCount, setPicksCount] = useState(1)

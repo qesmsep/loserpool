@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { supabase } from '@/lib/supabase'
 
 export interface PoolStatus {
   isLocked: boolean
@@ -10,8 +10,6 @@ export interface PoolStatus {
 }
 
 export async function getPoolStatus(): Promise<PoolStatus> {
-  const supabase = await createServerSupabaseClient()
-  
   // Get pool lock settings
   const { data: settings, error } = await supabase
     .from('global_settings')

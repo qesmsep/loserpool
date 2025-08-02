@@ -24,13 +24,13 @@ export default async function AdminResultsPage() {
   // Calculate stats for each matchup
   const matchupsWithStats = matchups?.map(matchup => {
     const matchupPicks = matchup.picks || []
-    const totalPicks = matchupPicks.reduce((sum, p) => sum + p.picks_count, 0)
+    const totalPicks = matchupPicks.reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
     const activePicks = matchupPicks
-      .filter(p => p.status === 'active')
-      .reduce((sum, p) => sum + p.picks_count, 0)
+      .filter((p: { status: string }) => p.status === 'active')
+      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
     const eliminatedPicks = matchupPicks
-      .filter(p => p.status === 'eliminated')
-      .reduce((sum, p) => sum + p.picks_count, 0)
+      .filter((p: { status: string }) => p.status === 'eliminated')
+      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
 
     // Determine winner
     let winner = null
@@ -165,78 +165,93 @@ export default async function AdminResultsPage() {
 
         {/* Matchups by Week */}
         <div className="space-y-8">
-          {Object.entries(matchupsByWeek).map(([week, weekMatchups]) => (
-            <div key={week} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-              <div className="px-6 py-4 border-b border-white/20">
-                <h2 className="text-xl font-semibold text-white">Week {week}</h2>
-                <p className="text-blue-100">{weekMatchups.length} games</p>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {weekMatchups.map((matchup) => (
-                    <div key={matchup.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-4">
-                          <div className="text-lg font-semibold text-white">
-                            {matchup.away_team} @ {matchup.home_team}
-                          </div>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
-                            matchup.status === 'live' ? 'bg-yellow-500/20 text-yellow-200' :
-                            'bg-gray-500/20 text-gray-200'
-                          }`}>
-                            {matchup.status}
-                          </span>
-                        </div>
-                        <div className="text-sm text-blue-200 mt-1">
-                          {new Date(matchup.game_time).toLocaleString()}
-                          {matchup.away_score !== null && matchup.home_score !== null && (
-                            <span className="ml-4">
-                              Score: {matchup.away_score} - {matchup.home_score}
-                              {matchup.winner && (
-                                <span className="ml-2 text-green-300">
-                                  ({matchup.winner === 'away' ? matchup.away_team : 
-                                    matchup.winner === 'home' ? matchup.home_team : 'Tie'})
-                                </span>
-                              )}
+          {Object.entries(matchupsByWeek).map(([week, weekMatchups]) => {
+            type MatchupType = {
+              id: number | string;
+              away_team: string;
+              home_team: string;
+              status: string;
+              game_time: string;
+              away_score: number | null;
+              home_score: number | null;
+              totalPicks: number;
+              activePicks: number;
+              eliminatedPicks: number;
+              winner: string | null;
+            };
+            const weekMatchupsArr = weekMatchups as MatchupType[];
+            return (
+              <div key={week} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                <div className="px-6 py-4 border-b border-white/20">
+                  <h2 className="text-xl font-semibold text-white">Week {week}</h2>
+                  <p className="text-blue-100">{weekMatchupsArr.length} games</p>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {weekMatchupsArr.map((matchup) => (
+                      <div key={matchup.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="text-lg font-semibold text-white">
+                              {matchup.away_team} @ {matchup.home_team}
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
+                              matchup.status === 'live' ? 'bg-yellow-500/20 text-yellow-200' :
+                              'bg-gray-500/20 text-gray-200'
+                            }`}>
+                              {matchup.status}
                             </span>
-                          )}
+                          </div>
+                          <div className="text-sm text-blue-200 mt-1">
+                            {new Date(matchup.game_time).toLocaleString()}
+                            {matchup.away_score !== null && matchup.home_score !== null && (
+                              <span className="ml-4">
+                                Score: {matchup.away_score} - {matchup.home_score}
+                                {matchup.winner && (
+                                  <span className="ml-2 text-green-300">
+                                    ({matchup.winner === 'away' ? matchup.away_team : 
+                                      matchup.winner === 'home' ? matchup.home_team : 'Tie'})
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                          <div className="text-right">
+                            <div className="text-sm text-blue-200">Total Picks</div>
+                            <div className="text-lg font-semibold text-white">{matchup.totalPicks}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-green-200">Active</div>
+                            <div className="text-lg font-semibold text-green-300">{matchup.activePicks}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-red-200">Eliminated</div>
+                            <div className="text-lg font-semibold text-red-300">{matchup.eliminatedPicks}</div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Link
+                              href={`/admin/results/${matchup.id}/update`}
+                              className="text-blue-200 hover:text-white transition-colors"
+                            >
+                              Update
+                            </Link>
+                            <Link
+                              href={`/admin/results/${matchup.id}/picks`}
+                              className="text-green-200 hover:text-white transition-colors"
+                            >
+                              Picks
+                            </Link>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-6">
-                        <div className="text-right">
-                          <div className="text-sm text-blue-200">Total Picks</div>
-                          <div className="text-lg font-semibold text-white">{matchup.totalPicks}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-green-200">Active</div>
-                          <div className="text-lg font-semibold text-green-300">{matchup.activePicks}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-red-200">Eliminated</div>
-                          <div className="text-lg font-semibold text-red-300">{matchup.eliminatedPicks}</div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Link
-                            href={`/admin/results/${matchup.id}/update`}
-                            className="text-blue-200 hover:text-white transition-colors"
-                          >
-                            Update
-                          </Link>
-                          <Link
-                            href={`/admin/results/${matchup.id}/picks`}
-                            className="text-green-200 hover:text-white transition-colors"
-                          >
-                            Picks
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )})}
         </div>
 
         {matchupsWithStats.length === 0 && (
