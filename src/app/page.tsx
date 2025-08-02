@@ -17,7 +17,7 @@ export default async function HomePage() {
             The Loser Pool
           </h1>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Pick the teams that will LOSE each week. If your pick wins, you're eliminated. 
+            Pick the teams that will LOSE each week. If your pick wins, you&apos;re eliminated. 
             Last person standing wins the pool!
           </p>
           
@@ -54,7 +54,7 @@ export default async function HomePage() {
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
               <h3 className="text-xl font-semibold text-white mb-3">🏆 Survive</h3>
               <p className="text-gray-300">
-                If your pick wins, you're eliminated. Last person with active picks wins the pool!
+                If your pick wins, you&apos;re eliminated. Last person with active picks wins the pool!
               </p>
             </div>
           </div>

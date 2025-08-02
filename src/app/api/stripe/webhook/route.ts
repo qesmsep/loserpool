@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { headers } from 'next/headers'
+import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No signature' }, { status: 400 })
   }
 
-  let event
+  let event: Stripe.Event
 
   try {
     event = stripe.webhooks.constructEvent(
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   // Handle the event
   switch (event.type) {
     case 'checkout.session.completed':
-      const session = event.data.object as any
+      const session = event.data.object as Stripe.Checkout.Session
       
       try {
         // Update purchase status to completed
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       break
 
     case 'checkout.session.expired':
-      const expiredSession = event.data.object as any
+      const expiredSession = event.data.object as Stripe.Checkout.Session
       
       try {
         // Update purchase status to failed

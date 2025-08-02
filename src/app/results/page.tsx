@@ -3,6 +3,24 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, XCircle, Minus } from 'lucide-react'
 
+interface Pick {
+  id: string
+  user_id: string
+  matchup_id: string
+  team_picked: string
+  picks_count: number
+  status: 'active' | 'eliminated' | 'safe'
+  created_at: string
+  matchups?: {
+    away_team: string
+    home_team: string
+    away_score: number | null
+    home_score: number | null
+    status: string
+    game_time: string
+  }
+}
+
 export default async function ResultsPage() {
   const user = await requireAuth()
   const supabase = await createServerSupabaseClient()
@@ -31,7 +49,7 @@ export default async function ResultsPage() {
     .eq('user_id', user.id)
     .order('week', { ascending: false })
 
-  const getPickStatus = (pick: any) => {
+  const getPickStatus = (pick: Pick) => {
     const matchup = pick.matchups
     if (!matchup || matchup.status !== 'final') return 'pending'
     
@@ -43,7 +61,8 @@ export default async function ResultsPage() {
     
     if (awayScore === homeScore) return 'tie'
     
-    const winner = awayScore > homeScore ? awayTeam : homeTeam
+    if (awayScore === null || homeScore === null) return 'pending'
+    
     const loser = awayScore > homeScore ? homeTeam : awayTeam
     
     return pickedTeam === loser ? 'correct' : 'incorrect'
@@ -102,7 +121,7 @@ export default async function ResultsPage() {
         {/* Current Week Results */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">This Week's Picks</h2>
+            <h2 className="text-xl font-semibold text-gray-900">This Week&apos;s Picks</h2>
             <p className="text-gray-600">Your picks and their outcomes</p>
           </div>
           <div className="p-6">

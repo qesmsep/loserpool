@@ -133,7 +133,7 @@ export default async function DashboardPage() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Make Picks</h3>
-            <p className="text-gray-600">Allocate your picks for this week's games</p>
+            <p className="text-gray-600">Allocate your picks for this week&apos;s games</p>
           </Link>
 
           <Link
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Leaderboard</h3>
-            <p className="text-gray-600">See who's still in the running</p>
+            <p className="text-gray-600">See who&apos;s still in the running</p>
           </Link>
 
           <Link
@@ -157,14 +157,14 @@ export default async function DashboardPage() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Results</h3>
-            <p className="text-gray-600">Check last week's results</p>
+            <p className="text-gray-600">Check last week&apos;s results</p>
           </Link>
         </div>
 
         {/* Current Week Matchups */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">This Week's Games</h2>
+            <h2 className="text-xl font-semibold text-gray-900">This Week&apos;s Games</h2>
             <p className="text-gray-600">Picks lock at Thursday Night Football kickoff</p>
           </div>
           <div className="p-6">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
@@ -36,11 +36,7 @@ export default function PicksPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
@@ -84,7 +80,11 @@ export default function PicksPage() {
       setError('Failed to load data')
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const updatePick = (matchupId: string, teamPicked: string, picksCount: number) => {
     const existingPick = userPicks.find(p => p.matchup_id === matchupId)
@@ -128,7 +128,7 @@ export default function PicksPage() {
 
       const totalUsed = getTotalPicksUsed()
       if (totalUsed > picksRemaining + totalUsed) {
-        setError('You don\'t have enough picks remaining')
+        setError('You don&apos;t have enough picks remaining')
         setSaving(false)
         return
       }
@@ -289,7 +289,7 @@ export default function PicksPage() {
           <h3 className="text-lg font-semibold text-blue-900 mb-2">How it works:</h3>
           <ul className="text-blue-800 space-y-1">
             <li>• Pick the team you think will LOSE the game</li>
-            <li>• If your pick wins, you're eliminated</li>
+            <li>• If your pick wins, you&apos;re eliminated</li>
             <li>• If your pick loses, you survive to next week</li>
             <li>• Ties are safe - your pick carries over</li>
             <li>• Last person standing wins the pool!</li>

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Trophy, Users, TrendingUp } from 'lucide-react'
 
 export default async function LeaderboardPage() {
-  const user = await requireAuth()
+  await requireAuth()
   const supabase = await createServerSupabaseClient()
 
   // Get all users with their active picks count
@@ -202,7 +202,7 @@ export default async function LeaderboardPage() {
               <h4 className="font-medium mb-2">Elimination Rules:</h4>
               <ul className="space-y-1">
                 <li>• Pick the team that will LOSE</li>
-                <li>• If your pick wins, you're eliminated</li>
+                <li>• If your pick wins, you&apos;re eliminated</li>
                 <li>• If your pick loses, you survive</li>
                 <li>• Ties are safe - pick carries over</li>
               </ul>

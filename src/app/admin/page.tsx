@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Settings, Users, Calendar, Trophy } from 'lucide-react'
 
 export default async function AdminPage() {
-  const user = await requireAdmin()
+  await requireAdmin()
   const supabase = await createServerSupabaseClient()
 
   // Get pool statistics
