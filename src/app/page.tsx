@@ -11,6 +11,13 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+      {/* Disclaimer */}
+      <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+        <div className="max-w-4xl mx-auto text-sm text-yellow-800">
+          <strong>Disclaimer:</strong> This pool is a private, invite-only game for friends and family. Entry fees include a small charge to cover processing and platform costs; all remaining funds are paid out as prizes. No profit is taken. Participation is for entertainment only and based on skillful predictions. This game is not affiliated with or endorsed by the NFL or any other organization.
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-16">
         <div className="text-center">
           <h1 className="text-6xl font-bold text-white mb-6">
