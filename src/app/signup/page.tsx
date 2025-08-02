@@ -74,25 +74,10 @@ function SignupForm() {
       if (user) {
         // Wait a moment for the auth user to be fully committed
         await delay(2000)
-        
-        // The trigger should handle user profile creation automatically
-        // If it doesn't work, we'll handle it gracefully in the dashboard
+
+        // The improved trigger function should handle user profile creation automatically
+        // The trigger uses raw_user_meta_data to get the email and creates the profile
         console.log('User created successfully:', user.id)
-
-        // After successful sign-up and delay, insert user into 'users' table
-        const { error: userInsertError } = await supabase.from('users').insert({
-          id: user.id,
-          email,
-          username: username || null,
-          invited_by: inviteCode || null,
-        })
-
-        if (userInsertError) {
-          console.error('Failed to insert user into users table:', userInsertError.message)
-          setError('There was a problem setting up your account. Please contact support.')
-          setLoading(false)
-          return
-        }
 
         // Handle invitation if present
         if (inviteCode) {
