@@ -17,10 +17,6 @@ export default function ChangePasswordPage() {
   const [needsPasswordChange, setNeedsPasswordChange] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    checkPasswordChangeStatus()
-  }, [checkPasswordChangeStatus])
-
   const checkPasswordChangeStatus = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -47,6 +43,10 @@ export default function ChangePasswordPage() {
       router.push('/login')
     }
   }, [router])
+
+  useEffect(() => {
+    checkPasswordChangeStatus()
+  }, [checkPasswordChangeStatus])
 
   const handlePasswordChange = async () => {
     if (newPassword !== confirmPassword) {
