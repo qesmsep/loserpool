@@ -76,8 +76,28 @@ function SignupForm() {
         await delay(2000)
 
         // The improved trigger function should handle user profile creation automatically
-        // The trigger uses raw_user_meta_data to get the email and creates the profile
+        // But we'll also create it manually as a fallback to ensure it works
         console.log('User created successfully:', user.id)
+
+        // Manual fallback: Create user profile to ensure it exists
+        try {
+          const { error: userInsertError } = await supabase.from('users').insert({
+            id: user.id,
+            email: user.email!,
+            username: username || null,
+            is_admin: false,
+          })
+
+          if (userInsertError) {
+            console.warn('Manual user creation failed:', userInsertError.message)
+            // Don't fail signup, the trigger might have worked
+          } else {
+            console.log('User profile created manually')
+          }
+        } catch (err) {
+          console.warn('Manual user creation error:', err)
+          // Don't fail signup, continue anyway
+        }
 
         // Handle invitation if present
         if (inviteCode) {
