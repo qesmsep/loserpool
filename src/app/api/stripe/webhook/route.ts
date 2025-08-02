@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         // Get purchase details for email notification
         const { data: purchase, error: purchaseError } = await supabase
           .from('purchases')
-          .select('user_id, picks_count, amount, id')
+          .select('user_id, picks_count, amount_paid, id')
           .eq('stripe_session_id', session.id)
           .single()
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
               userEmail: user.email,
               username: user.username || 'Unknown',
               picksCount: purchase.picks_count,
-              amount: purchase.amount,
+              amount: purchase.amount_paid,
               purchaseId: purchase.id
             })
           }

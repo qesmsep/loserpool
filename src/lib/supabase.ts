@@ -59,7 +59,7 @@ export interface Database {
           id: string
           user_id: string
           stripe_session_id: string
-          amount: number
+          amount_paid: number
           picks_count: number
           status: 'pending' | 'completed' | 'failed'
           created_at: string
@@ -68,7 +68,7 @@ export interface Database {
           id?: string
           user_id: string
           stripe_session_id: string
-          amount: number
+          amount_paid: number
           picks_count: number
           status?: 'pending' | 'completed' | 'failed'
           created_at?: string
@@ -77,7 +77,7 @@ export interface Database {
           id?: string
           user_id?: string
           stripe_session_id?: string
-          amount?: number
+          amount_paid?: number
           picks_count?: number
           status?: 'pending' | 'completed' | 'failed'
           created_at?: string
