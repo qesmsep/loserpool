@@ -1,10 +1,10 @@
--- Basic Database Schema for The Loser Pool
--- Run this FIRST in your Supabase SQL Editor to create the essential tables
+-- Simple Database Schema for The Loser Pool
+-- This version doesn't use triggers for user creation - the app handles it
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create users table (basic version)
+-- Create users table (simple version)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL UNIQUE,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create purchases table (basic version)
+-- Create purchases table (simple version)
 CREATE TABLE IF NOT EXISTS purchases (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create matchups table (basic version)
+-- Create matchups table (simple version)
 CREATE TABLE IF NOT EXISTS matchups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   week INTEGER NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS matchups (
   UNIQUE(week, away_team, home_team)
 );
 
--- Create picks table (basic version)
+-- Create picks table (simple version)
 CREATE TABLE IF NOT EXISTS picks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS picks (
   UNIQUE(user_id, matchup_id)
 );
 
--- Create weekly_results table (basic version)
+-- Create weekly_results table (simple version)
 CREATE TABLE IF NOT EXISTS weekly_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   week INTEGER NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS weekly_results (
   UNIQUE(week, user_id)
 );
 
--- Create invitations table (basic version)
+-- Create invitations table (simple version)
 CREATE TABLE IF NOT EXISTS invitations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   invite_code TEXT NOT NULL UNIQUE,
@@ -112,36 +112,4 @@ CREATE TRIGGER update_picks_updated_at BEFORE UPDATE ON picks FOR EACH ROW EXECU
 CREATE TRIGGER update_weekly_results_updated_at BEFORE UPDATE ON weekly_results FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_invitations_updated_at BEFORE UPDATE ON invitations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Function to handle new user creation
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Check if user already exists in users table
-  IF NOT EXISTS (SELECT 1 FROM users WHERE id = NEW.id) THEN
-    INSERT INTO users (id, email, username, is_admin)
-    VALUES (NEW.id, NEW.email, NULL, FALSE);
-  END IF;
-  RETURN NEW;
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Log the error but don't fail the auth signup
-    RAISE WARNING 'Failed to create user profile: %', SQLERRM;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Drop existing trigger if it exists, then recreate it
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
--- Create trigger for new user creation
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-
--- Temporarily disable RLS for testing (you can enable it later)
--- ALTER TABLE users DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE purchases DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE matchups DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE picks DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE weekly_results DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE invitations DISABLE ROW LEVEL SECURITY; 
+-- Note: No user creation trigger - the application handles user profile creation 

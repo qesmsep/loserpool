@@ -72,6 +72,9 @@ function SignupForm() {
       }
 
       if (user) {
+        // Wait a moment for the trigger to complete
+        await delay(1000)
+        
         // Try to create user profile (the trigger should handle this automatically)
         // But we'll try manually in case the trigger isn't working
         try {
