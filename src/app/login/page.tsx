@@ -10,24 +10,82 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [retryCount] = useState(0)
+  const [cooldown, setCooldown] = useState(false)
   const router = useRouter()
+
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (cooldown) {
+      setError('Please wait a moment before trying again')
+      return
+    }
+
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      // Sign in with retry logic
+      let signInError = null
+      
+      for (let attempt = 0; attempt <= retryCount; attempt++) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-    if (error) {
-      setError(error.message)
+        if (error) {
+          if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+            if (attempt < retryCount) {
+              // Wait with exponential backoff
+              const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000)
+              await delay(waitTime)
+              continue
+            } else {
+              setError('Too many login attempts. Please wait a few minutes before trying again.')
+              setCooldown(true)
+              setTimeout(() => setCooldown(false), 60000) // 1 minute cooldown
+              setLoading(false)
+              return
+            }
+          } else {
+            signInError = error
+            break
+          }
+        } else {
+          router.push('/dashboard')
+          return
+        }
+      }
+
+      if (signInError) {
+        setError(getErrorMessage(signInError.message))
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-    } else {
-      router.push('/dashboard')
     }
+  }
+
+  const getErrorMessage = (error: string) => {
+    if (error.includes('429') || error.includes('Too Many Requests')) {
+      return 'Too many login attempts. Please wait a few minutes before trying again.'
+    }
+    if (error.includes('Invalid login credentials')) {
+      return 'Invalid email or password. Please check your credentials and try again.'
+    }
+    if (error.includes('Email not confirmed')) {
+      return 'Please check your email and confirm your account before signing in.'
+    }
+    if (error.includes('User not found')) {
+      return 'No account found with this email address. Please sign up instead.'
+    }
+    return error
   }
 
   return (
@@ -41,7 +99,13 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
+              {getErrorMessage(error)}
+            </div>
+          )}
+
+          {cooldown && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+              Please wait a moment before trying again.
             </div>
           )}
 
@@ -55,7 +119,8 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={cooldown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
@@ -69,13 +134,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={cooldown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || cooldown}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing in...' : 'Sign In'}
@@ -83,8 +149,8 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-                      <p className="text-gray-600">
-              Don&apos;t have an account?{' '}
+          <p className="text-gray-600">
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-blue-600 hover:text-blue-500">
               Sign up
             </Link>

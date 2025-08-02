@@ -11,21 +11,59 @@ function SignupForm() {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [retryCount] = useState(0)
+  const [cooldown, setCooldown] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const inviteCode = searchParams.get('invite')
 
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (cooldown) {
+      setError('Please wait a moment before trying again')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      // Create user account
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
+      // Create user account with retry logic
+      let signUpError = null
+      let user = null
+      
+      for (let attempt = 0; attempt <= retryCount; attempt++) {
+        const { data: { user: signUpUser }, error } = await supabase.auth.signUp({
+          email,
+          password,
+        })
+
+        if (error) {
+          if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+            if (attempt < retryCount) {
+              // Wait with exponential backoff
+              const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000)
+              await delay(waitTime)
+              continue
+            } else {
+              setError('Too many signup attempts. Please wait a few minutes before trying again.')
+              setCooldown(true)
+              setTimeout(() => setCooldown(false), 60000) // 1 minute cooldown
+              setLoading(false)
+              return
+            }
+          } else {
+            signUpError = error
+            break
+          }
+        } else {
+          user = signUpUser
+          break
+        }
+      }
 
       if (signUpError) {
         setError(signUpError.message)
@@ -68,10 +106,27 @@ function SignupForm() {
 
         router.push('/dashboard')
       }
-    } catch {
-      setError('An unexpected error occurred')
+    } catch (err) {
+      console.error('Signup error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
+  }
+
+  const getErrorMessage = (error: string) => {
+    if (error.includes('429') || error.includes('Too Many Requests')) {
+      return 'Too many signup attempts. Please wait a few minutes before trying again.'
+    }
+    if (error.includes('already registered')) {
+      return 'An account with this email already exists. Please sign in instead.'
+    }
+    if (error.includes('Invalid email')) {
+      return 'Please enter a valid email address.'
+    }
+    if (error.includes('Password should be at least')) {
+      return 'Password must be at least 6 characters long.'
+    }
+    return error
   }
 
   return (
@@ -85,7 +140,13 @@ function SignupForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
+              {getErrorMessage(error)}
+            </div>
+          )}
+
+          {cooldown && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+              Please wait a moment before trying again.
             </div>
           )}
 
@@ -99,7 +160,8 @@ function SignupForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={cooldown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
@@ -112,7 +174,8 @@ function SignupForm() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={cooldown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
@@ -127,7 +190,8 @@ function SignupForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={cooldown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
@@ -139,7 +203,7 @@ function SignupForm() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || cooldown}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating account...' : 'Sign Up'}
