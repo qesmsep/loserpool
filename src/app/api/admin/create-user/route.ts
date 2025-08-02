@@ -27,16 +27,17 @@ export async function POST(request: NextRequest) {
     const adminUser = await requireAdmin()
     console.log('Admin check passed:', adminUser?.email)
     
-    const { email, username, first_name, last_name, phone, is_admin } = await request.json()
+    const { email, username, first_name, last_name, phone, is_admin, temporaryPassword } = await request.json()
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    console.log('Creating user with email:', email)
+    if (!temporaryPassword) {
+      return NextResponse.json({ error: 'Temporary password is required' }, { status: 400 })
+    }
 
-    // Generate temporary password
-    const temporaryPassword = generateTemporaryPassword()
+    console.log('Creating user with email:', email)
 
     // Try service role approach first
     if (supabaseServiceKey) {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Create auth user using service role with temporary password
+        // Create auth user using service role with provided temporary password
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password: temporaryPassword,
@@ -93,8 +94,7 @@ export async function POST(request: NextRequest) {
         console.log('User profile updated successfully')
         return NextResponse.json({ 
           user,
-          temporaryPassword,
-          message: 'User created successfully. Temporary password has been generated.'
+          message: 'User created successfully with provided temporary password.'
         })
       } catch (serviceRoleError) {
         console.error('Service role approach failed:', serviceRoleError)
@@ -133,7 +133,6 @@ export async function POST(request: NextRequest) {
     console.log('User profile created successfully (fallback)')
     return NextResponse.json({ 
       user,
-      temporaryPassword,
       message: 'User profile created. Note: Auth user will need to be created separately if login is required.'
     })
   } catch (error) {
