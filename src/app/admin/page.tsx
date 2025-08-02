@@ -27,7 +27,7 @@ export default async function AdminPage() {
     .from('picks')
     .select('*')
 
-  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
+  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
   const activePicks = picks?.filter(p => p.status === 'active').length || 0
 
@@ -208,7 +208,7 @@ export default async function AdminPage() {
                           {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
                         </p>
                         <p className="text-sm text-blue-200">
-                          ${(purchase.amount / 100).toFixed(2)} - {purchase.created_at}
+                          ${(purchase.amount_paid / 100).toFixed(2)} - {purchase.created_at}
                         </p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${

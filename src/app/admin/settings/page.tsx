@@ -22,7 +22,7 @@ export default async function AdminSettingsPage() {
     .select('amount, picks_count')
     .eq('status', 'completed')
 
-  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
+  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
   // Create settings map

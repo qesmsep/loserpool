@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: userId,
         picks_count: picksCount,
-        amount: picksCount * 2100, // $21 per pick in cents
+        amount_paid: picksCount * 2100, // $21 per pick in cents
         status: 'completed'
       })
       .select()

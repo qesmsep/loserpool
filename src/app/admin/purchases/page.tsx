@@ -22,7 +22,7 @@ export default async function AdminPurchasesPage() {
     .order('created_at', { ascending: false })
 
   // Calculate stats
-  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
+  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicks = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
   const completedPurchases = purchases?.filter(p => p.status === 'completed').length || 0
   const pendingPurchases = purchases?.filter(p => p.status === 'pending').length || 0
@@ -162,7 +162,7 @@ export default async function AdminPurchasesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-white">
-                        ${(purchase.amount / 100).toFixed(2)}
+                        ${(purchase.amount_paid / 100).toFixed(2)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
