@@ -47,7 +47,7 @@ export default async function HomePage() {
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
               <h3 className="text-xl font-semibold text-white mb-3">💰 Buy Picks</h3>
               <p className="text-gray-300">
-                Purchase picks for $10 each before the season starts. More picks = more chances to survive!
+                Purchase picks for $21 each before the season starts. More picks = more chances to survive!
               </p>
             </div>
             

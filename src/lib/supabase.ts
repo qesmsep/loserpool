@@ -14,29 +14,44 @@ export interface Database {
         Row: {
           id: string
           email: string
-          created_at: string
-          updated_at: string
+          phone: string | null
+          first_name: string | null
+          last_name: string | null
           username: string | null
           is_admin: boolean
           invited_by: string | null
+          entries_used: number
+          max_entries: number
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
           email: string
-          created_at?: string
-          updated_at?: string
+          phone?: string | null
+          first_name?: string | null
+          last_name?: string | null
           username?: string | null
           is_admin?: boolean
           invited_by?: string | null
+          entries_used?: number
+          max_entries?: number
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           email?: string
-          created_at?: string
-          updated_at?: string
+          phone?: string | null
+          first_name?: string | null
+          last_name?: string | null
           username?: string | null
           is_admin?: boolean
           invited_by?: string | null
+          entries_used?: number
+          max_entries?: number
+          created_at?: string
+          updated_at?: string
         }
       }
       purchases: {
@@ -185,6 +200,29 @@ export interface Database {
           invite_code?: string
           used_by?: string | null
           created_at?: string
+        }
+      }
+      global_settings: {
+        Row: {
+          id: string
+          key: string
+          value: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          value: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          value?: string
+          created_at?: string
+          updated_at?: string
         }
       }
     }

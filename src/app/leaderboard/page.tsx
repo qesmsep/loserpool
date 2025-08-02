@@ -54,22 +54,22 @@ export default async function LeaderboardPage() {
     .filter(user => user.totalPurchased > 0) // Only show users who purchased picks
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Link
                 href="/dashboard"
-                className="flex items-center text-gray-600 hover:text-gray-900"
+                className="flex items-center text-blue-100 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
-                <p className="text-gray-600">Current standings in The Loser Pool</p>
+                <h1 className="text-3xl font-bold text-white">Leaderboard</h1>
+                <p className="text-blue-100">Current standings in The Loser Pool</p>
               </div>
             </div>
           </div>
@@ -79,40 +79,40 @@ export default async function LeaderboardPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Trophy className="w-6 h-6 text-yellow-600" />
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <Trophy className="w-6 h-6 text-yellow-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Players</p>
-                <p className="text-2xl font-bold text-gray-900">{sortedLeaderboard.length}</p>
+                <p className="text-sm font-medium text-yellow-100">Total Players</p>
+                <p className="text-2xl font-bold text-white">{sortedLeaderboard.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="w-6 h-6 text-green-600" />
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Users className="w-6 h-6 text-green-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Still Alive</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-green-100">Still Alive</p>
+                <p className="text-2xl font-bold text-white">
                   {sortedLeaderboard.filter(u => !u.eliminated).length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-red-600" />
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-red-200" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Eliminated</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-red-100">Eliminated</p>
+                <p className="text-2xl font-bold text-white">
                   {sortedLeaderboard.filter(u => u.eliminated).length}
                 </p>
               </div>
@@ -121,68 +121,68 @@ export default async function LeaderboardPage() {
         </div>
 
         {/* Leaderboard */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Current Standings</h2>
-            <p className="text-gray-600">Ranked by active picks remaining</p>
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+          <div className="px-6 py-4 border-b border-white/20">
+            <h2 className="text-xl font-semibold text-white">Current Standings</h2>
+            <p className="text-blue-100">Ranked by active picks remaining</p>
           </div>
           <div className="overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/20">
+              <thead className="bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Rank
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Player
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Active Picks
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Total Purchased
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white/5 divide-y divide-white/20">
                 {sortedLeaderboard.map((user, index) => (
-                  <tr key={user.id} className={user.id === user.id ? 'bg-blue-50' : ''}>
+                  <tr key={user.id} className={user.id === user.id ? 'bg-white/10' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {index === 0 && (
-                          <Trophy className="w-5 h-5 text-yellow-500 mr-2" />
+                          <Trophy className="w-5 h-5 text-yellow-300 mr-2" />
                         )}
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-white">
                           #{index + 1}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-white">
                         {user.username}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-blue-200">
                         {user.email}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`text-sm font-semibold ${
-                        user.activePicks > 0 ? 'text-green-600' : 'text-red-600'
+                        user.activePicks > 0 ? 'text-green-300' : 'text-red-300'
                       }`}>
                         {user.activePicks}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-200">
                       {user.totalPurchased}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         user.eliminated
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-red-500/20 text-red-200'
+                          : 'bg-green-500/20 text-green-200'
                       }`}>
                         {user.eliminated ? 'Eliminated' : 'Active'}
                       </span>
@@ -195,11 +195,11 @@ export default async function LeaderboardPage() {
         </div>
 
         {/* Rules Reminder */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">How the Pool Works:</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+        <div className="mt-8 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-white mb-3">How the Pool Works:</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-100">
             <div>
-              <h4 className="font-medium mb-2">Elimination Rules:</h4>
+              <h4 className="font-medium mb-2 text-white">Elimination Rules:</h4>
               <ul className="space-y-1">
                 <li>• Pick the team that will LOSE</li>
                 <li>• If your pick wins, you&apos;re eliminated</li>
@@ -208,7 +208,7 @@ export default async function LeaderboardPage() {
               </ul>
             </div>
             <div>
-              <h4 className="font-medium mb-2">Winning:</h4>
+              <h4 className="font-medium mb-2 text-white">Winning:</h4>
               <ul className="space-y-1">
                 <li>• Last person with active picks wins</li>
                 <li>• Multiple winners split the pot</li>

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
               name: `${picks_count} Pick${picks_count > 1 ? 's' : ''} - The Loser Pool`,
               description: `Purchase ${picks_count} pick${picks_count > 1 ? 's' : ''} for The Loser Pool`,
             },
-            unit_amount: 1000, // $10.00 in cents
+            unit_amount: 2100, // $21.00 in cents
           },
           quantity: picks_count,
         },
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         stripe_session_id: session.id,
-        amount: picks_count * 10,
+        amount: picks_count * 21,
         picks_count: picks_count,
         status: 'pending',
       })

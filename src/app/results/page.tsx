@@ -95,22 +95,22 @@ export default async function ResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Link
                 href="/dashboard"
-                className="flex items-center text-gray-600 hover:text-gray-900"
+                className="flex items-center text-blue-100 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Link>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Your Results</h1>
-                <p className="text-gray-600">Track your performance in The Loser Pool</p>
+                <h1 className="text-3xl font-bold text-white">Your Results</h1>
+                <p className="text-blue-100">Track your performance in The Loser Pool</p>
               </div>
             </div>
           </div>
@@ -119,10 +119,10 @@ export default async function ResultsPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Week Results */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">This Week&apos;s Picks</h2>
-            <p className="text-gray-600">Your picks and their outcomes</p>
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-8">
+          <div className="px-6 py-4 border-b border-white/20">
+            <h2 className="text-xl font-semibold text-white">This Week&apos;s Picks</h2>
+            <p className="text-blue-100">Your picks and their outcomes</p>
           </div>
           <div className="p-6">
             {userPicks && userPicks.length > 0 ? (
@@ -132,19 +132,19 @@ export default async function ResultsPage() {
                   const matchup = pick.matchups
                   
                   return (
-                    <div key={pick.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div key={pick.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">
                           {getStatusIcon(status)}
                           <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-white">
                               {matchup?.away_team} @ {matchup?.home_team}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-blue-200">
                               {pick.picks_count} pick{pick.picks_count > 1 ? 's' : ''} on {pick.team_picked}
                             </p>
                             {matchup?.status === 'final' && (
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-blue-200">
                                 Final: {matchup.away_team} {matchup.away_score} - {matchup.home_team} {matchup.home_score}
                               </p>
                             )}
@@ -153,10 +153,10 @@ export default async function ResultsPage() {
                       </div>
                       <div className="text-right">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          status === 'correct' ? 'bg-green-100 text-green-800' :
-                          status === 'incorrect' ? 'bg-red-100 text-red-800' :
-                          status === 'tie' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
+                          status === 'correct' ? 'bg-green-500/20 text-green-200' :
+                          status === 'incorrect' ? 'bg-red-500/20 text-red-200' :
+                          status === 'tie' ? 'bg-yellow-500/20 text-yellow-200' :
+                          'bg-gray-500/20 text-gray-200'
                         }`}>
                           {getStatusText(status)}
                         </span>
@@ -166,16 +166,16 @@ export default async function ResultsPage() {
                 })}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">No picks found for this week</p>
+              <p className="text-blue-200 text-center py-8">No picks found for this week</p>
             )}
           </div>
         </div>
 
         {/* Weekly Results History */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Weekly Results History</h2>
-            <p className="text-gray-600">Your performance over time</p>
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+          <div className="px-6 py-4 border-b border-white/20">
+            <h2 className="text-xl font-semibold text-white">Weekly Results History</h2>
+            <p className="text-blue-100">Your performance over time</p>
           </div>
           <div className="p-6">
             {weeklyResults && weeklyResults.length > 0 ? (
