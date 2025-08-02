@@ -25,48 +25,38 @@ export async function getCurrentUser() {
 }
 
 export async function requireAuth() {
-  try {
-    const user = await getCurrentUser()
-    
-    if (!user) {
-      console.log('No user found, redirecting to login')
-      redirect('/login')
-    }
-    
-    console.log('User authenticated:', user.email)
-    return user
-  } catch (err) {
-    console.error('requireAuth error:', err)
+  const user = await getCurrentUser()
+  
+  if (!user) {
+    console.log('No user found, redirecting to login')
     redirect('/login')
   }
+  
+  console.log('User authenticated:', user.email)
+  return user
 }
 
 export async function requireAdmin() {
-  try {
-    const user = await requireAuth()
-    const supabase = await createServerSupabaseClient()
-    
-    const { data: userProfile, error } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-    
-    if (error) {
-      console.error('Admin check error:', error)
-      redirect('/dashboard')
-    }
-    
-    if (!userProfile?.is_admin) {
-      console.log('User is not admin, redirecting to dashboard')
-      redirect('/dashboard')
-    }
-    
-    return user
-  } catch (err) {
-    console.error('requireAdmin error:', err)
+  const user = await requireAuth()
+  const supabase = await createServerSupabaseClient()
+  
+  const { data: userProfile, error } = await supabase
+    .from('users')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+  
+  if (error) {
+    console.error('Admin check error:', error)
     redirect('/dashboard')
   }
+  
+  if (!userProfile?.is_admin) {
+    console.log('User is not admin, redirecting to dashboard')
+    redirect('/dashboard')
+  }
+  
+  return user
 }
 
 export async function getUserProfile(userId: string) {
