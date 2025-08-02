@@ -15,31 +15,38 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  // If profile doesn't exist, create it
+  // If profile doesn't exist, create it via API route
   if (!profile) {
     console.log('Creating user profile for:', user.id)
-    const { data: newProfile, error } = await supabase
-      .from('users')
-      .insert({
-        id: user.id,
-        email: user.email!,
-        username: null,
-        is_admin: false,
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/users/create-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      .select()
-      .single()
 
-    if (error) {
-      console.error('Failed to create user profile:', error)
-      // Continue with a minimal profile
+      if (response.ok) {
+        const result = await response.json()
+        if (result.profile) {
+          profile = result.profile
+        }
+      } else {
+        console.error('Failed to create profile via API')
+      }
+    } catch (error) {
+      console.error('Error creating profile:', error)
+    }
+
+    // If API creation failed, use minimal profile
+    if (!profile) {
       profile = {
         id: user.id,
         email: user.email!,
         username: null,
         is_admin: false,
       }
-    } else {
-      profile = newProfile
     }
   }
 
