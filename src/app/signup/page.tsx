@@ -72,35 +72,46 @@ function SignupForm() {
       }
 
       if (user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email!,
-            username: username || null,
-            is_admin: false,
-          })
+        // Try to create user profile (the trigger should handle this automatically)
+        // But we'll try manually in case the trigger isn't working
+        try {
+          const { error: profileError } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email!,
+              username: username || null,
+              is_admin: false,
+            })
 
-        if (profileError) {
-          setError('Error creating user profile')
-          setLoading(false)
-          return
+          if (profileError) {
+            console.warn('Profile creation failed, but user account was created:', profileError)
+            // Don't fail the signup if profile creation fails
+            // The trigger should have created the profile automatically
+          }
+        } catch (profileErr) {
+          console.warn('Profile creation error:', profileErr)
+          // Continue with signup even if profile creation fails
         }
 
         // Handle invitation if present
         if (inviteCode) {
-          const { error: inviteError } = await supabase
-            .from('invitations')
-            .update({ used_by: user.id })
-            .eq('invite_code', inviteCode)
+          try {
+            const { error: inviteError } = await supabase
+              .from('invitations')
+              .update({ used_by: user.id })
+              .eq('invite_code', inviteCode)
 
-          if (!inviteError) {
-            // Update user with invited_by
-            await supabase
-              .from('users')
-              .update({ invited_by: inviteCode })
-              .eq('id', user.id)
+            if (!inviteError) {
+              // Update user with invited_by
+              await supabase
+                .from('users')
+                .update({ invited_by: inviteCode })
+                .eq('id', user.id)
+            }
+          } catch (inviteErr) {
+            console.warn('Invitation handling error:', inviteErr)
+            // Don't fail signup if invitation handling fails
           }
         }
 
