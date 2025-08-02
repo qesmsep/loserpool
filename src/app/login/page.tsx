@@ -80,7 +80,7 @@ export default function LoginPage() {
       return 'Invalid email or password. Please check your credentials and try again.'
     }
     if (error.includes('Email not confirmed')) {
-      return 'Please check your email and confirm your account before signing in.'
+      return 'Please check your email and click the confirmation link before signing in. If you haven\'t received the email, check your spam folder.'
     }
     if (error.includes('User not found')) {
       return 'No account found with this email address. Please sign up instead.'
@@ -100,6 +100,13 @@ export default function LoginPage() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {getErrorMessage(error)}
+              {error.includes('Email not confirmed') && (
+                <div className="mt-3">
+                  <Link href="/confirm-email" className="text-blue-600 hover:text-blue-500 text-sm underline">
+                    Need help with email confirmation?
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
