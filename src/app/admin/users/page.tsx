@@ -51,7 +51,6 @@ export default function AdminUsersPage() {
     phone: '',
     is_admin: false
   })
-
   const [picksToAdd, setPicksToAdd] = useState(0)
 
   // Check authentication and admin status
@@ -236,7 +235,6 @@ export default function AdminUsersPage() {
       if (error) throw error
 
       setSuccess(`${picksToAdd} picks added successfully`)
-      setShowAddPicks(null)
       setPicksToAdd(0)
       loadUsers()
     } catch (error) {
@@ -253,18 +251,25 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId)
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId })
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user')
+      }
 
       setSuccess('User deleted successfully')
       loadUsers()
     } catch (error) {
       console.error('Error deleting user:', error)
-      setError('Failed to delete user')
+      setError(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -278,6 +283,7 @@ export default function AdminUsersPage() {
       phone: user.phone || '',
       is_admin: user.is_admin
     })
+    setPicksToAdd(0) // Reset picks count when opening edit modal
   }
 
   if (authLoading || loading) {
@@ -580,13 +586,6 @@ export default function AdminUsersPage() {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setShowAddPicks(user.id)}
-                          className="text-green-200 hover:text-white"
-                          title="Add picks"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-red-200 hover:text-white"
                           title="Delete user"
@@ -679,6 +678,36 @@ export default function AdminUsersPage() {
                   />
                   <label className="text-sm text-white">Admin user</label>
                 </div>
+
+                {/* Add Picks Section */}
+                <div className="border-t border-white/20 pt-4">
+                  <h4 className="text-sm font-medium text-white mb-3">Add Picks</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-1">Number of Picks</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={picksToAdd}
+                        onChange={(e) => setPicksToAdd(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                        placeholder="0"
+                      />
+                    </div>
+                    
+                    <div className="text-sm text-blue-200">
+                      This will add {picksToAdd} picks to the user&apos;s account as a completed purchase.
+                    </div>
+                    
+                    <button
+                      onClick={() => handleAddPicks(editingUser)}
+                      disabled={picksToAdd <= 0}
+                      className="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Add {picksToAdd} Picks
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3 mt-6">
@@ -700,54 +729,7 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        {/* Add Picks Modal */}
-        {showAddPicks && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 w-full max-w-md">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">Add Picks</h3>
-                <button
-                  onClick={() => setShowAddPicks(null)}
-                  className="text-blue-200 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-1">Number of Picks</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={picksToAdd}
-                    onChange={(e) => setPicksToAdd(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                  />
-                </div>
-                
-                <div className="text-sm text-blue-200">
-                  This will add {picksToAdd} picks to the user&apos;s account as a completed purchase.
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowAddPicks(null)}
-                  className="px-4 py-2 text-blue-200 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleAddPicks(showAddPicks)}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Add Picks
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Temporary Password Modal */}
         {showTemporaryPassword && (
