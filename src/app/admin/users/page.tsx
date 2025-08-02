@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
           totalPurchased,
           activePicks,
           eliminatedPicks,
-          isEliminated: activePicks === 0 && totalPurchased > 0
+          isEliminated: eliminatedPicks > 0 && activePicks === 0 && totalPurchased > 0
         }
       }) || []
 
@@ -578,7 +578,7 @@ export default function AdminUsersPage() {
                           ? 'bg-yellow-500/20 text-yellow-200'
                           : 'bg-gray-500/20 text-gray-200'
                       }`}>
-                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Active' : user.is_admin ? 'Admin' : 'No Picks'}
+                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Has Picks' : user.is_admin ? 'Admin' : 'No Picks'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
