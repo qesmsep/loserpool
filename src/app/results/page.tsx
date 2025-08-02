@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, XCircle, Minus } from 'lucide-react'
 

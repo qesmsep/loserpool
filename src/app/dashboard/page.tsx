@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { LogOut, ShoppingCart, Trophy, Users, Calendar } from 'lucide-react'
