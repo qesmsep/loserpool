@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
+import { sendAdminPurchaseNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   // Check if Stripe is properly configured
@@ -54,6 +55,37 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('Purchase completed successfully:', session.id)
+
+        // Get purchase details for email notification
+        const { data: purchase, error: purchaseError } = await supabase
+          .from('purchases')
+          .select('user_id, picks_count, amount, id')
+          .eq('stripe_session_id', session.id)
+          .single()
+
+        if (purchaseError) {
+          console.error('Error fetching purchase details for notification:', purchaseError)
+        } else if (purchase) {
+          // Get user details
+          const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('email, username')
+            .eq('id', purchase.user_id)
+            .single()
+
+          if (userError) {
+            console.error('Error fetching user details for notification:', userError)
+          } else if (user) {
+            // Send admin notification
+            await sendAdminPurchaseNotification({
+              userEmail: user.email,
+              username: user.username || 'Unknown',
+              picksCount: purchase.picks_count,
+              amount: purchase.amount,
+              purchaseId: purchase.id
+            })
+          }
+        }
       } catch (error) {
         console.error('Error processing webhook:', error)
         return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
