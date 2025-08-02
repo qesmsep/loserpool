@@ -79,6 +79,21 @@ function SignupForm() {
         // If it doesn't work, we'll handle it gracefully in the dashboard
         console.log('User created successfully:', user.id)
 
+        // After successful sign-up and delay, insert user into 'users' table
+        const { error: userInsertError } = await supabase.from('users').insert({
+          id: user.id,
+          email,
+          username: username || null,
+          invited_by: inviteCode || null,
+        })
+
+        if (userInsertError) {
+          console.error('Failed to insert user into users table:', userInsertError.message)
+          setError('There was a problem setting up your account. Please contact support.')
+          setLoading(false)
+          return
+        }
+
         // Handle invitation if present
         if (inviteCode) {
           try {
