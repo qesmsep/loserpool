@@ -72,30 +72,12 @@ function SignupForm() {
       }
 
       if (user) {
-        // Wait a moment for the trigger to complete
-        await delay(1000)
+        // Wait a moment for the auth user to be fully committed
+        await delay(2000)
         
-        // Try to create user profile (the trigger should handle this automatically)
-        // But we'll try manually in case the trigger isn't working
-        try {
-          const { error: profileError } = await supabase
-            .from('users')
-            .insert({
-              id: user.id,
-              email: user.email!,
-              username: username || null,
-              is_admin: false,
-            })
-
-          if (profileError) {
-            console.warn('Profile creation failed, but user account was created:', profileError)
-            // Don't fail the signup if profile creation fails
-            // The trigger should have created the profile automatically
-          }
-        } catch (profileErr) {
-          console.warn('Profile creation error:', profileErr)
-          // Continue with signup even if profile creation fails
-        }
+        // The trigger should handle user profile creation automatically
+        // If it doesn't work, we'll handle it gracefully in the dashboard
+        console.log('User created successfully:', user.id)
 
         // Handle invitation if present
         if (inviteCode) {

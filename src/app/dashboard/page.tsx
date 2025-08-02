@@ -9,11 +9,39 @@ export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
 
   // Get user profile
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  // If profile doesn't exist, create it
+  if (!profile) {
+    console.log('Creating user profile for:', user.id)
+    const { data: newProfile, error } = await supabase
+      .from('users')
+      .insert({
+        id: user.id,
+        email: user.email!,
+        username: null,
+        is_admin: false,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to create user profile:', error)
+      // Continue with a minimal profile
+      profile = {
+        id: user.id,
+        email: user.email!,
+        username: null,
+        is_admin: false,
+      }
+    } else {
+      profile = newProfile
+    }
+  }
 
   // Get user's total picks purchased
   const { data: purchases } = await supabase
