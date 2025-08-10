@@ -157,7 +157,7 @@ export default async function AdminPurchasesPage() {
                         {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
                       </div>
                       <div className="text-sm text-blue-200">
-                        {purchase.stripe_session_id.slice(-8)}...
+                        {purchase.stripe_session_id ? purchase.stripe_session_id.slice(-8) + '...' : 'No session ID'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

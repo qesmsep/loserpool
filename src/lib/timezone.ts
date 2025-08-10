@@ -89,3 +89,45 @@ export function formatGameTime(gameTime: string): string {
     return 'Invalid time'
   }
 } 
+
+/**
+ * Calculates the picks deadline for the current week based on matchups
+ * @param matchups - Array of matchups for the current week
+ * @returns ISO string of the deadline in CST
+ */
+export function calculatePicksDeadline(matchups: any[]): string {
+  try {
+    if (!matchups || matchups.length === 0) {
+      // If no matchups, set deadline to tomorrow morning at 9 AM CST
+      const tomorrow = DateTime.now().plus({ days: 1 }).setZone('America/Chicago')
+      return tomorrow.set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toISO()
+    }
+
+    // Find the earliest game time for the week
+    const earliestGame = matchups.reduce((earliest, matchup) => {
+      const gameTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      const earliestTime = earliest ? DateTime.fromISO(earliest.game_time, { zone: 'utc' }) : null
+      
+      if (!earliestTime || gameTime < earliestTime) {
+        return matchup
+      }
+      return earliest
+    })
+
+    if (earliestGame) {
+      // Set deadline to the start of the first game (same time as game start)
+      const gameTime = DateTime.fromISO(earliestGame.game_time, { zone: 'utc' })
+      const deadline = gameTime.setZone('America/Chicago')
+      return deadline.toISO()
+    }
+
+    // Fallback: tomorrow morning at 9 AM CST
+    const tomorrow = DateTime.now().plus({ days: 1 }).setZone('America/Chicago')
+    return tomorrow.set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toISO()
+  } catch (error) {
+    console.error('Error calculating picks deadline:', error)
+    // Fallback: tomorrow morning at 9 AM CST
+    const tomorrow = DateTime.now().plus({ days: 1 }).setZone('America/Chicago')
+    return tomorrow.set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toISO()
+  }
+} 

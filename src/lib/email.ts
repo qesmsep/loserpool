@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { calculatePicksDeadline } from './timezone'
 
 interface PurchaseNotificationData {
   userEmail: string
@@ -86,10 +87,10 @@ export async function sendThursdayPickReminders() {
   try {
     const supabase = await createServerSupabaseClient()
     
-    // Get current week and deadline from global settings
+    // Get current week from global settings
     const { data: settings, error: settingsError } = await supabase
       .from('global_settings')
-      .select('current_week, week1_picks_deadline')
+      .select('current_week')
       .single()
 
     if (settingsError || !settings) {
@@ -102,6 +103,21 @@ export async function sendThursdayPickReminders() {
       console.log('No active week - skipping reminders')
       return
     }
+
+    // Get current week matchups to calculate deadline
+    const { data: matchups, error: matchupsError } = await supabase
+      .from('matchups')
+      .select('*')
+      .eq('week', settings.current_week)
+      .order('game_time')
+
+    if (matchupsError) {
+      console.error('Error fetching matchups:', matchupsError)
+      return
+    }
+
+    // Calculate deadline based on matchups
+    const deadline = calculatePicksDeadline(matchups || [])
 
     // Get all users who have purchased picks but haven't made their picks for current week
     const { data: usersNeedingReminders, error: usersError } = await supabase
@@ -160,7 +176,7 @@ export async function sendThursdayPickReminders() {
           lastName: user.last_name || '',
           availablePicks: totalPurchased,
           currentWeek: settings.current_week,
-          deadline: settings.week1_picks_deadline
+          deadline: deadline
         })
 
         reminderCount++
