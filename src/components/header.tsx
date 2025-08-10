@@ -43,7 +43,7 @@ export default function Header({
             {showBackButton && (
               <Link
                 href={backHref}
-                className="flex items-center text-blue-100 hover:text-white transition-colors"
+                className="flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 text-blue-100 hover:text-white hover:bg-white/20 transition-all"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { ShoppingCart, Trophy, Users, Calendar, Plus, Minus, Save } from 'lucide-react'
+import { Trophy, Calendar, Plus, Minus, Save } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline } from '@/lib/timezone'
-import { TeamLogo, getTeamColors } from '@/lib/team-logos'
+import { getTeamColors } from '@/lib/team-logos'
 
 interface Matchup {
   id: string
@@ -40,7 +40,7 @@ interface UserProfile {
 
 export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [totalPicksPurchased, setTotalPicksPurchased] = useState(0)
+
   const [currentWeek, setCurrentWeek] = useState(1)
   const [deadline, setDeadline] = useState<string | null>(null)
   const [matchups, setMatchups] = useState<Matchup[]>([])
@@ -111,7 +111,7 @@ export default function DashboardPage() {
         .eq('status', 'completed')
 
       const totalPicks = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
-      setTotalPicksPurchased(totalPicks)
+
 
       // Get current week from global settings
       const { data: settings } = await supabase
@@ -361,15 +361,10 @@ export default function DashboardPage() {
           }
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving picks:', error)
-      console.error('Error details:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint
-      })
-      setError(`Failed to save picks: ${error?.message || 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setError(`Failed to save picks: ${errorMessage}`)
       setSaving(false)
     }
   }
@@ -477,15 +472,10 @@ export default function DashboardPage() {
           }
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating picks:', error)
-      console.error('Error details:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint
-      })
-      setError(`Failed to update picks: ${error?.message || 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setError(`Failed to update picks: ${errorMessage}`)
       setSaving(false)
     }
   }
@@ -516,34 +506,7 @@ export default function DashboardPage() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <Trophy className="w-6 h-6 text-green-200" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-green-100">Picks Remaining</p>
-                <p className="text-2xl font-bold text-white">{picksRemaining}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-500/20 rounded-lg">
-                <Calendar className="w-6 h-6 text-orange-200" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-2xl font-bold text-white">{currentWeek}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
+        {/* Leaderboard/Results */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Link
             href="/leaderboard"
@@ -562,20 +525,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Picks Instructions */}
-        <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
-          <div className="text-blue-200 space-y-1">
-            <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
-            <p>• Each click adds 1 pick to that team</p>
-            <p>• Use the + and - buttons to adjust your pick allocation</p>
-            <p>• If your pick wins, you're eliminated</p>
-            <p>• If your pick loses, you survive to next week</p>
-            <p>• Last person standing wins!</p>
-          </div>
-        </div>
-
-        {/* Deadline Countdown */}
+        {/* Picks Deadline */}
         {deadline && (
           <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-6 mb-8">
             <div className="flex items-center justify-between">
@@ -598,13 +548,65 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* How to Pick */}
+        <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
+          <div className="text-blue-200 space-y-1">
+            <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
+            <p>• Each click adds 1 pick to that team</p>
+            <p>• Use the + and - buttons to adjust your pick allocation</p>
+            <p>• If your pick wins, you&apos;re eliminated</p>
+            <p>• If your pick loses, you survive to next week</p>
+            <p>• Last person standing wins!</p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Trophy className="w-6 h-6 text-green-200" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-green-100">Loser Picks Remaining</p>
+                <p className="text-2xl font-bold text-white">{picksRemaining}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <Calendar className="w-6 h-6 text-orange-200" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-100">Current Week</p>
+                <p className="text-2xl font-bold text-white">{currentWeek === 0 ? 'Zero' : currentWeek}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <Trophy className="w-6 h-6 text-red-200" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-red-100">Wrong Picks Count</p>
+                <p className="text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Current Week Matchups with Picking */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-6 py-4 border-b border-white/20">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-semibold text-white">This Week&apos;s Games</h2>
-                <p className="text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
+                <p className="text-blue-100">{currentWeek === 0 ? 'Week Zero' : `Week ${currentWeek}`} - {matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex space-x-2">
                 <button
@@ -686,7 +688,7 @@ export default function DashboardPage() {
                                       <Minus className="w-3 h-3" />
                                     </button>
                                   )}
-                                  <div className="font-semibold">{matchup.away_team}</div>
+                                  <div className="text-lg font-bold">{matchup.away_team}</div>
                                   {(showControls || (!picksSaved && userPicks.length > 0)) && (
                                     <button
                                       onClick={() => addPickToTeam(matchup.id, matchup.away_team)}
@@ -697,8 +699,8 @@ export default function DashboardPage() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="text-sm font-medium opacity-90">
-                                  {userPick.picks_count > 0 ? `${userPick.picks_count} pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
+                                <div className="text-lg font-bold">
+                                  {userPick.picks_count > 0 ? `${userPick.picks_count} loser pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
                                 </div>
                               </div>
                             </div>
@@ -744,7 +746,7 @@ export default function DashboardPage() {
                                       <Minus className="w-3 h-3" />
                                     </button>
                                   )}
-                                  <div className="font-semibold">{matchup.home_team}</div>
+                                  <div className="text-lg font-bold">{matchup.home_team}</div>
                                   {(showControls || (!picksSaved && userPicks.length > 0)) && (
                                     <button
                                       onClick={() => addPickToTeam(matchup.id, matchup.home_team)}
@@ -755,8 +757,8 @@ export default function DashboardPage() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="text-sm font-medium opacity-90">
-                                  {userPick.picks_count > 0 ? `${userPick.picks_count} pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
+                                <div className="text-lg font-bold">
+                                  {userPick.picks_count > 0 ? `${userPick.picks_count} loser pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
                                 </div>
                               </div>
                             </div>

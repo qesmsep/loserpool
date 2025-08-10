@@ -1,7 +1,9 @@
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { Trophy, Users, Calendar, CheckCircle, XCircle, Minus } from 'lucide-react'
+import { CheckCircle, XCircle, Minus } from 'lucide-react'
 import Header from '@/components/header'
+import { getTeamColors } from '@/lib/team-logos'
+import { formatGameTime } from '@/lib/timezone'
 
 interface Pick {
   id: string
@@ -119,35 +121,86 @@ export default async function ResultsPage() {
                   const matchup = pick.matchups
                   
                   return (
-                    <div key={pick.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          {getStatusIcon(status)}
-                          <div>
-                            <p className="font-medium text-white">
+                    <div key={pick.id} className="bg-white/5 border border-white/20 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <span className="text-sm text-blue-200">
+                              {formatGameTime(matchup?.game_time || '')}
+                            </span>
+                            <span className="font-medium text-white">
                               {matchup?.away_team} @ {matchup?.home_team}
-                            </p>
-                            <p className="text-sm text-blue-200">
-                              {pick.picks_count} pick{pick.picks_count > 1 ? 's' : ''} on {pick.team_picked}
-                            </p>
+                            </span>
                             {matchup?.status === 'final' && (
-                              <p className="text-sm text-blue-200">
-                                Final: {matchup.away_team} {matchup.away_score} - {matchup.home_team} {matchup.home_score}
-                              </p>
+                              <span className="text-xs text-green-300 bg-green-500/20 px-2 py-1 rounded">
+                                FINAL
+                              </span>
                             )}
                           </div>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(status)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            status === 'correct' ? 'bg-green-500/20 text-green-200' :
+                            status === 'incorrect' ? 'bg-red-500/20 text-red-200' :
+                            status === 'tie' ? 'bg-yellow-500/20 text-yellow-200' :
+                            'bg-gray-500/20 text-gray-200'
+                          }`}>
+                            {getStatusText(status)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          status === 'correct' ? 'bg-green-500/20 text-green-200' :
-                          status === 'incorrect' ? 'bg-red-500/20 text-red-200' :
-                          status === 'tie' ? 'bg-yellow-500/20 text-yellow-200' :
-                          'bg-gray-500/20 text-gray-200'
-                        }`}>
-                          {getStatusText(status)}
-                        </span>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Away Team */}
+                        <div className="relative">
+                          <div 
+                            className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
+                            style={{
+                              background: `linear-gradient(135deg, ${getTeamColors(matchup?.away_team || '').primary} 0%, ${getTeamColors(matchup?.away_team || '').primary} 70%, ${getTeamColors(matchup?.away_team || '').secondary} 100%)`,
+                              color: 'white',
+                              border: pick.team_picked === matchup?.away_team ? '2px solid white' : 'none'
+                            }}
+                          >
+                                                         <div className="text-center">
+                               <div className={`mb-1 ${pick.team_picked === matchup?.away_team ? 'text-xl font-bold' : 'font-semibold'}`}>
+                                 {matchup?.away_team}
+                               </div>
+                               <div className={`${pick.team_picked === matchup?.away_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
+                                 {matchup?.status === 'final' ? matchup.away_score : ''}
+                               </div>
+                             </div>
+                          </div>
+                        </div>
+
+                        {/* Home Team */}
+                        <div className="relative">
+                          <div 
+                            className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
+                            style={{
+                              background: `linear-gradient(135deg, ${getTeamColors(matchup?.home_team || '').primary} 0%, ${getTeamColors(matchup?.home_team || '').primary} 70%, ${getTeamColors(matchup?.home_team || '').secondary} 100%)`,
+                              color: 'white',
+                              border: pick.team_picked === matchup?.home_team ? '2px solid white' : 'none'
+                            }}
+                          >
+                                                         <div className="text-center">
+                               <div className={`mb-1 ${pick.team_picked === matchup?.home_team ? 'text-xl font-bold' : 'font-semibold'}`}>
+                                 {matchup?.home_team}
+                               </div>
+                               <div className={`${pick.team_picked === matchup?.home_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
+                                 {matchup?.status === 'final' ? matchup.home_score : ''}
+                               </div>
+                             </div>
+                          </div>
+                        </div>
                       </div>
+                      
+                      <div className="mt-3 text-center">
+                        <p className="text-lg font-bold text-white">
+                          {pick.picks_count} loser pick{pick.picks_count > 1 ? 's' : ''} on {pick.team_picked}
+                        </p>
+                      </div>
+                    
                     </div>
                   )
                 })}
@@ -168,22 +221,22 @@ export default async function ResultsPage() {
             {weeklyResults && weeklyResults.length > 0 ? (
               <div className="space-y-4">
                 {weeklyResults.map((result) => (
-                  <div key={result.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div key={result.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
                     <div>
-                      <h3 className="font-medium text-gray-900">Week {result.week}</h3>
-                      <p className="text-sm text-gray-500">
-                        {result.total_picks} total picks
+                      <h3 className="font-medium text-white">{result.week === 0 ? 'Week Zero' : `Week ${result.week}`}</h3>
+                      <p className="text-sm text-blue-200">
+                        {result.total_picks} total loser picks
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center space-x-4">
                         <div className="text-center">
-                          <p className="text-sm text-gray-500">Active</p>
-                          <p className="text-lg font-semibold text-green-600">{result.active_picks}</p>
+                          <p className="text-sm text-blue-200">Active Loser Picks</p>
+                          <p className="text-lg font-semibold text-green-400">{result.active_picks}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-sm text-gray-500">Eliminated</p>
-                          <p className="text-lg font-semibold text-red-600">{result.eliminated_picks}</p>
+                          <p className="text-sm text-blue-200">Eliminated Loser Picks</p>
+                          <p className="text-lg font-semibold text-red-400">{result.eliminated_picks}</p>
                         </div>
                       </div>
                     </div>
@@ -197,20 +250,20 @@ export default async function ResultsPage() {
         </div>
 
         {/* Rules Reminder */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Result Legend:</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+        <div className="mt-8 bg-blue-500/20 border border-blue-500/30 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-white mb-3">Result Legend:</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-200">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
+              <CheckCircle className="w-4 h-4 text-green-400" />
               <span>Survived - Your pick lost (good!)</span>
             </div>
             <div className="flex items-center space-x-2">
-              <XCircle className="w-4 h-4 text-red-600" />
+              <XCircle className="w-4 h-4 text-red-400" />
               <span>Eliminated - Your pick won (bad!)</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Minus className="w-4 h-4 text-yellow-600" />
-                                  <span>Eliminated - Game ended in tie</span>
+              <Minus className="w-4 h-4 text-yellow-400" />
+              <span>Eliminated - Game ended in tie</span>
             </div>
           </div>
         </div>

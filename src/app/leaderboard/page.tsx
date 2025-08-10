@@ -44,14 +44,9 @@ export default async function LeaderboardPage() {
     }
   }) || []
 
-  // Sort by active picks (descending), then by total purchased (descending)
+  // Sort by active picks (descending)
   const sortedLeaderboard = leaderboardData
-    .sort((a, b) => {
-      if (a.activePicks !== b.activePicks) {
-        return b.activePicks - a.activePicks
-      }
-      return b.totalPurchased - a.totalPurchased
-    })
+    .sort((a, b) => b.activePicks - a.activePicks)
     .filter(user => user.totalPurchased > 0) // Only show users who purchased picks
 
   return (
@@ -113,7 +108,7 @@ export default async function LeaderboardPage() {
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-6 py-4 border-b border-white/20">
             <h2 className="text-xl font-semibold text-white">Current Standings</h2>
-            <p className="text-blue-100">Ranked by active picks remaining</p>
+            <p className="text-blue-100">Ranked by active loser picks remaining</p>
           </div>
           <div className="overflow-hidden">
             <table className="min-w-full divide-y divide-white/20">
@@ -125,12 +120,10 @@ export default async function LeaderboardPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Player
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
-                    Active Picks
+                  <th className="px-6 py-3 text-center text-xs font-medium text-blue-200 uppercase tracking-wider">
+                    Active Loser Picks
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
-                    Total Purchased
-                  </th>
+
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Status
                   </th>
@@ -153,20 +146,15 @@ export default async function LeaderboardPage() {
                       <div className="text-sm font-medium text-white">
                         {user.username}
                       </div>
-                      <div className="text-sm text-blue-200">
-                        {user.email}
-                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <span className={`text-sm font-semibold ${
                         user.activePicks > 0 ? 'text-green-300' : 'text-red-300'
                       }`}>
                         {user.activePicks}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-200">
-                      {user.totalPurchased}
-                    </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         user.eliminated

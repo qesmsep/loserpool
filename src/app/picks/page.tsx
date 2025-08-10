@@ -308,7 +308,7 @@ export default function PicksPage() {
           <div className="text-blue-200 space-y-1">
             <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
             <p>• Each click adds 1 pick to that team</p>
-            <p>• If your pick wins, you're eliminated</p>
+            <p>• If your pick wins, you&apos;re eliminated</p>
             <p>• If your pick loses, you survive to next week</p>
             <p>• Last person standing wins!</p>
           </div>
