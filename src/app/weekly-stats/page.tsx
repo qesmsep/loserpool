@@ -40,6 +40,8 @@ export default function WeeklyStatsPage() {
       if (settingsError) throw settingsError
       setCurrentWeek(settingsData.current_week)
 
+      console.log('Current week:', settingsData.current_week)
+
       // Get all picks for current week with matchup info
       const { data: picksData, error: picksError } = await supabase
         .from('picks')
@@ -57,37 +59,43 @@ export default function WeeklyStatsPage() {
         .eq('status', 'active')
 
       if (picksError) throw picksError
+      
+      console.log('Picks data:', picksData)
 
       // Aggregate picks by team
       const teamStatsMap = new Map<string, TeamStats>()
 
-      picksData?.forEach((pick: {
-        team_picked: string
-        picks_count: number
-        matchups: {
-          id: string
-          game_time: string
-          away_team: string
-          home_team: string
-        }[]
-      }) => {
-        const teamName = pick.team_picked
-        const existing = teamStatsMap.get(teamName)
-        const matchup = pick.matchups[0] // Get the first matchup since we're using inner join
-        
-        if (existing) {
-          existing.total_picks += pick.picks_count
-        } else {
-          teamStatsMap.set(teamName, {
-            team_name: teamName,
-            total_picks: pick.picks_count,
-            matchup_id: matchup.id,
-            game_time: matchup.game_time,
-            away_team: matchup.away_team,
-            home_team: matchup.home_team
-          })
-        }
-      })
+      if (picksData && picksData.length > 0) {
+        picksData.forEach((pick: {
+          team_picked: string
+          picks_count: number
+          matchups: {
+            id: string
+            game_time: string
+            away_team: string
+            home_team: string
+          }[]
+        }) => {
+          const teamName = pick.team_picked
+          const existing = teamStatsMap.get(teamName)
+          const matchup = pick.matchups[0] // Get the first matchup since we're using inner join
+          
+          if (existing) {
+            existing.total_picks += pick.picks_count
+          } else {
+            teamStatsMap.set(teamName, {
+              team_name: teamName,
+              total_picks: pick.picks_count,
+              matchup_id: matchup.id,
+              game_time: matchup.game_time,
+              away_team: matchup.away_team,
+              home_team: matchup.home_team
+            })
+          }
+        })
+      } else {
+        console.log('No picks data found for current week')
+      }
 
       // Convert to array and sort by total picks (descending)
       const statsArray = Array.from(teamStatsMap.values())
@@ -96,7 +104,28 @@ export default function WeeklyStatsPage() {
       setStats(statsArray)
     } catch (error) {
       console.error('Error loading stats:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load stats')
+      
+      // More detailed error handling
+      let errorMessage = 'Failed to load stats'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle Supabase error objects
+        const supabaseError = error as { message?: string; error?: string; details?: string }
+        if (supabaseError.message) {
+          errorMessage = supabaseError.message
+        } else if (supabaseError.error) {
+          errorMessage = supabaseError.error
+        } else if (supabaseError.details) {
+          errorMessage = supabaseError.details
+        } else {
+          errorMessage = JSON.stringify(error)
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
