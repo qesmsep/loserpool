@@ -48,8 +48,43 @@ export default function AdminRulesPage() {
     try {
       setLoading(true)
       
+      // First, check if user is authenticated and is admin
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        console.error('Auth error:', authError)
+        setError('Authentication error: ' + authError.message)
+        return
+      }
+      
+      if (!user) {
+        setError('No authenticated user found')
+        return
+      }
+      
+      console.log('Current user:', user.id, user.email)
+      
+      // Check if user is admin
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) {
+        console.error('Profile error:', profileError)
+        setError('Error checking admin status: ' + profileError.message)
+        return
+      }
+      
+      console.log('User admin status:', userProfile?.is_admin)
+      
+      if (!userProfile?.is_admin) {
+        setError('Access denied: Admin privileges required')
+        return
+      }
+      
       // Get current rules from global settings
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsError } = await supabase
         .from('global_settings')
         .select('key, value')
         .in('key', [
@@ -58,6 +93,14 @@ export default function AdminRulesPage() {
           'elimination_type', 'allow_multiple_picks_per_game', 
           'allow_pick_changes', 'pick_change_deadline'
         ])
+      
+      if (settingsError) {
+        console.error('Settings error:', settingsError)
+        setError('Error loading settings: ' + settingsError.message)
+        return
+      }
+      
+      console.log('Loaded settings:', settings)
 
       if (settings) {
         const settingsMap = settings.reduce((acc, setting) => {
@@ -92,6 +135,41 @@ export default function AdminRulesPage() {
       setSaving(true)
       setError('')
       setSuccess('')
+
+      // First, check if user is authenticated and is admin
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        console.error('Auth error:', authError)
+        setError('Authentication error: ' + authError.message)
+        return
+      }
+      
+      if (!user) {
+        setError('No authenticated user found')
+        return
+      }
+      
+      console.log('Current user:', user.id, user.email)
+      
+      // Check if user is admin
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+      
+      if (profileError) {
+        console.error('Profile error:', profileError)
+        setError('Error checking admin status: ' + profileError.message)
+        return
+      }
+      
+      console.log('User admin status:', userProfile?.is_admin)
+      
+      if (!userProfile?.is_admin) {
+        setError('Access denied: Admin privileges required')
+        return
+      }
 
       console.log('Saving rules:', rules)
 
