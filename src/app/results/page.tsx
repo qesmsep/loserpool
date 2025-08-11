@@ -156,11 +156,11 @@ export default async function ResultsPage() {
                         <div className="relative">
                           <div 
                             className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
-                            style={{
-                              background: `linear-gradient(135deg, ${getTeamColors(matchup?.away_team || '').primary} 0%, ${getTeamColors(matchup?.away_team || '').primary} 70%, ${getTeamColors(matchup?.away_team || '').secondary} 100%)`,
-                              color: 'white',
-                              border: pick.team_picked === matchup?.away_team ? '2px solid white' : 'none'
-                            }}
+                                                    style={{
+                          background: `linear-gradient(135deg, ${getTeamColors(matchup?.away_team || '').primary} 0%, ${getTeamColors(matchup?.away_team || '').primary} 50%, ${getTeamColors(matchup?.away_team || '').secondary} 100%)`,
+                          color: 'white',
+                          border: pick.team_picked === matchup?.away_team ? '2px solid white' : 'none'
+                        }}
                           >
                                                          <div className="text-center">
                                <div className={`mb-1 ${pick.team_picked === matchup?.away_team ? 'text-xl font-bold' : 'font-semibold'}`}>
@@ -177,11 +177,11 @@ export default async function ResultsPage() {
                         <div className="relative">
                           <div 
                             className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
-                            style={{
-                              background: `linear-gradient(135deg, ${getTeamColors(matchup?.home_team || '').primary} 0%, ${getTeamColors(matchup?.home_team || '').primary} 70%, ${getTeamColors(matchup?.home_team || '').secondary} 100%)`,
-                              color: 'white',
-                              border: pick.team_picked === matchup?.home_team ? '2px solid white' : 'none'
-                            }}
+                                                    style={{
+                          background: `linear-gradient(135deg, ${getTeamColors(matchup?.home_team || '').primary} 0%, ${getTeamColors(matchup?.home_team || '').primary} 50%, ${getTeamColors(matchup?.home_team || '').secondary} 100%)`,
+                          color: 'white',
+                          border: pick.team_picked === matchup?.home_team ? '2px solid white' : 'none'
+                        }}
                           >
                                                          <div className="text-center">
                                <div className={`mb-1 ${pick.team_picked === matchup?.home_team ? 'text-xl font-bold' : 'font-semibold'}`}>

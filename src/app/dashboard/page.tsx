@@ -679,11 +679,11 @@ export default function DashboardPage() {
                           {userPick?.team_picked === matchup.away_team && userPick.picks_count > 0 ? (
                             <div 
                               className="w-full p-3 sm:p-4 rounded-lg text-white relative font-bold shadow-lg"
-                              style={{
-                                background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 70%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
-                                color: 'white',
-                                border: '2px solid white'
-                              }}
+                                                  style={{
+                      background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 50%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
+                      color: 'white',
+                      border: '2px solid white'
+                    }}
                             >
                               <div className="text-center">
                                 <div className="flex items-center justify-center space-x-2 mb-1">
@@ -718,7 +718,7 @@ export default function DashboardPage() {
                               disabled={checkDeadlinePassed() || picksRemaining <= 0}
                               className="w-full p-3 sm:p-4 rounded-lg transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
                               style={{
-                                background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 70%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
+                                background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 50%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
                                 color: 'white'
                               }}
                             >
@@ -737,11 +737,11 @@ export default function DashboardPage() {
                           {userPick?.team_picked === matchup.home_team && userPick.picks_count > 0 ? (
                             <div 
                               className="w-full p-3 sm:p-4 rounded-lg text-white relative font-bold shadow-lg"
-                              style={{
-                                background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 70%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
-                                color: 'white',
-                                border: '2px solid white'
-                              }}
+                                                  style={{
+                      background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 50%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
+                      color: 'white',
+                      border: '2px solid white'
+                    }}
                             >
                               <div className="text-center">
                                 <div className="flex items-center justify-center space-x-2 mb-1">
@@ -776,7 +776,7 @@ export default function DashboardPage() {
                               disabled={checkDeadlinePassed() || picksRemaining <= 0}
                               className="w-full p-3 sm:p-4 rounded-lg transition-all hover:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
                               style={{
-                                background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 70%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
+                                background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 50%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
                                 color: 'white'
                               }}
                             >

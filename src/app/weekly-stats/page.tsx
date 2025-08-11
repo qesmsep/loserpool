@@ -175,7 +175,7 @@ export default function WeeklyStatsPage() {
                 <div
                   className="w-full p-3 sm:p-4 rounded-lg text-white font-bold shadow-lg mb-3"
                   style={{
-                    background: `linear-gradient(135deg, ${getTeamColors(teamStat.team_name).primary} 0%, ${getTeamColors(teamStat.team_name).primary} 70%, ${getTeamColors(teamStat.team_name).secondary} 100%)`,
+                    background: `linear-gradient(135deg, ${getTeamColors(teamStat.team_name).primary} 0%, ${getTeamColors(teamStat.team_name).primary} 50%, ${getTeamColors(teamStat.team_name).secondary} 100%)`,
                     color: 'white'
                   }}
                 >
