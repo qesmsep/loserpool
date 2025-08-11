@@ -506,41 +506,22 @@ export default function DashboardPage() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Leaderboard/Results */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Link
-            href="/leaderboard"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/20 transition-all"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Leaderboard</h3>
-            <p className="text-blue-100">See who&apos;s still in the running</p>
-          </Link>
-
-          <Link
-            href="/results"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/20 transition-all"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Results</h3>
-            <p className="text-blue-100">Check last week&apos;s results</p>
-          </Link>
-        </div>
-
         {/* Picks Deadline */}
         {deadline && (
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-6 mb-8">
-            <div className="flex items-center justify-between">
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
               <div className="flex items-center">
-                <Calendar className="w-6 h-6 text-yellow-200 mr-3" />
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-200 mr-2 sm:mr-3" />
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Picks Deadline</h3>
-                  <p className="text-yellow-200">
+                  <h3 className="text-base sm:text-lg font-semibold text-white">Picks Deadline</h3>
+                  <p className="text-sm sm:text-base text-yellow-200">
                     Deadline: {formatDeadlineForUser(deadline)} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
                   </p>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-center sm:text-right">
                 <p className="text-sm text-yellow-200">Time Remaining</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-xl sm:text-2xl font-bold text-white">
                   {getTimeRemaining(deadline)}
                 </p>
               </div>
@@ -548,10 +529,37 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Leaderboard/Results/Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <Link
+            href="/leaderboard"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+          >
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
+            <p className="text-sm sm:text-base text-blue-100">See who&apos;s still in the running</p>
+          </Link>
+
+          <Link
+            href="/results"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+          >
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Results</h3>
+            <p className="text-sm sm:text-base text-blue-100">Check last week&apos;s results</p>
+          </Link>
+
+          <Link
+            href="/weekly-stats"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all sm:col-span-2 lg:col-span-1"
+          >
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">This Week&apos;s Stats</h3>
+            <p className="text-sm sm:text-base text-blue-100">See total picks for each team</p>
+          </Link>
+        </div>
+
         {/* How to Pick */}
-        <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
-          <div className="text-blue-200 space-y-1">
+        <div className="mb-4 sm:mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
+          <div className="text-sm sm:text-base text-blue-200 space-y-1">
             <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
             <p>• Each click adds 1 pick to that team</p>
             <p>• Use the + and - buttons to adjust your pick allocation</p>
@@ -562,39 +570,39 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-green-500/20 rounded-lg">
-                <Trophy className="w-6 h-6 text-green-200" />
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-green-200" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-green-100">Loser Picks Remaining</p>
-                <p className="text-2xl font-bold text-white">{picksRemaining}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-green-100">Loser Picks Remaining</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{picksRemaining}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-orange-500/20 rounded-lg">
-                <Calendar className="w-6 h-6 text-orange-200" />
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-orange-200" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-2xl font-bold text-white">{currentWeek === 0 ? 'Zero' : currentWeek}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-orange-100">Current Week</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{currentWeek === 0 ? 'Zero' : currentWeek}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center">
               <div className="p-2 bg-red-500/20 rounded-lg">
-                <Trophy className="w-6 h-6 text-red-200" />
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-red-200" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-red-100">Wrong Picks Count</p>
-                <p className="text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-red-100">Wrong Picks Count</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
               </div>
             </div>
           </div>
@@ -602,17 +610,17 @@ export default function DashboardPage() {
 
         {/* Current Week Matchups with Picking */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-          <div className="px-6 py-4 border-b border-white/20">
-            <div className="flex justify-between items-center">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
               <div>
-                <h2 className="text-xl font-semibold text-white">This Week&apos;s Games</h2>
-                <p className="text-blue-100">{currentWeek === 0 ? 'Week Zero' : `Week ${currentWeek}`} - {matchups?.length || 0} games scheduled</p>
+                <h2 className="text-lg sm:text-xl font-semibold text-white">This Week&apos;s Games</h2>
+                <p className="text-sm sm:text-base text-blue-100">{currentWeek === 0 ? 'Week Zero' : `Week ${currentWeek}`} - {matchups?.length || 0} games scheduled</p>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <button
                   onClick={picksSaved ? handleUpdate : handleSave}
                   disabled={saving || checkDeadlinePassed() || userPicks.length === 0 || (picksSaved && !showControls)}
-                  className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
                   <Save className="w-4 h-4 mr-2" />
                   {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : picksSaved ? 'Update Picks' : 'Save Picks'}
@@ -621,7 +629,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setShowControls(true)}
                     disabled={saving}
-                    className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+                    className="flex items-center justify-center bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
                   >
                     Edit Picks
                   </button>
@@ -629,15 +637,15 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {error && (
-              <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6">
+              <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-3 sm:px-4 py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base">
                 {error}
               </div>
             )}
             
             {matchups && matchups.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {matchups.map((matchup) => {
                   const userPick = getPickForMatchup(matchup.id)
                   const isThursdayGame = new Date(matchup.game_time).getDay() === 4
@@ -645,19 +653,19 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={matchup.id}
-                      className="bg-white/5 border border-white/20 rounded-lg p-4"
+                      className="bg-white/5 border border-white/20 rounded-lg p-3 sm:p-4"
                     >
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-4">
-                            <span className="text-sm text-blue-200">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
+                            <span className="text-xs sm:text-sm text-blue-200">
                               {formatGameTime(matchup.game_time)}
                             </span>
-                            <span className="font-medium text-white">
+                            <span className="text-sm sm:text-base font-medium text-white">
                               {matchup.away_team} @ {matchup.home_team}
                             </span>
                             {isThursdayGame && (
-                              <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded">
+                              <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded self-start">
                                 TNF
                               </span>
                             )}
@@ -665,12 +673,12 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         {/* Away Team */}
                         <div className="relative">
                           {userPick?.team_picked === matchup.away_team && userPick.picks_count > 0 ? (
                             <div 
-                              className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
+                              className="w-full p-3 sm:p-4 rounded-lg text-white relative font-bold shadow-lg"
                               style={{
                                 background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 70%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
                                 color: 'white',
@@ -688,7 +696,7 @@ export default function DashboardPage() {
                                       <Minus className="w-3 h-3" />
                                     </button>
                                   )}
-                                  <div className="text-lg font-bold">{matchup.away_team}</div>
+                                  <div className="text-sm sm:text-lg font-bold">{matchup.away_team}</div>
                                   {(showControls || (!picksSaved && userPicks.length > 0)) && (
                                     <button
                                       onClick={() => addPickToTeam(matchup.id, matchup.away_team)}
@@ -699,7 +707,7 @@ export default function DashboardPage() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="text-lg font-bold">
+                                <div className="text-sm sm:text-lg font-bold">
                                   {userPick.picks_count > 0 ? `${userPick.picks_count} loser pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
                                 </div>
                               </div>
@@ -708,7 +716,7 @@ export default function DashboardPage() {
                             <button
                               onClick={() => addPickToTeam(matchup.id, matchup.away_team)}
                               disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                              className="w-full p-4 rounded-lg transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
+                              className="w-full p-3 sm:p-4 rounded-lg transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
                               style={{
                                 background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 70%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
                                 color: 'white'
@@ -728,7 +736,7 @@ export default function DashboardPage() {
                         <div className="relative">
                           {userPick?.team_picked === matchup.home_team && userPick.picks_count > 0 ? (
                             <div 
-                              className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
+                              className="w-full p-3 sm:p-4 rounded-lg text-white relative font-bold shadow-lg"
                               style={{
                                 background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 70%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
                                 color: 'white',
@@ -746,7 +754,7 @@ export default function DashboardPage() {
                                       <Minus className="w-3 h-3" />
                                     </button>
                                   )}
-                                  <div className="text-lg font-bold">{matchup.home_team}</div>
+                                  <div className="text-sm sm:text-lg font-bold">{matchup.home_team}</div>
                                   {(showControls || (!picksSaved && userPicks.length > 0)) && (
                                     <button
                                       onClick={() => addPickToTeam(matchup.id, matchup.home_team)}
@@ -757,7 +765,7 @@ export default function DashboardPage() {
                                     </button>
                                   )}
                                 </div>
-                                <div className="text-lg font-bold">
+                                <div className="text-sm sm:text-lg font-bold">
                                   {userPick.picks_count > 0 ? `${userPick.picks_count} loser pick${userPick.picks_count !== 1 ? 's' : ''}` : ''}
                                 </div>
                               </div>
@@ -766,7 +774,7 @@ export default function DashboardPage() {
                             <button
                               onClick={() => addPickToTeam(matchup.id, matchup.home_team)}
                               disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                              className="w-full p-4 rounded-lg transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
+                              className="w-full p-3 sm:p-4 rounded-lg transition-all hover:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg"
                               style={{
                                 background: `linear-gradient(135deg, ${getTeamColors(matchup.home_team).primary} 0%, ${getTeamColors(matchup.home_team).primary} 70%, ${getTeamColors(matchup.home_team).secondary} 100%)`,
                                 color: 'white'

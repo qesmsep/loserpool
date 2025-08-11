@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
-import { ArrowLeft, Settings, Users, Calendar, Trophy, LogOut } from 'lucide-react'
+import { Settings, Users, Calendar, Trophy } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 export default async function AdminPage() {
@@ -18,11 +18,7 @@ export default async function AdminPage() {
     .select('*')
     .eq('status', 'completed')
 
-  const { data: matchups } = await supabase
-    .from('matchups')
-    .select('*')
-    .order('week', { ascending: false })
-    .limit(5)
+
 
   const { data: picks } = await supabase
     .from('picks')
@@ -105,35 +101,11 @@ export default async function AdminPage() {
           </Link>
 
           <Link
-            href="/admin/matchups"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Manage Matchups</h3>
-            <p className="text-blue-200">Add and edit weekly matchups</p>
-          </Link>
-
-          <Link
-            href="/admin/results"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Update Results</h3>
-            <p className="text-blue-200">Update game scores and results</p>
-          </Link>
-
-          <Link
             href="/admin/purchases"
             className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
           >
             <h3 className="text-lg font-semibold text-white mb-2">Purchase History</h3>
             <p className="text-blue-200">View all purchase transactions</p>
-          </Link>
-
-          <Link
-            href="/admin/invitations"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Invitations</h3>
-            <p className="text-blue-200">Manage user invitations</p>
           </Link>
 
           <Link
@@ -145,74 +117,37 @@ export default async function AdminPage() {
           </Link>
         </div>
 
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Matchups */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Recent Matchups</h2>
-            </div>
-            <div className="p-6">
-              {matchups && matchups.length > 0 ? (
-                <div className="space-y-4">
-                  {matchups.map((matchup) => (
-                    <div key={matchup.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
-                      <div>
-                        <p className="font-medium text-white">
-                          Week {matchup.week}: {matchup.away_team} @ {matchup.home_team}
-                        </p>
-                        <p className="text-sm text-blue-200">
-                          {matchup.status} - {matchup.game_time}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
-                        matchup.status === 'live' ? 'bg-yellow-500/20 text-yellow-200' :
-                        'bg-gray-500/20 text-gray-200'
-                      }`}>
-                        {matchup.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-blue-200 text-center py-4">No matchups found</p>
-              )}
-            </div>
+        {/* Recent Purchases */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+          <div className="px-6 py-4 border-b border-white/20">
+            <h2 className="text-xl font-semibold text-white">Recent Purchases</h2>
           </div>
-
-          {/* Recent Purchases */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Recent Purchases</h2>
-            </div>
-            <div className="p-6">
-              {purchases && purchases.length > 0 ? (
-                <div className="space-y-4">
-                  {purchases.slice(0, 5).map((purchase) => (
-                    <div key={purchase.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
-                      <div>
-                        <p className="font-medium text-white">
-                          {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
-                        </p>
-                        <p className="text-sm text-blue-200">
-                          ${(purchase.amount_paid / 100).toFixed(2)} - {purchase.created_at}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        purchase.status === 'completed' ? 'bg-green-500/20 text-green-200' :
-                        purchase.status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
-                        'bg-red-500/20 text-red-200'
-                      }`}>
-                        {purchase.status}
-                      </span>
+          <div className="p-6">
+            {purchases && purchases.length > 0 ? (
+              <div className="space-y-4">
+                {purchases.slice(0, 5).map((purchase) => (
+                  <div key={purchase.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
+                    <div>
+                      <p className="font-medium text-white">
+                        {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
+                      </p>
+                      <p className="text-sm text-blue-200">
+                        ${(purchase.amount_paid / 100).toFixed(2)} - {purchase.created_at}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-blue-200 text-center py-4">No purchases found</p>
-              )}
-            </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      purchase.status === 'completed' ? 'bg-green-500/20 text-green-200' :
+                      purchase.status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
+                      'bg-red-500/20 text-red-200'
+                    }`}>
+                      {purchase.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-blue-200 text-center py-4">No purchases found</p>
+            )}
           </div>
         </div>
       </div>
