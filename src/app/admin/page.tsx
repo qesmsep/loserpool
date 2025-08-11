@@ -28,6 +28,8 @@ export default async function AdminPage() {
   const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
   const activePicks = picks?.filter(p => p.status === 'active').length || 0
 
+
+
   return (
     <div className="app-bg">
       <AdminHeader 
@@ -115,6 +117,8 @@ export default async function AdminPage() {
             <h3 className="text-lg font-semibold text-white mb-2">Pool Settings</h3>
             <p className="text-blue-200">Configure pool rules and dates</p>
           </Link>
+
+
         </div>
 
         {/* Recent Purchases */}

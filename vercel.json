@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/thursday-reminders",
       "schedule": "0 9 * * 4"
+    },
+    {
+      "path": "/api/cron/auto-random-picks",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/test",
+      "schedule": "0 */6 * * *"
     }
   ]
 } 

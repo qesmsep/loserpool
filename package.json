@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.6.1",
@@ -19,6 +20,7 @@
     "next": "15.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "resend": "^6.0.1",
     "stripe": "^18.4.0"
   },
   "devDependencies": {

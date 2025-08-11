@@ -285,43 +285,55 @@ export default async function AdminSettingsPage() {
             </div>
           </div>
 
-          {/* System Settings */}
+          {/* Communications */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
             <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">System Settings</h2>
-              <p className="text-blue-100">Configure system behavior</p>
+              <h2 className="text-xl font-semibold text-white">Communications</h2>
+              <p className="text-blue-100">Manage email templates and automated messages</p>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-sm font-medium text-white">Auto Random Picks</div>
-                  <div className="text-sm text-blue-200">Assign random picks if none made</div>
+                  <div className="text-sm font-medium text-white">Pick Reminders</div>
+                  <div className="text-sm text-blue-200">Weekly reminder emails</div>
                 </div>
                 <div className="text-right">
                   <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-200">
-                    Enabled
+                    Active
                   </span>
                 </div>
               </div>
               
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-sm font-medium text-white">Email Notifications</div>
-                  <div className="text-sm text-blue-200">Send email updates to users</div>
+                  <div className="text-sm font-medium text-white">Welcome Messages</div>
+                  <div className="text-sm text-blue-200">New user onboarding</div>
                 </div>
                 <div className="text-right">
                   <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-200">
-                    Enabled
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Elimination Notifications</div>
+                  <div className="text-sm text-blue-200">When users are eliminated</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-500/20 text-gray-200">
+                    Disabled
                   </span>
                 </div>
               </div>
 
               <div className="pt-4">
                 <Link
-                  href="/admin/settings/system"
+                  href="/admin/settings/communications"
                   className="text-blue-200 hover:text-white transition-colors text-sm"
                 >
-                  Edit System →
+                  Manage Communications →
                 </Link>
               </div>
             </div>
