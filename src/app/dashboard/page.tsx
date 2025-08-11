@@ -62,75 +62,75 @@ export default function DashboardPage() {
         return
       }
 
-      // Get user profile
+  // Get user profile
       let { data: profileData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single()
 
       // If profile doesn't exist, create it
       if (!profileData) {
-        const { data: newProfile, error } = await supabase
-          .from('users')
-          .insert({
-            id: user.id,
-            email: user.email!,
-            username: null,
-            is_admin: false,
-          })
-          .select()
-          .single()
+      const { data: newProfile, error } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email!,
+          username: null,
+          is_admin: false,
+        })
+        .select()
+        .single()
 
-        if (error) {
-          console.error('Failed to create user profile:', error)
+      if (error) {
+        console.error('Failed to create user profile:', error)
           profileData = {
-            id: user.id,
-            email: user.email!,
-            username: null,
-            is_admin: false,
-          }
+        id: user.id,
+        email: user.email!,
+        username: null,
+        is_admin: false,
+      }
         } else {
           profileData = newProfile
-        }
-      }
+    }
+  }
 
       setProfile(profileData)
 
-      // Check if user needs to change password
+  // Check if user needs to change password
       if (profileData?.needs_password_change) {
         router.push('/change-password')
         return
-      }
+  }
 
-      // Get user's total picks purchased
-      const { data: purchases } = await supabase
-        .from('purchases')
-        .select('picks_count')
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
+  // Get user's total picks purchased
+  const { data: purchases } = await supabase
+    .from('purchases')
+    .select('picks_count')
+    .eq('user_id', user.id)
+    .eq('status', 'completed')
 
       const totalPicks = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
 
       // Get current week from global settings
-      const { data: settings } = await supabase
-        .from('global_settings')
-        .select('key, value')
+  const { data: settings } = await supabase
+    .from('global_settings')
+    .select('key, value')
         .in('key', ['current_week'])
 
-      const weekSetting = settings?.find(s => s.key === 'current_week')
+  const weekSetting = settings?.find(s => s.key === 'current_week')
       const week = weekSetting ? parseInt(weekSetting.value) : 1
       setCurrentWeek(week)
 
-      // Get current week matchups
+  // Get current week matchups
       const { data: matchupsData } = await supabase
-        .from('matchups')
-        .select('*')
+    .from('matchups')
+    .select('*')
         .eq('week', week)
-        .order('game_time')
+    .order('game_time')
 
-      // Get user's picks for current week
+  // Get user's picks for current week
       const { data: picksData } = await supabase
         .from('picks')
         .select('*')
@@ -392,9 +392,9 @@ export default function DashboardPage() {
       
       // First, let's see what picks exist
       const { data: existingPicks, error: fetchError } = await supabase
-        .from('picks')
-        .select('*')
-        .eq('user_id', user.id)
+    .from('picks')
+    .select('*')
+    .eq('user_id', user.id)
         .eq('week', currentWeek)
       
       console.log('Existing picks before deletion:', existingPicks)
@@ -500,17 +500,17 @@ export default function DashboardPage() {
 
   return (
     <div className="app-bg">
-      <Header 
-        title="Dashboard"
+             <Header 
+         title="Dashboard"
         subtitle={`Welcome back, ${profile?.username || profile?.email}`}
-      />
+       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Picks Deadline */}
         {deadline && (
           <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-              <div className="flex items-center">
+            <div className="flex items-center">
                 <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-200 mr-2 sm:mr-3" />
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-white">Picks Deadline</h3>
@@ -556,16 +556,35 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* How to Pick */}
-        <div className="mb-4 sm:mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
-          <div className="text-sm sm:text-base text-blue-200 space-y-1">
-            <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
-            <p>• Each click adds 1 pick to that team</p>
-            <p>• Use the + and - buttons to adjust your pick allocation</p>
-            <p>• If your pick wins, you&apos;re eliminated</p>
-            <p>• If your pick loses, you survive to next week</p>
-            <p>• Last person standing wins!</p>
+        {/* How to Pick and Rules */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
+            <div className="text-sm sm:text-base text-blue-200 space-y-1">
+              <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
+              <p>• Each click adds 1 pick to that team</p>
+              <p>• Use the + and - buttons to adjust your pick allocation</p>
+              <p>• If your pick wins, you&apos;re eliminated</p>
+              <p>• If your pick loses, you survive to next week</p>
+              <p>• Last person standing wins!</p>
+            </div>
+          </div>
+          
+          <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3 sm:p-4">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Pool Rules:</h3>
+            <div className="text-sm sm:text-base text-purple-200 space-y-1">
+              <p>• Pick the team you think will <strong>LOSE</strong></p>
+              <p>• Ties are eliminations</p>
+              <p>• Picks cost $21 each</p>
+              <p>• Picks lock at Thursday kickoff</p>
+              <p>• Winner takes all prize pool</p>
+              <Link 
+                href="/rules" 
+                className="inline-block mt-2 text-purple-300 hover:text-purple-100 underline font-medium"
+              >
+                View Full Rules →
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -612,7 +631,7 @@ export default function DashboardPage() {
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-              <div>
+                <div>
                 <h2 className="text-lg sm:text-xl font-semibold text-white">This Week&apos;s Games</h2>
                 <p className="text-sm sm:text-base text-blue-100">{currentWeek === 0 ? 'Week Zero' : `Week ${currentWeek}`} - {matchups?.length || 0} games scheduled</p>
               </div>
@@ -641,9 +660,9 @@ export default function DashboardPage() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-3 sm:px-4 py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base">
                 {error}
-              </div>
-            )}
-            
+          </div>
+        )}
+
             {matchups && matchups.length > 0 ? (
               <div className="space-y-3 sm:space-y-4">
                 {matchups.map((matchup) => {
@@ -656,14 +675,14 @@ export default function DashboardPage() {
                       className="bg-white/5 border border-white/20 rounded-lg p-3 sm:p-4"
                     >
                       <div className="flex items-center justify-between mb-2 sm:mb-3">
-                        <div className="flex-1">
+                      <div className="flex-1">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
                             <span className="text-xs sm:text-sm text-blue-200">
-                              {formatGameTime(matchup.game_time)}
-                            </span>
+                            {formatGameTime(matchup.game_time)}
+                          </span>
                             <span className="text-sm sm:text-base font-medium text-white">
-                              {matchup.away_team} @ {matchup.home_team}
-                            </span>
+                            {matchup.away_team} @ {matchup.home_team}
+                          </span>
                             {isThursdayGame && (
                               <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded self-start">
                                 TNF
@@ -677,13 +696,14 @@ export default function DashboardPage() {
                         {/* Away Team */}
                         <div className="relative">
                           {userPick?.team_picked === matchup.away_team && userPick.picks_count > 0 ? (
-                            <div 
-                              className="w-full p-3 sm:p-4 rounded-lg text-white relative font-bold shadow-lg"
-                                                  style={{
-                      background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 50%, ${getTeamColors(matchup.away_team).secondary} 100%)`,
-                      color: 'white',
-                      border: '2px solid white'
-                    }}
+                                                        <div
+                              className="w-full p-3 sm:p-4 rounded-xl text-white relative font-bold shadow-2xl transform transition-all duration-300 scale-105"
+                              style={{
+                                background: `linear-gradient(135deg, ${getTeamColors(matchup.away_team).primary} 0%, ${getTeamColors(matchup.away_team).primary} 40%, ${getTeamColors(matchup.away_team).secondary} 70%, ${getTeamColors(matchup.away_team).primary} 100%)`,
+                                color: 'white',
+                                border: '3px solid white',
+                                boxShadow: `0 10px 25px rgba(0,0,0,0.3), 0 0 20px ${getTeamColors(matchup.away_team).primary}40`
+                              }}
                             >
                               <div className="text-center">
                                 <div className="flex items-center justify-center space-x-2 mb-1">

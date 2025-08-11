@@ -1,26 +1,150 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { getPoolStatus } from '@/lib/pool-status'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Lock, Unlock, AlertTriangle } from 'lucide-react'
 
-export default async function PoolLockPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
-  const poolStatus = await getPoolStatus()
+interface PoolStatus {
+  isLocked: boolean
+  timeUntilLock: number | null
+}
 
-  // Get current settings
-  const { data: settings } = await supabase
-    .from('global_settings')
-    .select('*')
-    .in('key', ['pool_lock_date', 'pool_locked'])
+export default function PoolLockPage() {
+  const [loading, setLoading] = useState(true)
+  const [poolStatus, setPoolStatus] = useState<PoolStatus>({ isLocked: false, timeUntilLock: null })
+  const [lockDate, setLockDate] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const router = useRouter()
 
-  const settingsMap = settings?.reduce((acc, setting) => {
-    acc[setting.key] = setting.value
-    return acc
-  }, {} as Record<string, string>) || {}
+  useEffect(() => {
+    loadPoolData()
+  }, [])
 
-  const lockDate = settingsMap.pool_lock_date || '2025-08-31 23:59:00'
+  const loadPoolData = async () => {
+    try {
+      setLoading(true)
+      
+      // Get current settings
+      const { data: settings } = await supabase
+        .from('global_settings')
+        .select('*')
+        .in('key', ['pool_lock_date', 'pool_locked'])
+
+      const settingsMap = settings?.reduce((acc, setting) => {
+        acc[setting.key] = setting.value
+        return acc
+      }, {} as Record<string, string>) || {}
+
+      const currentLockDate = settingsMap.pool_lock_date || '2025-08-31 23:59:00'
+      setLockDate(currentLockDate)
+
+      // Determine pool status
+      const now = new Date()
+      const lockDateTime = new Date(currentLockDate)
+      const isLocked = settingsMap.pool_locked === 'true' || now > lockDateTime
+      const timeUntilLock = lockDateTime > now ? lockDateTime.getTime() - now.getTime() : null
+
+      setPoolStatus({ isLocked, timeUntilLock })
+    } catch (error) {
+      console.error('Error loading pool data:', error)
+      setError('Failed to load pool data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLockPool = async () => {
+    try {
+      setError('')
+      setSuccess('')
+      
+      const { error } = await supabase
+        .from('global_settings')
+        .upsert({ key: 'pool_locked', value: 'true' })
+
+      if (error) throw error
+
+      setSuccess('Pool locked successfully!')
+      setPoolStatus(prev => ({ ...prev, isLocked: true }))
+    } catch (error) {
+      console.error('Error locking pool:', error)
+      setError('Failed to lock pool')
+    }
+  }
+
+  const handleUnlockPool = async () => {
+    try {
+      setError('')
+      setSuccess('')
+      
+      const { error } = await supabase
+        .from('global_settings')
+        .upsert({ key: 'pool_locked', value: 'false' })
+
+      if (error) throw error
+
+      setSuccess('Pool unlocked successfully!')
+      setPoolStatus(prev => ({ ...prev, isLocked: false }))
+    } catch (error) {
+      console.error('Error unlocking pool:', error)
+      setError('Failed to unlock pool')
+    }
+  }
+
+  const handleUpdateLockDate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    try {
+      setError('')
+      setSuccess('')
+      
+      const formData = new FormData(event.currentTarget)
+      const newLockDate = formData.get('lockDate') as string
+
+      if (!newLockDate) {
+        setError('Please select a lock date')
+        return
+      }
+
+      const { error } = await supabase
+        .from('global_settings')
+        .upsert({ key: 'pool_lock_date', value: newLockDate })
+
+      if (error) throw error
+
+      setLockDate(newLockDate)
+      setSuccess('Lock date updated successfully!')
+      
+      // Reload pool data to update status
+      await loadPoolData()
+    } catch (error) {
+      console.error('Error updating lock date:', error)
+      setError('Failed to update lock date')
+    }
+  }
+
+  const setToTomorrow = () => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowString = tomorrow.toISOString().slice(0, 16)
+    const lockDateInput = document.getElementById('lockDate') as HTMLInputElement
+    if (lockDateInput) {
+      lockDateInput.value = tomorrowString
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
+          <p className="mt-4 text-blue-200">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen app-bg">
@@ -46,6 +170,18 @@ export default async function PoolLockPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Messages */}
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-500/20 border border-green-500/30 text-green-200 px-4 py-3 rounded mb-6">
+            {success}
+          </div>
+        )}
+
         {/* Current Status */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
           <div className="flex items-center justify-between">
@@ -92,15 +228,13 @@ export default async function PoolLockPage() {
               <p className="text-red-200 mb-4">
                 Immediately lock the pool. No new registrations or purchases will be allowed.
               </p>
-              <form action="/api/admin/pool-lock/lock" method="POST">
-                <button
-                  type="submit"
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition-colors"
-                  disabled={poolStatus.isLocked}
-                >
-                  {poolStatus.isLocked ? 'Pool Already Locked' : 'Lock Pool Now'}
-                </button>
-              </form>
+              <button
+                onClick={handleLockPool}
+                disabled={poolStatus.isLocked}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
+              >
+                {poolStatus.isLocked ? 'Pool Already Locked' : 'Lock Pool Now'}
+              </button>
             </div>
 
             {/* Unlock Pool */}
@@ -112,15 +246,13 @@ export default async function PoolLockPage() {
               <p className="text-green-200 mb-4">
                 Unlock the pool to allow new registrations and purchases.
               </p>
-              <form action="/api/admin/pool-lock/unlock" method="POST">
-                <button
-                  type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition-colors"
-                  disabled={!poolStatus.isLocked}
-                >
-                  {!poolStatus.isLocked ? 'Pool Already Open' : 'Unlock Pool Now'}
-                </button>
-              </form>
+              <button
+                onClick={handleUnlockPool}
+                disabled={!poolStatus.isLocked}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition-colors disabled:opacity-50"
+              >
+                {!poolStatus.isLocked ? 'Pool Already Open' : 'Unlock Pool Now'}
+              </button>
             </div>
           </div>
         </div>
@@ -132,7 +264,7 @@ export default async function PoolLockPage() {
             Set when the pool should automatically lock. This will override any manual lock settings.
           </p>
 
-          <form action="/api/admin/pool-lock/update-date" method="POST" className="space-y-4">
+          <form onSubmit={handleUpdateLockDate} className="space-y-4">
             <div>
               <label htmlFor="lockDate" className="block text-sm font-medium text-white mb-2">
                 Lock Date & Time
@@ -158,11 +290,7 @@ export default async function PoolLockPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const now = new Date()
-                  now.setDate(now.getDate() + 1)
-                  document.getElementById('lockDate')?.setAttribute('value', now.toISOString().slice(0, 16))
-                }}
+                onClick={setToTomorrow}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded transition-colors"
               >
                 Set to Tomorrow

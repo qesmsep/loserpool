@@ -190,7 +190,7 @@ export default function AdminLimitsPage() {
             {/* Lock Time */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
-                Pick Lock Time
+                First Game of the Week
               </label>
               <div className="text-sm text-blue-200 mb-3">
                 When picks lock each week
@@ -200,13 +200,11 @@ export default function AdminLimitsPage() {
                 onChange={(e) => setLimits({...limits, lockTime: e.target.value})}
                 className="w-full px-3 py-2 border border-white/30 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10"
               >
-                <option value="Thursday Night">Thursday Night</option>
-                <option value="Friday Night">Friday Night</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
                 <option value="Saturday">Saturday</option>
-                <option value="Sunday Morning">Sunday Morning</option>
-                <option value="Sunday Afternoon">Sunday Afternoon</option>
-                <option value="Sunday Night">Sunday Night</option>
-                <option value="Monday Night">Monday Night</option>
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
               </select>
             </div>
 
