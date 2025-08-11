@@ -14,7 +14,8 @@ export default async function RulesPage() {
       'pick_type', 'tie_handling', 'pick_price', 'lock_time', 
       'max_picks_per_user', 'max_total_picks', 'prize_distribution',
       'elimination_type', 'allow_multiple_picks_per_game', 
-      'allow_pick_changes', 'pick_change_deadline'
+      'allow_pick_changes', 'pick_change_deadline', 'auto_random_picks',
+      'random_pick_strategy'
     ])
 
   const settingsMap = settings?.reduce((acc, setting) => {
@@ -34,6 +35,8 @@ export default async function RulesPage() {
   const allowMultiplePicksPerGame = settingsMap.allow_multiple_picks_per_game === 'true'
   const allowPickChanges = settingsMap.allow_pick_changes === 'true'
   const pickChangeDeadline = settingsMap.pick_change_deadline || 'Thursday'
+  const autoRandomPicks = settingsMap.auto_random_picks === 'true'
+  const randomPickStrategy = settingsMap.random_pick_strategy || 'best_odds_losing'
 
   const getPickTypeDescription = () => {
     return pickType === 'loser' 
@@ -64,6 +67,18 @@ export default async function RulesPage() {
     return eliminationType === 'immediate' 
       ? 'Players are eliminated immediately when their game ends'
       : 'Players are eliminated at the end of the week'
+  }
+
+  const getAutoRandomPicksDescription = () => {
+    if (!autoRandomPicks) {
+      return 'Auto random picks are disabled - users must make their own selections'
+    }
+    
+    const strategy = randomPickStrategy === 'best_odds_losing' 
+      ? 'teams with the best odds of losing' 
+      : 'teams with the best odds of winning'
+    
+    return `Auto random picks enabled - favors ${strategy}`
   }
 
   return (
@@ -155,6 +170,10 @@ export default async function RulesPage() {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
                   <p className="text-green-200">Pool-wide limit: {maxTotalPicks} total picks</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <p className="text-green-200">{getAutoRandomPicksDescription()}</p>
                 </div>
               </div>
             </div>

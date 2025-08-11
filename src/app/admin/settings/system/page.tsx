@@ -6,8 +6,6 @@ import { supabase } from '@/lib/supabase'
 import AdminHeader from '@/components/admin-header'
 
 interface SystemData {
-  maintenanceMode: boolean
-  debugMode: boolean
   emailNotifications: boolean
   autoBackup: boolean
 }
@@ -20,8 +18,6 @@ export default function AdminSystemPage() {
   const router = useRouter()
 
   const [system, setSystem] = useState<SystemData>({
-    maintenanceMode: false,
-    debugMode: false,
     emailNotifications: true,
     autoBackup: true
   })
@@ -38,17 +34,13 @@ export default function AdminSystemPage() {
       const { data: settings } = await supabase
         .from('global_settings')
         .select('key, value')
-        .in('key', ['maintenance_mode', 'debug_mode', 'email_notifications', 'auto_backup'])
+        .in('key', ['email_notifications', 'auto_backup'])
 
       if (settings) {
-        const maintenanceMode = settings.find(s => s.key === 'maintenance_mode')?.value === 'true'
-        const debugMode = settings.find(s => s.key === 'debug_mode')?.value === 'true'
         const emailNotifications = settings.find(s => s.key === 'email_notifications')?.value !== 'false'
         const autoBackup = settings.find(s => s.key === 'auto_backup')?.value !== 'false'
 
         setSystem({
-          maintenanceMode,
-          debugMode,
           emailNotifications,
           autoBackup
         })
@@ -69,19 +61,26 @@ export default function AdminSystemPage() {
 
       // Update global settings
       const updates = [
-        { key: 'maintenance_mode', value: system.maintenanceMode.toString() },
-        { key: 'debug_mode', value: system.debugMode.toString() },
         { key: 'email_notifications', value: system.emailNotifications.toString() },
         { key: 'auto_backup', value: system.autoBackup.toString() }
       ]
 
       for (const update of updates) {
-        const { error } = await supabase
+        // First try to update existing record
+        const { error: updateError } = await supabase
           .from('global_settings')
-          .upsert({ key: update.key, value: update.value })
+          .update({ value: update.value })
+          .eq('key', update.key)
 
-        if (error) {
-          throw error
+        if (updateError) {
+          // If update fails, try to insert (in case the key doesn't exist)
+          const { error: insertError } = await supabase
+            .from('global_settings')
+            .insert({ key: update.key, value: update.value })
+
+          if (insertError) {
+            throw insertError
+          }
         }
       }
 
@@ -135,48 +134,6 @@ export default function AdminSystemPage() {
           </div>
           <div className="p-6 space-y-6">
             
-            {/* Maintenance Mode */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-sm font-medium text-white mb-1">
-                  Maintenance Mode
-                </label>
-                <div className="text-sm text-blue-200">
-                  Temporarily disable user access for maintenance
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={system.maintenanceMode}
-                  onChange={(e) => setSystem({...system, maintenanceMode: e.target.checked})}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-              </label>
-            </div>
-
-            {/* Debug Mode */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="block text-sm font-medium text-white mb-1">
-                  Debug Mode
-                </label>
-                <div className="text-sm text-blue-200">
-                  Enable detailed logging and error reporting
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={system.debugMode}
-                  onChange={(e) => setSystem({...system, debugMode: e.target.checked})}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
             {/* Email Notifications */}
             <div className="flex items-center justify-between">
               <div>

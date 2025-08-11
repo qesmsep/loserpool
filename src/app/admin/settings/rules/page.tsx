@@ -17,6 +17,8 @@ interface RulesData {
   allowMultiplePicksPerGame: boolean
   allowPickChanges: boolean
   pickChangeDeadline: string
+  autoRandomPicks: boolean
+  randomPickStrategy: 'best_odds_winning' | 'best_odds_losing'
 }
 
 export default function AdminRulesPage() {
@@ -37,7 +39,9 @@ export default function AdminRulesPage() {
     eliminationType: 'immediate',
     allowMultiplePicksPerGame: true,
     allowPickChanges: true,
-    pickChangeDeadline: 'Thursday'
+    pickChangeDeadline: 'Thursday',
+    autoRandomPicks: false,
+    randomPickStrategy: 'best_odds_losing'
   })
 
   useEffect(() => {
@@ -91,7 +95,8 @@ export default function AdminRulesPage() {
           'pick_type', 'tie_handling', 'pick_price', 'lock_time', 
           'max_picks_per_user', 'max_total_picks', 'prize_distribution',
           'elimination_type', 'allow_multiple_picks_per_game', 
-          'allow_pick_changes', 'pick_change_deadline'
+          'allow_pick_changes', 'pick_change_deadline', 'auto_random_picks',
+          'random_pick_strategy'
         ])
       
       if (settingsError) {
@@ -119,7 +124,9 @@ export default function AdminRulesPage() {
           eliminationType: (settingsMap.elimination_type as 'immediate' | 'end_of_week') || 'immediate',
           allowMultiplePicksPerGame: settingsMap.allow_multiple_picks_per_game === 'true',
           allowPickChanges: settingsMap.allow_pick_changes === 'true',
-          pickChangeDeadline: settingsMap.pick_change_deadline || 'Thursday'
+          pickChangeDeadline: settingsMap.pick_change_deadline || 'Thursday',
+          autoRandomPicks: settingsMap.auto_random_picks === 'true',
+          randomPickStrategy: (settingsMap.random_pick_strategy as 'best_odds_winning' | 'best_odds_losing') || 'best_odds_losing'
         })
       }
     } catch (error) {
@@ -185,7 +192,9 @@ export default function AdminRulesPage() {
         { key: 'elimination_type', value: rules.eliminationType },
         { key: 'allow_multiple_picks_per_game', value: rules.allowMultiplePicksPerGame.toString() },
         { key: 'allow_pick_changes', value: rules.allowPickChanges.toString() },
-        { key: 'pick_change_deadline', value: rules.pickChangeDeadline }
+        { key: 'pick_change_deadline', value: rules.pickChangeDeadline },
+        { key: 'auto_random_picks', value: rules.autoRandomPicks.toString() },
+        { key: 'random_pick_strategy', value: rules.randomPickStrategy }
       ]
 
       console.log('Updates to perform:', updates)
@@ -510,6 +519,54 @@ export default function AdminRulesPage() {
                    {rules.prizeDistribution === 'top_5' && 'The last 5 players split the prize pool (40%, 25%, 20%, 10%, 5%).'}
                    {rules.prizeDistribution === 'even_split' && 'Prize pool is evenly split among all remaining picks at season end. Multiple winners possible.'}
                  </p>
+              </div>
+            </div>
+
+            {/* Auto Random Picks */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Auto Random Picks</h3>
+              <div className="bg-white/5 rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1">
+                      Enable Auto Random Picks
+                    </label>
+                    <div className="text-sm text-blue-200">
+                      Automatically assign random picks if users don&apos;t make selections
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rules.autoRandomPicks}
+                      onChange={(e) => setRules({...rules, autoRandomPicks: e.target.checked})}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  </label>
+                </div>
+
+                {rules.autoRandomPicks && (
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-3">
+                      Random Pick Strategy
+                    </label>
+                    <select
+                      value={rules.randomPickStrategy}
+                      onChange={(e) => setRules({...rules, randomPickStrategy: e.target.value as 'best_odds_winning' | 'best_odds_losing'})}
+                      className="w-full px-3 py-2 border border-white/30 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10"
+                    >
+                      <option value="best_odds_losing">Best odds of losing (recommended for loser pool)</option>
+                      <option value="best_odds_winning">Best odds of winning (for winner pool)</option>
+                    </select>
+                    <p className="text-sm text-blue-200 mt-2">
+                      {rules.randomPickStrategy === 'best_odds_losing' 
+                        ? 'Random picks will favor teams with the best odds of losing, which is ideal for a loser pool.'
+                        : 'Random picks will favor teams with the best odds of winning, which is ideal for a winner pool.'
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
