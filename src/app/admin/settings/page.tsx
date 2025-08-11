@@ -243,12 +243,6 @@ export default async function AdminSettingsPage() {
                 >
                   Manage Pool Lock →
                 </Link>
-                <Link
-                  href="/api/admin/pool-lock/preview"
-                  className="text-blue-200 hover:text-white transition-colors text-sm block"
-                >
-                  Preview Lock Effects →
-                </Link>
               </div>
             </div>
           </div>

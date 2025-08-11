@@ -5,10 +5,29 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminHeader from '@/components/admin-header'
 
+// NFL 2025-2026 Season Dates (based on typical NFL schedule)
+const NFL_DATES_2025_2026 = {
+  preseason: {
+    start: '2025-08-07', // First preseason game typically early August
+    end: '2025-08-28'    // Last preseason game typically late August
+  },
+  regularSeason: {
+    start: '2025-09-04', // Week 1 typically first Thursday in September
+    end: '2026-01-05'    // Week 18 typically first Sunday in January
+  },
+  postseason: {
+    start: '2026-01-11', // Wild Card weekend typically second Saturday in January
+    end: '2026-01-26'    // Conference Championships typically last Sunday in January
+  },
+  superbowl: {
+    date: '2026-02-08'   // Super Bowl typically first Sunday in February
+  }
+}
+
 interface SeasonData {
-  seasonStart: string
+  seasonStartType: 'preseason' | 'regularSeason'
+  seasonEndType: 'regularSeason' | 'postseason' | 'superbowl'
   registrationDeadline: string
-  seasonEnd: string
   currentWeek: number
 }
 
@@ -20,11 +39,31 @@ export default function AdminSeasonPage() {
   const router = useRouter()
 
   const [season, setSeason] = useState<SeasonData>({
-    seasonStart: '',
+    seasonStartType: 'regularSeason',
+    seasonEndType: 'regularSeason',
     registrationDeadline: '',
-    seasonEnd: '',
     currentWeek: 1
   })
+
+  // Calculate actual dates based on selections
+  const getSeasonStartDate = () => {
+    return season.seasonStartType === 'preseason' 
+      ? NFL_DATES_2025_2026.preseason.start 
+      : NFL_DATES_2025_2026.regularSeason.start
+  }
+
+  const getSeasonEndDate = () => {
+    switch (season.seasonEndType) {
+      case 'regularSeason':
+        return NFL_DATES_2025_2026.regularSeason.end
+      case 'postseason':
+        return NFL_DATES_2025_2026.postseason.end
+      case 'superbowl':
+        return NFL_DATES_2025_2026.superbowl.date
+      default:
+        return NFL_DATES_2025_2026.regularSeason.end
+    }
+  }
 
   useEffect(() => {
     loadSeasonSettings()
@@ -46,10 +85,24 @@ export default function AdminSeasonPage() {
         const seasonEnd = settings.find(s => s.key === 'season_end')?.value || ''
         const currentWeek = settings.find(s => s.key === 'current_week')?.value || '1'
 
+        // Determine season start type based on stored date
+        let seasonStartType: 'preseason' | 'regularSeason' = 'regularSeason'
+        if (seasonStart === NFL_DATES_2025_2026.preseason.start) {
+          seasonStartType = 'preseason'
+        }
+
+        // Determine season end type based on stored date
+        let seasonEndType: 'regularSeason' | 'postseason' | 'superbowl' = 'regularSeason'
+        if (seasonEnd === NFL_DATES_2025_2026.superbowl.date) {
+          seasonEndType = 'superbowl'
+        } else if (seasonEnd === NFL_DATES_2025_2026.postseason.end) {
+          seasonEndType = 'postseason'
+        }
+
         setSeason({
-          seasonStart,
+          seasonStartType,
+          seasonEndType,
           registrationDeadline,
-          seasonEnd,
           currentWeek: parseInt(currentWeek)
         })
       }
@@ -67,21 +120,33 @@ export default function AdminSeasonPage() {
       setError('')
       setSuccess('')
 
+      const seasonStartDate = getSeasonStartDate()
+      const seasonEndDate = getSeasonEndDate()
+
       // Update global settings
       const updates = [
-        { key: 'season_start', value: season.seasonStart },
+        { key: 'season_start', value: seasonStartDate },
         { key: 'registration_deadline', value: season.registrationDeadline },
-        { key: 'season_end', value: season.seasonEnd },
+        { key: 'season_end', value: seasonEndDate },
         { key: 'current_week', value: season.currentWeek.toString() }
       ]
 
       for (const update of updates) {
-        const { error } = await supabase
+        // First try to update existing record
+        const { error: updateError } = await supabase
           .from('global_settings')
-          .upsert({ key: update.key, value: update.value })
+          .update({ value: update.value })
+          .eq('key', update.key)
 
-        if (error) {
-          throw error
+        if (updateError) {
+          // If update fails, try to insert (in case the key doesn't exist)
+          const { error: insertError } = await supabase
+            .from('global_settings')
+            .insert({ key: update.key, value: update.value })
+
+          if (insertError) {
+            throw insertError
+          }
         }
       }
 
@@ -131,24 +196,29 @@ export default function AdminSeasonPage() {
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-6 py-4 border-b border-white/20">
             <h2 className="text-xl font-semibold text-white">Season Configuration</h2>
-            <p className="text-blue-100">Set important dates for the current season</p>
+            <p className="text-blue-100">Set important dates for the 2025-2026 NFL season</p>
           </div>
           <div className="p-6 space-y-6">
             
             {/* Season Start */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
-                Season Start Date
+                Season Start
               </label>
               <div className="text-sm text-blue-200 mb-3">
-                When the pool officially begins (Week 1)
+                When the pool officially begins
               </div>
-              <input
-                type="date"
-                value={season.seasonStart}
-                onChange={(e) => setSeason({...season, seasonStart: e.target.value})}
+              <select
+                value={season.seasonStartType}
+                onChange={(e) => setSeason({...season, seasonStartType: e.target.value as 'preseason' | 'regularSeason'})}
                 className="w-full px-3 py-2 border border-white/30 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10"
-              />
+              >
+                <option value="preseason">Pre-season (August 7, 2025)</option>
+                <option value="regularSeason">Regular Season (September 4, 2025)</option>
+              </select>
+              <div className="text-xs text-blue-300 mt-1">
+                Selected date: {getSeasonStartDate()}
+              </div>
             </div>
 
             {/* Registration Deadline */}
@@ -170,17 +240,23 @@ export default function AdminSeasonPage() {
             {/* Season End */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
-                Season End Date
+                Season End
               </label>
               <div className="text-sm text-blue-200 mb-3">
-                When the pool officially ends (usually after Week 18)
+                When the pool officially ends
               </div>
-              <input
-                type="date"
-                value={season.seasonEnd}
-                onChange={(e) => setSeason({...season, seasonEnd: e.target.value})}
+              <select
+                value={season.seasonEndType}
+                onChange={(e) => setSeason({...season, seasonEndType: e.target.value as 'regularSeason' | 'postseason' | 'superbowl'})}
                 className="w-full px-3 py-2 border border-white/30 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10"
-              />
+              >
+                <option value="regularSeason">Regular Season (January 5, 2026)</option>
+                <option value="postseason">Post Season (January 26, 2026)</option>
+                <option value="superbowl">Super Bowl (February 8, 2026)</option>
+              </select>
+              <div className="text-xs text-blue-300 mt-1">
+                Selected date: {getSeasonEndDate()}
+              </div>
             </div>
 
             {/* Current Week */}
@@ -225,6 +301,25 @@ export default function AdminSeasonPage() {
                   <div className="text-sm text-blue-200">Weeks Remaining</div>
                   <div className="text-2xl font-bold text-white">{Math.max(0, 18 - season.currentWeek)}</div>
                   <div className="text-xs text-blue-300">of 18 weeks</div>
+                </div>
+              </div>
+              
+              {/* NFL Schedule Info */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="text-sm text-blue-200">Season Start</div>
+                  <div className="text-lg font-semibold text-white">
+                    {season.seasonStartType === 'preseason' ? 'Pre-season' : 'Regular Season'}
+                  </div>
+                  <div className="text-xs text-blue-300">{getSeasonStartDate()}</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="text-sm text-blue-200">Season End</div>
+                  <div className="text-lg font-semibold text-white">
+                    {season.seasonEndType === 'superbowl' ? 'Super Bowl' : 
+                     season.seasonEndType === 'postseason' ? 'Post Season' : 'Regular Season'}
+                  </div>
+                  <div className="text-xs text-blue-300">{getSeasonEndDate()}</div>
                 </div>
               </div>
             </div>

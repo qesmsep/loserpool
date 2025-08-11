@@ -192,16 +192,31 @@ export default function AdminRulesPage() {
 
       for (const update of updates) {
         console.log('Updating:', update.key, '=', update.value)
-        const { data, error } = await supabase
+        
+        // First try to update existing record
+        const { data: updateData, error: updateError } = await supabase
           .from('global_settings')
-          .upsert({ key: update.key, value: update.value })
+          .update({ value: update.value })
+          .eq('key', update.key)
           .select()
 
-        console.log('Upsert result for', update.key, ':', { data, error })
+        if (updateError) {
+          console.error('Update error for', update.key, ':', updateError)
+          
+          // If update fails, try to insert (in case the key doesn't exist)
+          const { data: insertData, error: insertError } = await supabase
+            .from('global_settings')
+            .insert({ key: update.key, value: update.value })
+            .select()
 
-        if (error) {
-          console.error('Error updating', update.key, ':', error)
-          throw error
+          if (insertError) {
+            console.error('Insert error for', update.key, ':', insertError)
+            throw insertError
+          }
+          
+          console.log('Insert result for', update.key, ':', { data: insertData, error: insertError })
+        } else {
+          console.log('Update result for', update.key, ':', { data: updateData, error: updateError })
         }
       }
 
