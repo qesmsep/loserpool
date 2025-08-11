@@ -97,7 +97,7 @@ export default async function ResultsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="app-bg">
       <Header 
         title="Your Results"
         subtitle="Track your performance in The Loser Pool"

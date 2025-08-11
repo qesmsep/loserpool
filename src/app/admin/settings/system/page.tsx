@@ -96,7 +96,7 @@ export default function AdminSystemPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen app-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
           <p className="mt-4 text-blue-200">Loading...</p>
@@ -106,7 +106,7 @@ export default function AdminSystemPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen app-bg">
       <AdminHeader 
         title="System Settings"
         subtitle="Configure system behavior and maintenance"

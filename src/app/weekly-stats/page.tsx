@@ -104,7 +104,7 @@ export default function WeeklyStatsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+      <div className="app-bg">
         <Header 
           title="Weekly Stats"
           subtitle="This Week&apos;s Pick Distribution"
@@ -123,7 +123,7 @@ export default function WeeklyStatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="app-bg">
               <Header 
           title="Weekly Stats"
           subtitle="This Week&apos;s Pick Distribution"

@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --app-bg-start: #f9fafb;
+  --app-bg-middle: #f3f4f6;
+  --app-bg-end: #e5e7eb;
 }
 
 @theme inline {
@@ -16,6 +19,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --app-bg-start: #111827;
+    --app-bg-middle: #1f2937;
+    --app-bg-end: #374151;
   }
 }
 
@@ -23,4 +29,10 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* App background utility class */
+.app-bg {
+  background: linear-gradient(135deg, var(--app-bg-start) 0%, var(--app-bg-middle) 50%, var(--app-bg-end) 100%);
+  min-height: 100vh;
 }

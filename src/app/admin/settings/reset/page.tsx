@@ -5,7 +5,7 @@ export default async function AdminResetPage() {
   await requireAdmin()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen app-bg">
       <AdminHeader 
         title="Reset Pool"
         subtitle="Dangerous operations - reset pool data"

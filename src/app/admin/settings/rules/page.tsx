@@ -17,7 +17,7 @@ export default async function AdminRulesPage() {
   const tieRules = settings?.find(s => s.key === 'tie_rules')?.value || ''
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="min-h-screen app-bg">
       <AdminHeader 
         title="Edit Rules"
         subtitle="Configure pool rules and game settings"

@@ -12,7 +12,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="app-bg">
       {/* Disclaimer */}
       <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
         <div className="max-w-4xl mx-auto text-sm text-yellow-800">

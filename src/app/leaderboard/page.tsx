@@ -50,7 +50,7 @@ export default async function LeaderboardPage() {
     .filter(user => user.totalPurchased > 0) // Only show users who purchased picks
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="app-bg">
       {/* Header */}
              <Header 
          title="Leaderboard"

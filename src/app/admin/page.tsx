@@ -29,7 +29,7 @@ export default async function AdminPage() {
   const activePicks = picks?.filter(p => p.status === 'active').length || 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+    <div className="app-bg">
       <AdminHeader 
         title="Admin Panel"
         subtitle="Manage The Loser Pool"
