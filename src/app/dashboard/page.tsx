@@ -84,6 +84,7 @@ export default function DashboardPage() {
   const [showPickPopup, setShowPickPopup] = useState(false)
   const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [preseasonNote, setPreseasonNote] = useState<string>('')
 
 
   const router = useRouter()
@@ -168,22 +169,68 @@ export default function DashboardPage() {
       const totalPicks = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
 
-      // Get current week from global settings
-  const { data: settings } = await supabase
-    .from('global_settings')
-    .select('key, value')
-        .in('key', ['current_week'])
+      // Get current week display from API
+      let week = 1 // Default fallback
+      try {
+        const weekDisplayResponse = await fetch('/api/current-week-display')
+        const weekDisplayResult = await weekDisplayResponse.json()
+        
+        if (weekDisplayResult.success) {
+          week = weekDisplayResult.current_week
+          setCurrentWeek(week)
+          setCurrentWeekDisplay(weekDisplayResult.week_display)
+          
+          // Calculate next week display
+          const nextWeek = weekDisplayResult.current_week + 1
+          let nextWeekDisplay: string
+          
+          if (nextWeek <= 3) {
+            nextWeekDisplay = `Preseason Week ${nextWeek}`
+          } else if (nextWeek <= 21) {
+            nextWeekDisplay = `Week ${nextWeek - 3}`
+          } else {
+            nextWeekDisplay = `Postseason Week ${nextWeek - 21}`
+          }
+          
+          setNextWeekDisplay(nextWeekDisplay)
+          
+          // If we're in preseason, show a note about game availability
+          if (weekDisplayResult.is_preseason) {
+            setPreseasonNote('Preseason games are not yet available from the data provider. Regular season games will be shown below.')
+          }
+        } else {
+          // Fallback to database settings
+          const { data: settings } = await supabase
+            .from('global_settings')
+            .select('key, value')
+            .in('key', ['current_week'])
 
-  const weekSetting = settings?.find(s => s.key === 'current_week')
-      const week = weekSetting ? parseInt(weekSetting.value) : 1
-      setCurrentWeek(week)
-      
-      // Get current week display
-      const weekDisplay = getCurrentWeekDisplay()
-      setCurrentWeekDisplay(weekDisplay)
-      
-      // Get next week display - will be updated from API response
-      setNextWeekDisplay('Loading...')
+          const weekSetting = settings?.find(s => s.key === 'current_week')
+          week = weekSetting ? parseInt(weekSetting.value) : 1
+          setCurrentWeek(week)
+          
+          // Get current week display
+          const weekDisplay = getCurrentWeekDisplay()
+          setCurrentWeekDisplay(weekDisplay)
+          setNextWeekDisplay('Loading...')
+        }
+      } catch (error) {
+        console.error('Error fetching week display:', error)
+        // Fallback to database settings
+        const { data: settings } = await supabase
+          .from('global_settings')
+          .select('key, value')
+          .in('key', ['current_week'])
+
+        const weekSetting = settings?.find(s => s.key === 'current_week')
+        week = weekSetting ? parseInt(weekSetting.value) : 1
+        setCurrentWeek(week)
+        
+        // Get current week display
+        const weekDisplay = getCurrentWeekDisplay()
+        setCurrentWeekDisplay(weekDisplay)
+        setNextWeekDisplay('Loading...')
+      }
 
   // Get current week matchups from database via API
   let matchupsData: Matchup[] = []
@@ -256,29 +303,18 @@ export default function DashboardPage() {
     nextWeekMatchupsData = dbNextWeekMatchupsData || []
   }
   
-  // Get user's picks for current week
-      // Get current week column - determine the correct prefix based on current week
-      let weekColumn: string
-      if (week <= 3) {
-        weekColumn = `pre${week}_team_matchup_id`
-      } else if (week <= 20) {
-        weekColumn = `reg${week - 3}_team_matchup_id`
-      } else {
-        weekColumn = `post${week - 20}_team_matchup_id`
-      }
-      
+  // Get user's picks for current week - simplified approach
       const { data: picksData } = await supabase
         .from('picks')
         .select('*')
         .eq('user_id', user.id)
-        .not(weekColumn, 'is', null)
+        .eq('week', week)
 
-      // Calculate picks remaining based on picks that haven't been assigned to the current week
+      // Calculate picks remaining - simplified approach
       const { data: allUserPicks } = await supabase
         .from('picks')
         .select('*')
         .eq('user_id', user.id)
-        .is(weekColumn, null)
 
       const dbPicksRemaining = allUserPicks?.reduce((sum, pick) => sum + pick.picks_count, 0) || 0
 
@@ -312,67 +348,20 @@ export default function DashboardPage() {
   }, [dbPicksRemaining])
 
   const getPicksForMatchup = (matchupId: string) => {
-    // Get the current week column - determine the correct prefix based on current week
-    let weekColumn: string
-    if (currentWeek <= 3) {
-      weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 20) {
-      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
-    } else {
-      weekColumn = `post${currentWeek - 20}_team_matchup_id`
-    }
-    
-    // Get the current matchup to determine teams
-    const currentMatchup = matchups.find(m => m.id === matchupId)
-    if (!currentMatchup) {
-      return []
-    }
-    
-    // Get saved picks for this matchup (both pending and active)
-    const savedPicks = userPicks.filter(pick => {
-      const teamMatchupId = (pick as any)[weekColumn]
-      return teamMatchupId !== null && teamMatchupId !== undefined
-    })
-    
-    // Generate expected team_matchup_ids for both teams using simple logic
-    const awayTeamMatchupId = generateSimpleTeamMatchupId(matchupId, currentMatchup.away_team)
-    const homeTeamMatchupId = generateSimpleTeamMatchupId(matchupId, currentMatchup.home_team)
-    
-    const picksWithTeams = savedPicks.map(pick => {
-      const teamMatchupId = (pick as any)[weekColumn]
-      
-      // Determine which team this pick belongs to by checking against both teams
-      let team_picked = 'Unknown'
-      
-      if (teamMatchupId === awayTeamMatchupId) {
-        team_picked = currentMatchup.away_team
-      } else if (teamMatchupId === homeTeamMatchupId) {
-        team_picked = currentMatchup.home_team
-      }
-      
-      return {
-        team_picked,
-        picks_count: pick.picks_count,
-        pick_name: pick.pick_name,
-        status: pick.status
-      }
-    })
-    
-    return picksWithTeams
-  }
-
-  // Helper function to generate team_matchup_id using simple logic
-  const generateSimpleTeamMatchupId = (matchupId: string, teamName: string) => {
-    // Extract team initials (first letter of each word)
-    const teamInitials = teamName.replace(/([A-Z])[a-z]*/g, '$1')
-    
-    // Return matchup_id + team initials
-    return matchupId + '_' + teamInitials
+    // Simplified approach - just return picks for the current week
+    return userPicks.filter(pick => pick.matchup_id === matchupId)
   }
 
   const getPickForMatchup = (matchupId: string) => {
     const picks = getPicksForMatchup(matchupId)
-    return picks.length > 0 ? picks[0] : undefined
+    if (picks.length > 0) {
+      const pick = picks[0]
+      return {
+        team_picked: pick.team_picked || pick.away_team || pick.home_team || '',
+        picks_count: pick.picks_count || 0
+      }
+    }
+    return undefined
   }
 
   const handleTeamClick = (matchupId: string, teamName: string) => {
@@ -711,7 +700,7 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
               <div>
                 <h2 className="text-base sm:text-xl font-semibold text-white">Current Week Games</h2>
-                <p className="text-xs sm:text-base text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
+                <p className="text-xs sm:text-base text-blue-100">{currentWeekDisplay} - {matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 {!isEditing ? (
@@ -762,6 +751,12 @@ export default function DashboardPage() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-3 sm:px-4 py-3 rounded-lg mb-3 sm:mb-6 text-xs sm:text-base">
                 {error}
+              </div>
+            )}
+
+            {preseasonNote && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-200 px-3 sm:px-4 py-3 rounded-lg mb-3 sm:mb-6 text-xs sm:text-base">
+                {preseasonNote}
               </div>
             )}
 

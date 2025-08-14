@@ -424,8 +424,8 @@ export default function PicksPage() {
             const isThursdayGame = new Date(matchup.game_time).getDay() === 4
             
             return (
-              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
-                <div className="flex items-center justify-between mb-4">
+              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <StyledTeamName teamName={matchup.away_team} size="lg" />
@@ -444,7 +444,7 @@ export default function PicksPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   {/* Away Team */}
                   <div className="flex items-center space-x-2">
                     <button
@@ -458,25 +458,27 @@ export default function PicksPage() {
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                      className={`flex-1 p-2 sm:p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.away_team
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
-                        <StyledTeamName teamName={matchup.away_team} size="md" className="mb-2" />
-                        {userPick?.team_picked === matchup.away_team && (
-                          <div className="flex items-center justify-center space-x-2">
-                            <CheckCircle className="w-5 h-5 text-red-400" />
-                            <span className="text-red-300 font-medium">
+                        <StyledTeamName teamName={matchup.away_team} size="md" className="mb-1 sm:mb-2" />
+                        {userPick?.team_picked === matchup.away_team ? (
+                          userPick.pick_names ? (
+                            <div className="text-purple-300 text-sm font-medium">
+                              {userPick.pick_names.name}
+                            </div>
+                          ) : (
+                            <div className="text-red-300 text-sm font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        )}
-                        {userPick?.pick_names && (
-                          <div className="mt-1 text-xs text-purple-300">
-                            {userPick.pick_names.name}
+                            </div>
+                          )
+                        ) : (
+                          <div className="text-blue-200 text-sm opacity-70">
+                            Click to pick
                           </div>
                         )}
                       </div>
@@ -504,25 +506,27 @@ export default function PicksPage() {
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                      className={`flex-1 p-2 sm:p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.home_team
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
-                        <StyledTeamName teamName={matchup.home_team} size="md" className="mb-2" />
-                        {userPick?.team_picked === matchup.home_team && (
-                          <div className="flex items-center justify-center space-x-2">
-                            <CheckCircle className="w-5 h-5 text-red-400" />
-                            <span className="text-red-300 font-medium">
+                        <StyledTeamName teamName={matchup.home_team} size="md" className="mb-1 sm:mb-2" />
+                        {userPick?.team_picked === matchup.home_team ? (
+                          userPick.pick_names ? (
+                            <div className="text-purple-300 text-sm font-medium">
+                              {userPick.pick_names.name}
+                            </div>
+                          ) : (
+                            <div className="text-red-300 text-sm font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        )}
-                        {userPick?.pick_names && (
-                          <div className="mt-1 text-xs text-purple-300">
-                            {userPick.pick_names.name}
+                            </div>
+                          )
+                        ) : (
+                          <div className="text-blue-200 text-sm opacity-70">
+                            Click to pick
                           </div>
                         )}
                       </div>

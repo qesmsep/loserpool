@@ -93,6 +93,7 @@ export interface Database {
           away_score: number | null
           home_score: number | null
           status: 'scheduled' | 'live' | 'final'
+          venue: string | null
           created_at: string
         }
         Insert: {
@@ -104,6 +105,7 @@ export interface Database {
           away_score?: number | null
           home_score?: number | null
           status?: 'scheduled' | 'live' | 'final'
+          venue?: string | null
           created_at?: string
         }
         Update: {
@@ -115,6 +117,7 @@ export interface Database {
           away_score?: number | null
           home_score?: number | null
           status?: 'scheduled' | 'live' | 'final'
+          venue?: string | null
           created_at?: string
         }
       }

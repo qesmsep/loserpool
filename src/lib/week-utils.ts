@@ -4,32 +4,31 @@
 export function getCurrentWeekDisplay(): string {
   try {
     const now = new Date()
-    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start
+    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start (from database setting)
     const regularSeasonStart = new Date('2025-09-04T00:00:00') // NFL 2025 regular season start (approximate)
     
-          // If before regular season start, it's preseason
-      if (now < regularSeasonStart) {
-        // NFL preseason weeks are typically:
-        // Week 1: Aug 7-11 (first 5 days)
-        // Week 2: Aug 14-18 (next 5 days)
-        // Week 3: Aug 21-25 (next 5 days)
-        // Week 4: Aug 28-Sep 1 (next 5 days)
-        
-        const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
-        
-        // Calculate preseason week based on NFL schedule
-        // NFL preseason typically starts the first full week after Aug 7
-        let preseasonWeek = 1
-        if (daysSinceStart >= 6) { // Aug 13+ is Week 2
-          preseasonWeek = 2
-        } else if (daysSinceStart >= 13) { // Aug 20+ is Week 3
-          preseasonWeek = 3
-        } else if (daysSinceStart >= 20) { // Aug 27+ is Week 4
-          preseasonWeek = 4
-        }
-        
-        return `Preseason Week ${preseasonWeek}`
+    // If before regular season start, it's preseason
+    if (now < regularSeasonStart) {
+      // NFL preseason weeks are typically:
+      // Week 1: Aug 7-13 (first week)
+      // Week 2: Aug 14-20 (second week)
+      // Week 3: Aug 21-27 (third week)
+      // Week 4: Aug 28-Sep 3 (fourth week)
+      
+      const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
+      
+      // Calculate preseason week based on NFL schedule
+      let preseasonWeek = 1
+      if (daysSinceStart >= 7) { // Aug 14+ is Week 2
+        preseasonWeek = 2
+      } else if (daysSinceStart >= 14) { // Aug 21+ is Week 3
+        preseasonWeek = 3
+      } else if (daysSinceStart >= 21) { // Aug 28+ is Week 4
+        preseasonWeek = 4
       }
+      
+      return `Preseason Week ${preseasonWeek}`
+    }
     
     // Regular season
     const regularSeasonWeeksSinceStart = Math.floor((now.getTime() - regularSeasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
@@ -45,29 +44,28 @@ export function getCurrentWeekDisplay(): string {
 export function getCurrentWeekNumber(): number {
   try {
     const now = new Date()
-    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start
+    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start (from database setting)
     const regularSeasonStart = new Date('2025-09-04T00:00:00') // NFL 2025 regular season start
     
     // If in preseason, calculate preseason week
     if (now < regularSeasonStart) {
       // NFL preseason weeks are typically:
-      // Week 1: Aug 7-11 (first 5 days)
-      // Week 2: Aug 14-18 (next 5 days)
-      // Week 3: Aug 21-25 (next 5 days)
-      // Week 4: Aug 28-Sep 1 (next 5 days)
+      // Week 1: Aug 7-13 (first week)
+      // Week 2: Aug 14-20 (second week)
+      // Week 3: Aug 21-27 (third week)
+      // Week 4: Aug 28-Sep 3 (fourth week)
       
       const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
       
-              // Calculate preseason week based on NFL schedule
-        // NFL preseason typically starts the first full week after Aug 7
-        let preseasonWeek = 1
-        if (daysSinceStart >= 6) { // Aug 13+ is Week 2
-          preseasonWeek = 2
-        } else if (daysSinceStart >= 13) { // Aug 20+ is Week 3
-          preseasonWeek = 3
-        } else if (daysSinceStart >= 20) { // Aug 27+ is Week 4
-          preseasonWeek = 4
-        }
+      // Calculate preseason week based on NFL schedule
+      let preseasonWeek = 1
+      if (daysSinceStart >= 7) { // Aug 14+ is Week 2
+        preseasonWeek = 2
+      } else if (daysSinceStart >= 14) { // Aug 21+ is Week 3
+        preseasonWeek = 3
+      } else if (daysSinceStart >= 21) { // Aug 28+ is Week 4
+        preseasonWeek = 4
+      }
       
       return preseasonWeek
     }

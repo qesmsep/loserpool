@@ -218,13 +218,23 @@ CREATE INDEX IF NOT EXISTS idx_automated_update_logs_created_at ON public.automa
 -- Add RLS policies for the new table
 ALTER TABLE public.automated_update_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can view all update logs" ON public.automated_update_logs
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE id = auth.uid() AND is_admin = true
-        )
-    );
+-- Check if policy exists before creating
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'automated_update_logs' 
+        AND policyname = 'Admins can view all update logs'
+    ) THEN
+        CREATE POLICY "Admins can view all update logs" ON public.automated_update_logs
+            FOR SELECT USING (
+                EXISTS (
+                    SELECT 1 FROM public.users 
+                    WHERE id = auth.uid() AND is_admin = true
+                )
+            );
+    END IF;
+END $$;
 
 -- Insert initial global settings for automated updates
 INSERT INTO public.global_settings (key, value) VALUES 

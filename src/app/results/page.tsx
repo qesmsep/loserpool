@@ -130,8 +130,8 @@ export default async function ResultsPage() {
                   const matchup = pick.matchups
                   
                   return (
-                    <div key={pick.id} className="bg-white/5 border border-white/20 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
+                    <div key={pick.id} className="bg-white/5 border border-white/20 rounded-lg p-3 sm:p-4">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-4">
                             <span className="text-sm text-blue-200">
@@ -162,16 +162,16 @@ export default async function ResultsPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         {/* Away Team */}
                         <div className="relative">
                           <div 
-                            className={`w-full p-4 rounded-lg text-white relative font-bold shadow-lg ${
+                            className={`w-full p-2 sm:p-4 rounded-lg text-white relative font-bold shadow-lg ${
                               pick.team_picked === matchup?.away_team ? 'ring-2 ring-white ring-opacity-50' : ''
                             }`}
                           >
                             <div className="text-center">
-                              <span className="text-lg font-semibold text-white mb-2 block">
+                              <span className="text-lg font-semibold text-white mb-1 sm:mb-2 block">
                                 {matchup?.away_team || ''}
                               </span>
                                <div className={`${pick.team_picked === matchup?.away_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
@@ -184,12 +184,12 @@ export default async function ResultsPage() {
                         {/* Home Team */}
                         <div className="relative">
                           <div 
-                            className={`w-full p-4 rounded-lg text-white relative font-bold shadow-lg ${
+                            className={`w-full p-2 sm:p-4 rounded-lg text-white relative font-bold shadow-lg ${
                               pick.team_picked === matchup?.home_team ? 'ring-2 ring-white ring-opacity-50' : ''
                             }`}
                           >
                             <div className="text-center">
-                              <span className="text-lg font-semibold text-white mb-2 block">
+                              <span className="text-lg font-semibold text-white mb-1 sm:mb-2 block">
                                 {matchup?.home_team || ''}
                               </span>
                                <div className={`${pick.team_picked === matchup?.home_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>

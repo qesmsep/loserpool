@@ -110,6 +110,7 @@ export class MatchupUpdateServiceSportsData {
                 away_spread: matchupData.away_spread,
                 home_spread: matchupData.home_spread,
                 over_under: matchupData.over_under,
+                venue: matchupData.venue,
                 data_source: 'sportsdata.io',
                 last_api_update: new Date().toISOString()
               })
@@ -137,6 +138,7 @@ export class MatchupUpdateServiceSportsData {
                 away_spread: matchupData.away_spread,
                 home_spread: matchupData.home_spread,
                 over_under: matchupData.over_under,
+                venue: matchupData.venue,
                 data_source: 'sportsdata.io',
                 last_api_update: new Date().toISOString()
               })

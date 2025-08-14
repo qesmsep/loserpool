@@ -59,9 +59,94 @@ function getFullTeamName(teamName: string): string {
 }
 
 // Function to get team stats (placeholder for now - will be replaced with database lookup)
-function getTeamStats(teamName: string) {
+function getTeamStats(teamName: string, venue?: string) {
   const fullName = getFullTeamName(teamName)
-  return DEFAULT_TEAM_DATA
+  
+  // If venue is available from the matchup, extract city from it
+  if (venue) {
+    // Extract city from venue name (e.g., "Arrowhead Stadium" -> "Kansas City")
+    const venueCityMap: { [key: string]: string } = {
+      'Arrowhead Stadium': 'Kansas City',
+      'Soldier Field': 'Chicago',
+      'AT&T Stadium': 'Dallas',
+      'MetLife Stadium': 'New York',
+      'Lincoln Financial Field': 'Philadelphia',
+      'FedExField': 'Washington',
+      'Ford Field': 'Detroit',
+      'Bank of America Stadium': 'Carolina',
+      'Mercedes-Benz Stadium': 'Atlanta',
+      'NRG Stadium': 'Houston',
+      'M&T Bank Stadium': 'Baltimore',
+      'Paycor Stadium': 'Cincinnati',
+      'Cleveland Browns Stadium': 'Cleveland',
+      'TIAA Bank Field': 'Jacksonville',
+      'Lucas Oil Stadium': 'Indianapolis',
+      'Raymond James Stadium': 'Tampa Bay',
+      'U.S. Bank Stadium': 'Minnesota',
+      'Nissan Stadium': 'Tennessee',
+      'Caesars Superdome': 'New Orleans',
+      'Levi\'s Stadium': 'San Francisco',
+      'Acrisure Stadium': 'Pittsburgh',
+      'State Farm Stadium': 'Arizona',
+      'Allegiant Stadium': 'Las Vegas',
+      'Empower Field at Mile High': 'Denver',
+      'Hard Rock Stadium': 'Miami',
+      'SoFi Stadium': 'Los Angeles',
+      'Lumen Field': 'Seattle',
+      'Highmark Stadium': 'Buffalo',
+      'Gillette Stadium': 'New England',
+      'Lambeau Field': 'Green Bay'
+    }
+    
+    const city = venueCityMap[venue] || venue.split(' ')[0] // Fallback to first word of venue
+    return {
+      record: '0-0',
+      venue: venue,
+      city: city
+    }
+  }
+  
+  // Fallback to team name mapping if no venue
+  const cityMap: { [key: string]: string } = {
+    'Green Bay Packers': 'Green Bay',
+    'Chicago Bears': 'Chicago',
+    'Dallas Cowboys': 'Dallas',
+    'New York Giants': 'New York',
+    'Philadelphia Eagles': 'Philadelphia',
+    'Washington Commanders': 'Washington',
+    'Detroit Lions': 'Detroit',
+    'Kansas City Chiefs': 'Kansas City',
+    'Carolina Panthers': 'Carolina',
+    'Atlanta Falcons': 'Atlanta',
+    'Houston Texans': 'Houston',
+    'Baltimore Ravens': 'Baltimore',
+    'Cincinnati Bengals': 'Cincinnati',
+    'Cleveland Browns': 'Cleveland',
+    'Jacksonville Jaguars': 'Jacksonville',
+    'Indianapolis Colts': 'Indianapolis',
+    'Tampa Bay Buccaneers': 'Tampa Bay',
+    'Minnesota Vikings': 'Minnesota',
+    'Tennessee Titans': 'Tennessee',
+    'New Orleans Saints': 'New Orleans',
+    'San Francisco 49ers': 'San Francisco',
+    'Pittsburgh Steelers': 'Pittsburgh',
+    'Arizona Cardinals': 'Arizona',
+    'Las Vegas Raiders': 'Las Vegas',
+    'Denver Broncos': 'Denver',
+    'Miami Dolphins': 'Miami',
+    'Los Angeles Chargers': 'Los Angeles',
+    'Los Angeles Rams': 'Los Angeles',
+    'Seattle Seahawks': 'Seattle',
+    'Buffalo Bills': 'Buffalo',
+    'New York Jets': 'New York',
+    'New England Patriots': 'New England'
+  }
+  
+  return {
+    record: '0-0',
+    venue: 'Unknown',
+    city: cityMap[fullName] || 'Unknown'
+  }
 }
 
 interface MatchupBoxProps {
@@ -102,6 +187,8 @@ interface TeamCardProps {
   disabled: boolean
   showControls: boolean
   isHomeTeam?: boolean
+  homeTeamName: string
+  venue?: string
 }
 
 function TeamCard({
@@ -114,10 +201,12 @@ function TeamCard({
   colors,
   disabled,
   showControls,
-  isHomeTeam = false
+  isHomeTeam = false,
+  homeTeamName,
+  venue
 }: TeamCardProps) {
   const fullTeamName = getFullTeamName(teamName)
-  const teamStats = getTeamStats(teamName)
+  const teamStats = getTeamStats(teamName, venue)
   
   const teamCardStyle = {
     borderRadius: '8px',
@@ -200,18 +289,7 @@ function TeamCard({
             croppedLogo
           >
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-              {/* Team Location Badge */}
-              <div className="flex items-center justify-center mb-1">
-                {isHomeTeam ? (
-                  <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-                    HOME
-                  </span>
-                ) : (
-                  <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-                    AWAY
-                  </span>
-                )}
-              </div>
+
               
               <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-1">
                 {showControls && (
@@ -299,18 +377,7 @@ function TeamCard({
           duotoneLogo={false}
           croppedLogo
         >
-          {/* Team Location Badge */}
-          <div className="flex items-center justify-center mb-1">
-            {isHomeTeam ? (
-              <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-                HOME
-              </span>
-            ) : (
-              <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-                AWAY
-              </span>
-            )}
-          </div>
+
           
           <div
             className="mb-1 relative z-20 font-normal sm:font-medium text-[11px] sm:text-[24px] leading-tight tracking-wide min-h-[2.5rem] sm:min-h-0 flex flex-col items-center justify-center"
@@ -395,12 +462,14 @@ export default function MatchupBox({
             </div>
             
             {/* Venue Info */}
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <MapPin className="w-3 h-3 text-blue-200" />
-              <span className="text-xs text-blue-200">
-                {getTeamStats(matchup.home_team).venue}
-              </span>
-            </div>
+            {matchup.venue && (
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <MapPin className="w-3 h-3 text-blue-200" />
+                <span className="text-xs text-blue-200">
+                  {matchup.venue}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -419,6 +488,8 @@ export default function MatchupBox({
             colors={awayColors}
             disabled={disabled}
             showControls={canShowControls}
+            homeTeamName={matchup.home_team}
+            venue={matchup.venue}
           />
           {/* Pick names below away team */}
           {awayPickNames.length > 0 && (
@@ -443,6 +514,8 @@ export default function MatchupBox({
             disabled={disabled}
             showControls={canShowControls}
             isHomeTeam={true}
+            homeTeamName={matchup.home_team}
+            venue={matchup.venue}
           />
           {/* Pick names below home team */}
           {homePickNames.length > 0 && (

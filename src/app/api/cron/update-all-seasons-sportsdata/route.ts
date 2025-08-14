@@ -1,28 +1,18 @@
 import { NextResponse } from 'next/server'
-import { matchupUpdateServiceSportsData } from '@/lib/matchup-update-service-sportsdata'
+import { createClient } from '@supabase/supabase-js'
 import { sportsDataService } from '@/lib/sportsdata-service'
 
-interface SeasonUpdateResult {
-  season: string
+interface UpdateResult {
   success: boolean
   gamesUpdated: number
   gamesAdded: number
   gamesSkipped: number
   errors: string[]
   details: {
-    week: number
     season: number
     timestamp: string
+    weeksProcessed: number[]
   }
-}
-
-interface AllSeasonsResult {
-  success: boolean
-  totalGamesUpdated: number
-  totalGamesAdded: number
-  totalGamesSkipped: number
-  seasonResults: SeasonUpdateResult[]
-  timestamp: string
 }
 
 export async function POST(request: Request) {
@@ -40,46 +30,41 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { season = 2025, action = 'all-seasons' } = body
+    const { season = 2025, action = 'full-season' } = body
 
-    console.log(`Cron all seasons update: season=${season}, action=${action}`)
+    console.log(`Cron full season update: season=${season}, action=${action}`)
 
-    let result: AllSeasonsResult
+    let result: UpdateResult
 
     switch (action) {
-      case 'all-seasons':
-        // Update all seasons (preseason, regular season, postseason)
-        result = await updateAllSeasons(season)
+      case 'full-season':
+        // Update entire season (preseason, regular season, postseason)
+        result = await updateFullSeason(season)
         break
         
       case 'preseason':
-        // Update preseason only
+        // Update only preseason
         result = await updatePreseason(season)
         break
         
       case 'regular-season':
-        // Update regular season only
+        // Update only regular season
         result = await updateRegularSeason(season)
         break
         
       case 'postseason':
-        // Update postseason only
+        // Update only postseason
         result = await updatePostseason(season)
-        break
-        
-      case 'current-week-all-seasons':
-        // Update current week for all active seasons
-        result = await updateCurrentWeekAllSeasons(season)
         break
         
       default:
         return NextResponse.json(
-          { error: `Invalid action: ${action}. Valid actions: all-seasons, preseason, regular-season, postseason, current-week-all-seasons` },
+          { error: `Invalid action: ${action}. Valid actions: full-season, preseason, regular-season, postseason` },
           { status: 400 }
         )
     }
 
-    console.log(`Cron all seasons update completed:`, result)
+    console.log(`Cron full season update completed:`, result)
 
     return NextResponse.json({
       success: true,
@@ -90,7 +75,7 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error in cron all seasons update:', error)
+    console.error('Error in cron full season update:', error)
     return NextResponse.json(
       { 
         success: false,
@@ -107,15 +92,15 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const season = parseInt(searchParams.get('season') || '2025')
-    const action = searchParams.get('action') || 'all-seasons'
+    const action = searchParams.get('action') || 'full-season'
 
-    console.log(`Manual cron all seasons update: season=${season}, action=${action}`)
+    console.log(`Manual cron full season update: season=${season}, action=${action}`)
 
-    let result: AllSeasonsResult
+    let result: UpdateResult
 
     switch (action) {
-      case 'all-seasons':
-        result = await updateAllSeasons(season)
+      case 'full-season':
+        result = await updateFullSeason(season)
         break
         
       case 'preseason':
@@ -130,24 +115,9 @@ export async function GET(request: Request) {
         result = await updatePostseason(season)
         break
         
-      case 'current-week-all-seasons':
-        result = await updateCurrentWeekAllSeasons(season)
-        break
-        
-      case 'test':
-        // Test the service
-        const testResult = await matchupUpdateServiceSportsData.testService()
-        return NextResponse.json({
-          success: true,
-          action: 'test',
-          season,
-          result: testResult,
-          timestamp: new Date().toISOString()
-        })
-        
       default:
         return NextResponse.json(
-          { error: `Invalid action: ${action}. Valid actions: all-seasons, preseason, regular-season, postseason, current-week-all-seasons, test` },
+          { error: `Invalid action: ${action}. Valid actions: full-season, preseason, regular-season, postseason` },
           { status: 400 }
         )
     }
@@ -161,7 +131,7 @@ export async function GET(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error in manual cron all seasons update:', error)
+    console.error('Error in manual cron full season update:', error)
     return NextResponse.json(
       { 
         success: false,
@@ -173,351 +143,417 @@ export async function GET(request: Request) {
   }
 }
 
-// Update all seasons (preseason, regular season, postseason)
-async function updateAllSeasons(season: number): Promise<AllSeasonsResult> {
-  console.log(`Updating all seasons for ${season}...`)
+// Helper function to get Supabase client
+async function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
   
-  const seasonResults: SeasonUpdateResult[] = []
-  let totalGamesUpdated = 0
-  let totalGamesAdded = 0
-  let totalGamesSkipped = 0
-
-  try {
-    // Update preseason (weeks 1-4)
-    console.log('Updating preseason...')
-    const preseasonResult = await updatePreseason(season)
-    seasonResults.push(...preseasonResult.seasonResults)
-    totalGamesUpdated += preseasonResult.totalGamesUpdated
-    totalGamesAdded += preseasonResult.totalGamesAdded
-    totalGamesSkipped += preseasonResult.totalGamesSkipped
-
-    // Add delay between requests
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // Update regular season (weeks 1-18)
-    console.log('Updating regular season...')
-    const regularResult = await updateRegularSeason(season)
-    seasonResults.push(...regularResult.seasonResults)
-    totalGamesUpdated += regularResult.totalGamesUpdated
-    totalGamesAdded += regularResult.totalGamesAdded
-    totalGamesSkipped += regularResult.totalGamesSkipped
-
-    // Add delay between requests
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // Update postseason (weeks 19-22)
-    console.log('Updating postseason...')
-    const postseasonResult = await updatePostseason(season)
-    seasonResults.push(...postseasonResult.seasonResults)
-    totalGamesUpdated += postseasonResult.totalGamesUpdated
-    totalGamesAdded += postseasonResult.totalGamesAdded
-    totalGamesSkipped += postseasonResult.totalGamesSkipped
-
-    return {
-      success: true,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
+  })
+}
 
-  } catch (error) {
-    console.error('Error updating all seasons:', error)
-    return {
-      success: false,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
+// Helper function to map week to season format based on actual data
+function mapWeekToSeason(week: number, gameDate?: string, seasonType?: number): string {
+  // If we have season type information, use it to determine season format
+  if (seasonType !== undefined) {
+    if (seasonType === 2) { // Preseason
+      return `PRE${week}` // PRE1, PRE2, PRE3, etc.
+    } else if (seasonType === 1) { // Regular season
+      return `REG${week}` // REG1, REG2, etc.
+    } else if (seasonType === 3) { // Postseason
+      return `POST${week}` // POST1, POST2, etc.
     }
+  }
+  
+  // Fallback: If we have a game date, use it to determine if it's preseason
+  if (gameDate) {
+    const date = new Date(gameDate)
+    const month = date.getMonth() // 0-11, where 7 = August
+    
+    // If the game is in August or earlier, it's preseason
+    if (month < 7) { // Before August
+      return `PRE${week}` // PRE1, PRE2, PRE3, etc.
+    }
+  }
+  
+  // Default mapping based on week numbers
+  if (week <= 18) {
+    return `REG${week}` // REG1 through REG18
+  } else {
+    return `POST${week - 18}` // POST1 through POST4
   }
 }
 
-// Update preseason (weeks 1-4)
-async function updatePreseason(season: number): Promise<AllSeasonsResult> {
-  console.log(`Updating preseason for ${season}...`)
+// Helper function to process games for a specific week
+async function processWeekGames(season: number, week: number, supabase: any): Promise<{ updated: number; added: number; skipped: number; errors: string[] }> {
+  const result = { updated: 0, added: 0, skipped: 0, errors: [] as string[] }
   
-  const seasonResults: SeasonUpdateResult[] = []
-  let totalGamesUpdated = 0
-  let totalGamesAdded = 0
-  let totalGamesSkipped = 0
+  try {
+    console.log(`Processing ${season} Week ${week}...`)
+    
+    // Get games from SportsData.io
+    const games = await sportsDataService.getGames(season, week)
+    console.log(`Retrieved ${games.length} games for Week ${week}`)
+
+    if (games.length === 0) {
+      result.errors.push(`No games found for ${season} Week ${week}`)
+      return result
+    }
+
+    // Get the first game's date and season type to help determine season format
+    const firstGame = games[0]
+    const firstGameDate = firstGame?.DateTime
+    const seasonType = firstGame?.SeasonType
+    const seasonFormat = mapWeekToSeason(week, firstGameDate, seasonType)
+    console.log(`Using season format: ${seasonFormat} for Week ${week} (first game date: ${firstGameDate}, season type: ${seasonType})`)
+
+    // Process each game
+    for (const game of games) {
+      try {
+        const matchupData = sportsDataService.convertGameToMatchup(game)
+        
+        // Check if matchup already exists
+        const { data: existingMatchup } = await supabase
+          .from('matchups')
+          .select('id')
+          .eq('week', week)
+          .eq('season', seasonFormat)
+          .eq('away_team', matchupData.away_team)
+          .eq('home_team', matchupData.home_team)
+          .single()
+
+        if (existingMatchup) {
+          // Update existing matchup
+          const { error: updateError } = await supabase
+            .from('matchups')
+            .update({
+              game_time: matchupData.game_time,
+              status: matchupData.status,
+              away_score: matchupData.away_score,
+              home_score: matchupData.home_score,
+              away_spread: matchupData.away_spread,
+              home_spread: matchupData.home_spread,
+              over_under: matchupData.over_under,
+              venue: matchupData.venue,
+              data_source: 'sportsdata.io',
+              last_api_update: new Date().toISOString()
+            })
+            .eq('id', existingMatchup.id)
+
+          if (updateError) {
+            result.errors.push(`Failed to update matchup ${existingMatchup.id}: ${updateError.message}`)
+          } else {
+            result.updated++
+            console.log(`Updated matchup: ${matchupData.away_team} @ ${matchupData.home_team}`)
+          }
+        } else {
+          // Insert new matchup
+          const { error: insertError } = await supabase
+            .from('matchups')
+            .insert({
+              week: week,
+              season: seasonFormat,
+              away_team: matchupData.away_team,
+              home_team: matchupData.home_team,
+              game_time: matchupData.game_time,
+              status: matchupData.status,
+              away_score: matchupData.away_score,
+              home_score: matchupData.home_score,
+              away_spread: matchupData.away_spread,
+              home_spread: matchupData.home_spread,
+              over_under: matchupData.over_under,
+              venue: matchupData.venue,
+              data_source: 'sportsdata.io',
+              last_api_update: new Date().toISOString()
+            })
+
+          if (insertError) {
+            result.errors.push(`Failed to insert matchup ${matchupData.away_team} @ ${matchupData.home_team}: ${insertError.message}`)
+          } else {
+            result.added++
+            console.log(`Added new matchup: ${matchupData.away_team} @ ${matchupData.home_team}`)
+          }
+        }
+      } catch (gameError) {
+        result.errors.push(`Error processing game ${game.GameKey}: ${gameError instanceof Error ? gameError.message : 'Unknown error'}`)
+        result.skipped++
+      }
+    }
+
+    console.log(`Week ${week} complete: ${result.updated} updated, ${result.added} added, ${result.skipped} skipped`)
+
+  } catch (error) {
+    result.errors.push(`Service error for Week ${week}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error(`Error processing Week ${week}:`, error)
+  }
+
+  return result
+}
+
+// Update full season (preseason, regular season, postseason)
+async function updateFullSeason(season: number): Promise<UpdateResult> {
+  const result: UpdateResult = {
+    success: false,
+    gamesUpdated: 0,
+    gamesAdded: 0,
+    gamesSkipped: 0,
+    errors: [],
+    details: {
+      season,
+      timestamp: new Date().toISOString(),
+      weeksProcessed: []
+    }
+  }
 
   try {
-    // Get preseason schedule using the correct season format
-    const seasonKey = `${season}PRE`
-    const schedule = await sportsDataService.getSeasonSchedule(seasonKey)
-    console.log(`Retrieved ${schedule.length} preseason games for ${seasonKey}`)
+    console.log(`Starting full season update for ${season}...`)
     
-    // Group by week
-    const gamesByWeek = new Map<number, any[]>()
-    schedule.forEach(game => {
-      if (!gamesByWeek.has(game.Week)) {
-        gamesByWeek.set(game.Week, [])
-      }
-      gamesByWeek.get(game.Week)!.push(game)
-    })
-
-    // Update each preseason week
-    const weeks = Array.from(gamesByWeek.keys()).sort((a, b) => a - b)
-    for (const week of weeks) {
-      console.log(`Updating preseason Week ${week}...`)
-      const result = await matchupUpdateServiceSportsData.updateWeekMatchups(seasonKey, week, `PRE${week}`)
+    const supabase = await getSupabase()
+    
+    // Define all weeks to process
+    // Preseason: Weeks 1-3 (PRE1, PRE2, PRE3)
+    // Regular Season: Weeks 4-21 (REG1-REG18)
+    // Postseason: Weeks 22-25 (POST1-POST4)
+    const allWeeks = Array.from({ length: 25 }, (_, i) => i + 1)
+    
+    for (const week of allWeeks) {
+      const weekResult = await processWeekGames(season, week, supabase)
       
-      const seasonResult: SeasonUpdateResult = {
-        season: `PRE${week}`,
-        success: result.success,
-        gamesUpdated: result.gamesUpdated,
-        gamesAdded: result.gamesAdded,
-        gamesSkipped: result.gamesSkipped,
-        errors: result.errors,
-        details: result.details
-      }
+      result.gamesUpdated += weekResult.updated
+      result.gamesAdded += weekResult.added
+      result.gamesSkipped += weekResult.skipped
+      result.errors.push(...weekResult.errors)
+      result.details.weeksProcessed.push(week)
       
-      seasonResults.push(seasonResult)
-      totalGamesUpdated += result.gamesUpdated
-      totalGamesAdded += result.gamesAdded
-      totalGamesSkipped += result.gamesSkipped
-
-      // Add delay between weeks
+      // Add a small delay between requests to be respectful to the API
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    return {
-      success: true,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.success = result.errors.length === 0
+    console.log(`Full season update complete: ${result.gamesUpdated} updated, ${result.gamesAdded} added, ${result.gamesSkipped} skipped`)
 
   } catch (error) {
-    console.error('Error updating preseason:', error)
-    return {
-      success: false,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.errors.push(`Service error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error('Full season update service error:', error)
   }
+
+  return result
 }
 
-// Update regular season (weeks 1-18)
-async function updateRegularSeason(season: number): Promise<AllSeasonsResult> {
-  console.log(`Updating regular season for ${season}...`)
-  
-  const seasonResults: SeasonUpdateResult[] = []
-  let totalGamesUpdated = 0
-  let totalGamesAdded = 0
-  let totalGamesSkipped = 0
+// Update preseason only using 2025PRE
+async function updatePreseason(season: number): Promise<UpdateResult> {
+  const result: UpdateResult = {
+    success: false,
+    gamesUpdated: 0,
+    gamesAdded: 0,
+    gamesSkipped: 0,
+    errors: [],
+    details: {
+      season,
+      timestamp: new Date().toISOString(),
+      weeksProcessed: []
+    }
+  }
 
   try {
-    // Get regular season schedule using the correct season format
-    const seasonKey = `${season}REG`
-    const schedule = await sportsDataService.getSeasonSchedule(seasonKey)
-    console.log(`Retrieved ${schedule.length} regular season games for ${seasonKey}`)
+    console.log(`Starting preseason update for ${season}...`)
     
-    // Group by week
-    const gamesByWeek = new Map<number, any[]>()
-    schedule.forEach(game => {
-      if (!gamesByWeek.has(game.Week)) {
-        gamesByWeek.set(game.Week, [])
+    const supabase = await getSupabase()
+    
+    // Get preseason data using the PRE season type
+    const preseasonSeason = `${season}PRE`
+    console.log(`Fetching preseason data for ${preseasonSeason}...`)
+    
+    const games = await sportsDataService.getGames(preseasonSeason)
+    console.log(`Found ${games.length} preseason games`)
+    
+    if (games.length === 0) {
+      result.errors.push('No preseason games found')
+      return result
+    }
+    
+    // Group games by week
+    const gamesByWeek = games.reduce((acc, game) => {
+      if (!acc[game.Week]) {
+        acc[game.Week] = []
       }
-      gamesByWeek.get(game.Week)!.push(game)
-    })
-
-    // Update each regular season week
-    const weeks = Array.from(gamesByWeek.keys()).sort((a, b) => a - b)
-    for (const week of weeks) {
-      console.log(`Updating regular season Week ${week}...`)
-      const result = await matchupUpdateServiceSportsData.updateWeekMatchups(seasonKey, week, `REG${week}`)
-      
-      const seasonResult: SeasonUpdateResult = {
-        season: `REG${week}`,
-        success: result.success,
-        gamesUpdated: result.gamesUpdated,
-        gamesAdded: result.gamesAdded,
-        gamesSkipped: result.gamesSkipped,
-        errors: result.errors,
-        details: result.details
+      acc[game.Week].push(game)
+      return acc
+    }, {} as Record<number, any[]>)
+    
+    // Process each week
+    for (const [week, weekGames] of Object.entries(gamesByWeek)) {
+      const weekNum = parseInt(week)
+      try {
+        console.log(`Processing preseason week ${weekNum} with ${weekGames.length} games`)
+        
+        // Use the first game to determine season format
+        const firstGame = weekGames[0]
+        const seasonFormat = mapWeekToSeason(weekNum, firstGame.DateTime, firstGame.SeasonType)
+        console.log(`Using season format: ${seasonFormat} for preseason Week ${weekNum}`)
+        
+        // Process each game in the week
+        for (const game of weekGames) {
+          try {
+            const matchup = sportsDataService.convertGameToMatchup(game)
+            matchup.season = seasonFormat
+            
+            // Insert or update the matchup
+            const { data: existingMatchup, error: selectError } = await supabase
+              .from('matchups')
+              .select('id')
+              .eq('week', matchup.week)
+              .eq('away_team', matchup.away_team)
+              .eq('home_team', matchup.home_team)
+              .single()
+            
+            if (selectError && selectError.code !== 'PGRST116') {
+              throw selectError
+            }
+            
+            if (existingMatchup) {
+              // Update existing matchup
+              const { error: updateError } = await supabase
+                .from('matchups')
+                .update({
+                  ...matchup,
+                  updated_at: new Date().toISOString(),
+                  last_api_update: new Date().toISOString(),
+                  api_update_count: supabase.raw('api_update_count + 1')
+                })
+                .eq('id', existingMatchup.id)
+              
+              if (updateError) {
+                throw updateError
+              }
+              
+              result.gamesUpdated++
+            } else {
+              // Insert new matchup
+              const { error: insertError } = await supabase
+                .from('matchups')
+                .insert(matchup)
+              
+              if (insertError) {
+                throw insertError
+              }
+              
+              result.gamesAdded++
+            }
+          } catch (error) {
+            const errorMsg = `Error processing preseason game ${game.GameKey}: ${error}`
+            console.error(errorMsg)
+            result.errors.push(errorMsg)
+          }
+        }
+        
+        result.details.weeksProcessed.push(weekNum)
+      } catch (error) {
+        const errorMsg = `Error processing preseason week ${weekNum}: ${error}`
+        console.error(errorMsg)
+        result.errors.push(errorMsg)
       }
-      
-      seasonResults.push(seasonResult)
-      totalGamesUpdated += result.gamesUpdated
-      totalGamesAdded += result.gamesAdded
-      totalGamesSkipped += result.gamesSkipped
+    }
 
-      // Add delay between weeks
+    result.success = result.errors.length === 0
+    console.log(`Preseason update complete: ${result.gamesUpdated} updated, ${result.gamesAdded} added, ${result.gamesSkipped} skipped`)
+
+  } catch (error) {
+    result.errors.push(`Service error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error('Preseason update service error:', error)
+  }
+
+  return result
+}
+
+// Update regular season only (Weeks 4-21)
+async function updateRegularSeason(season: number): Promise<UpdateResult> {
+  const result: UpdateResult = {
+    success: false,
+    gamesUpdated: 0,
+    gamesAdded: 0,
+    gamesSkipped: 0,
+    errors: [],
+    details: {
+      season,
+      timestamp: new Date().toISOString(),
+      weeksProcessed: []
+    }
+  }
+
+  try {
+    console.log(`Starting regular season update for ${season}...`)
+    
+    const supabase = await getSupabase()
+    const regularSeasonWeeks = Array.from({ length: 18 }, (_, i) => i + 4) // Weeks 4-21
+    
+    for (const week of regularSeasonWeeks) {
+      const weekResult = await processWeekGames(season, week, supabase)
+      
+      result.gamesUpdated += weekResult.updated
+      result.gamesAdded += weekResult.added
+      result.gamesSkipped += weekResult.skipped
+      result.errors.push(...weekResult.errors)
+      result.details.weeksProcessed.push(week)
+      
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    return {
-      success: true,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.success = result.errors.length === 0
+    console.log(`Regular season update complete: ${result.gamesUpdated} updated, ${result.gamesAdded} added, ${result.gamesSkipped} skipped`)
 
   } catch (error) {
-    console.error('Error updating regular season:', error)
-    return {
-      success: false,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.errors.push(`Service error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error('Regular season update service error:', error)
   }
+
+  return result
 }
 
-// Update postseason (weeks 19-22)
-async function updatePostseason(season: number): Promise<AllSeasonsResult> {
-  console.log(`Updating postseason for ${season}...`)
-  
-  const seasonResults: SeasonUpdateResult[] = []
-  let totalGamesUpdated = 0
-  let totalGamesAdded = 0
-  let totalGamesSkipped = 0
+// Update postseason only (Weeks 22-25)
+async function updatePostseason(season: number): Promise<UpdateResult> {
+  const result: UpdateResult = {
+    success: false,
+    gamesUpdated: 0,
+    gamesAdded: 0,
+    gamesSkipped: 0,
+    errors: [],
+    details: {
+      season,
+      timestamp: new Date().toISOString(),
+      weeksProcessed: []
+    }
+  }
 
   try {
-    // Get postseason schedule using the correct season format
-    const seasonKey = `${season}POST`
-    const schedule = await sportsDataService.getSeasonSchedule(seasonKey)
-    console.log(`Retrieved ${schedule.length} postseason games for ${seasonKey}`)
+    console.log(`Starting postseason update for ${season}...`)
     
-    // Group by week
-    const gamesByWeek = new Map<number, any[]>()
-    schedule.forEach(game => {
-      if (!gamesByWeek.has(game.Week)) {
-        gamesByWeek.set(game.Week, [])
-      }
-      gamesByWeek.get(game.Week)!.push(game)
-    })
-
-    // Update each postseason week
-    const weeks = Array.from(gamesByWeek.keys()).sort((a, b) => a - b)
-    for (const week of weeks) {
-      console.log(`Updating postseason Week ${week}...`)
-      const result = await matchupUpdateServiceSportsData.updateWeekMatchups(seasonKey, week, `POST${week}`)
+    const supabase = await getSupabase()
+    const postseasonWeeks = [22, 23, 24, 25] // POST1, POST2, POST3, POST4
+    
+    for (const week of postseasonWeeks) {
+      const weekResult = await processWeekGames(season, week, supabase)
       
-      const seasonResult: SeasonUpdateResult = {
-        season: `POST${week}`,
-        success: result.success,
-        gamesUpdated: result.gamesUpdated,
-        gamesAdded: result.gamesAdded,
-        gamesSkipped: result.gamesSkipped,
-        errors: result.errors,
-        details: result.details
-      }
+      result.gamesUpdated += weekResult.updated
+      result.gamesAdded += weekResult.added
+      result.gamesSkipped += weekResult.skipped
+      result.errors.push(...weekResult.errors)
+      result.details.weeksProcessed.push(week)
       
-      seasonResults.push(seasonResult)
-      totalGamesUpdated += result.gamesUpdated
-      totalGamesAdded += result.gamesAdded
-      totalGamesSkipped += result.gamesSkipped
-
-      // Add delay between weeks
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
-    return {
-      success: true,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.success = result.errors.length === 0
+    console.log(`Postseason update complete: ${result.gamesUpdated} updated, ${result.gamesAdded} added, ${result.gamesSkipped} skipped`)
 
   } catch (error) {
-    console.error('Error updating postseason:', error)
-    return {
-      success: false,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
+    result.errors.push(`Service error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error('Postseason update service error:', error)
   }
-}
 
-// Update current week for all active seasons
-async function updateCurrentWeekAllSeasons(season: number): Promise<AllSeasonsResult> {
-  console.log(`Updating current week for all active seasons in ${season}...`)
-  
-  const seasonResults: SeasonUpdateResult[] = []
-  let totalGamesUpdated = 0
-  let totalGamesAdded = 0
-  let totalGamesSkipped = 0
-
-  try {
-    // Get current week from SportsData.io
-    const currentWeek = await sportsDataService.getCurrentWeek(season)
-    console.log(`Current week: ${currentWeek}`)
-
-    // Determine which season type we're in based on the week
-    let seasonType = 'REG'
-    let seasonWeek = currentWeek
-
-    if (currentWeek <= 4) {
-      seasonType = 'PRE'
-      seasonWeek = currentWeek
-    } else if (currentWeek <= 21) {
-      seasonType = 'REG'
-      seasonWeek = currentWeek - 4
-    } else {
-      seasonType = 'POST'
-      seasonWeek = currentWeek - 21
-    }
-
-    console.log(`Current season type: ${seasonType}${seasonWeek}`)
-
-    // Update current week
-    const result = await matchupUpdateServiceSportsData.updateWeekMatchups(season, currentWeek)
-    
-    const seasonResult: SeasonUpdateResult = {
-      season: `${seasonType}${seasonWeek}`,
-      success: result.success,
-      gamesUpdated: result.gamesUpdated,
-      gamesAdded: result.gamesAdded,
-      gamesSkipped: result.gamesSkipped,
-      errors: result.errors,
-      details: result.details
-    }
-    
-    seasonResults.push(seasonResult)
-    totalGamesUpdated += result.gamesUpdated
-    totalGamesAdded += result.gamesAdded
-    totalGamesSkipped += result.gamesSkipped
-
-    // Sync current week with database
-    await matchupUpdateServiceSportsData.syncCurrentWeek(season)
-
-    return {
-      success: true,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
-
-  } catch (error) {
-    console.error('Error updating current week for all seasons:', error)
-    return {
-      success: false,
-      totalGamesUpdated,
-      totalGamesAdded,
-      totalGamesSkipped,
-      seasonResults,
-      timestamp: new Date().toISOString()
-    }
-  }
+  return result
 }
