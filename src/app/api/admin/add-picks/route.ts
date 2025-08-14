@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient()
 
     // Add purchase record
-    const { data, error } = await supabase
+    const { data: purchaseData, error: purchaseError } = await supabase
       .from('purchases')
       .insert({
         user_id: userId,
@@ -32,15 +32,42 @@ export async function POST(request: NextRequest) {
       })
       .select()
 
-    if (error) {
-      console.error('Error adding picks:', error)
-      return NextResponse.json({ error: error.message }, { status: 400 })
+    if (purchaseError) {
+      console.error('Error adding purchase:', purchaseError)
+      return NextResponse.json({ error: purchaseError.message }, { status: 400 })
     }
 
-    console.log('Picks added successfully:', data)
+    // Create actual pick records in the picks table
+    const pickRecords = []
+    for (let i = 1; i <= picksCount; i++) {
+      pickRecords.push({
+        user_id: userId,
+        matchup_id: null,
+        team_picked: '',
+        picks_count: 1,
+        status: 'pending',
+        pick_name: `Pick ${i}`,
+        week: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    }
+
+    const { data: picksData, error: picksError } = await supabase
+      .from('picks')
+      .insert(pickRecords)
+      .select()
+
+    if (picksError) {
+      console.error('Error creating pick records:', picksError)
+      return NextResponse.json({ error: picksError.message }, { status: 400 })
+    }
+
+    console.log('Picks added successfully:', { purchase: purchaseData[0], picks: picksData })
     return NextResponse.json({ 
       message: `${picksCount} picks added successfully`,
-      purchase: data[0]
+      purchase: purchaseData[0],
+      picks: picksData
     })
   } catch (error) {
     console.error('Add picks error:', error)

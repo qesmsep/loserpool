@@ -279,7 +279,7 @@ export default function PurchasePage() {
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {loading ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+              {loading ? 'Processing...' : settings.pickPrice === 0 ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` : `Pay $${totalPrice.toFixed(2)}`}
             </button>
           </div>
 
