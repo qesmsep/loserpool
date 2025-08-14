@@ -4,8 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { formatDeadlineForUser, isDeadlinePassed, formatGameTime, calculatePicksDeadline } from '@/lib/timezone'
-import { Save, Clock, AlertTriangle, CheckCircle, Plus, Minus } from 'lucide-react'
+import { Save, Clock, AlertTriangle, CheckCircle, Plus, Minus, Tag } from 'lucide-react'
 import Header from '@/components/header'
+import PickNamesManager from '@/components/pick-names-manager'
+import StyledTeamName from '@/components/styled-team-name'
+import { PickNamesService, PickNameWithUsage } from '@/lib/pick-names-service'
+import { useAuth } from '@/components/auth-provider'
 
 interface Matchup {
   id: string
@@ -25,9 +29,15 @@ interface Pick {
   team_picked: string
   picks_count: number
   status: 'active' | 'eliminated' | 'safe'
+  pick_name_id?: string
+  pick_names?: {
+    name: string
+    description?: string
+  }
 }
 
 export default function PicksPage() {
+  const { user, loading: authLoading } = useAuth()
   const [matchups, setMatchups] = useState<Matchup[]>([])
   const [userPicks, setUserPicks] = useState<Pick[]>([])
   const [picksRemaining, setPicksRemaining] = useState(0)
@@ -36,12 +46,14 @@ export default function PicksPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [showPickNamesManager, setShowPickNamesManager] = useState(false)
+  const [selectedPickName, setSelectedPickName] = useState<PickNameWithUsage | null>(null)
+  const [availablePickNames, setAvailablePickNames] = useState<PickNameWithUsage[]>([])
   const router = useRouter()
 
   const loadData = useCallback(async () => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
+      // Check if user is authenticated
       if (!user) {
         router.push('/login')
         return
@@ -74,10 +86,16 @@ export default function PicksPage() {
         .eq('week', week)
         .order('game_time')
 
-      // Get user's picks for current week
+      // Get user's picks for current week with pick names
       const { data: picksData } = await supabase
         .from('picks')
-        .select('*')
+        .select(`
+          *,
+          pick_names (
+            name,
+            description
+          )
+        `)
         .eq('user_id', user.id)
         .in('matchup_id', matchupsData?.map(m => m.id) || [])
 
@@ -91,6 +109,12 @@ export default function PicksPage() {
       setMatchups(matchupsData || [])
       setUserPicks(picksData || [])
       setPicksRemaining(remaining)
+      
+      // Load available pick names
+      const pickNamesService = new PickNamesService()
+      const availableNames = await pickNamesService.getAvailablePickNames()
+      setAvailablePickNames(availableNames)
+      
       setLoading(false)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -100,8 +124,10 @@ export default function PicksPage() {
   }, [router])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    if (!authLoading && user) {
+      loadData()
+    }
+  }, [loadData, authLoading, user])
 
   const getPickForMatchup = (matchupId: string) => {
     return userPicks.find(pick => pick.matchup_id === matchupId)
@@ -134,6 +160,44 @@ export default function PicksPage() {
     }
     
     setPicksRemaining(picksRemaining - 1)
+  }
+
+  const addNamedPickToTeam = (matchupId: string, teamName: string, pickName: PickNameWithUsage) => {
+    if (picksRemaining <= 0) return
+    
+    const existingPick = getPickForMatchup(matchupId)
+    
+    if (existingPick) {
+      // Update existing pick
+      const updatedPicks = userPicks.map(pick => 
+        pick.id === existingPick.id 
+          ? { 
+              ...pick, 
+              team_picked: teamName, 
+              picks_count: pick.picks_count + 1,
+              pick_name_id: pickName.id,
+              pick_names: { name: pickName.name, description: pickName.description }
+            }
+          : pick
+      )
+      setUserPicks(updatedPicks)
+    } else {
+      // Create new pick
+      const newPick: Pick = {
+        id: `temp-${matchupId}`,
+        user_id: '',
+        matchup_id: matchupId,
+        team_picked: teamName,
+        picks_count: 1,
+        status: 'active',
+        pick_name_id: pickName.id,
+        pick_names: { name: pickName.name, description: pickName.description }
+      }
+      setUserPicks([...userPicks, newPick])
+    }
+    
+    setPicksRemaining(picksRemaining - 1)
+    setSelectedPickName(null)
   }
 
   const removePickFromTeam = (matchupId: string, teamName: string) => {
@@ -187,7 +251,8 @@ export default function PicksPage() {
               matchup_id: pick.matchup_id,
               team_picked: pick.team_picked,
               picks_count: pick.picks_count,
-              status: 'active'
+              status: 'active',
+              pick_name_id: pick.pick_name_id
             })
           
           if (error) throw error
@@ -198,6 +263,7 @@ export default function PicksPage() {
             .update({
               team_picked: pick.team_picked,
               picks_count: pick.picks_count,
+              pick_name_id: pick.pick_name_id,
               updated_at: new Date().toISOString()
             })
             .eq('id', pick.id)
@@ -223,7 +289,7 @@ export default function PicksPage() {
     return formatDeadlineForUser(deadlineStr)
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen app-bg flex items-center justify-center">
         <div className="text-center">
@@ -260,14 +326,23 @@ export default function PicksPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleSave}
-              disabled={saving || checkDeadlinePassed()}
-              className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-            >
-              <Save className="w-5 h-5 mr-2" />
-              {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowPickNamesManager(!showPickNamesManager)}
+                className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Tag className="w-4 h-4 mr-2" />
+                Manage Pick Names
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || checkDeadlinePassed()}
+                className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+              >
+                <Save className="w-5 h-5 mr-2" />
+                {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -302,12 +377,46 @@ export default function PicksPage() {
           </div>
         )}
 
+        {/* Pick Names Manager */}
+        {showPickNamesManager && (
+          <div className="mb-6">
+            <PickNamesManager 
+              onPickNameSelect={(pickName) => setSelectedPickName(pickName)}
+              showUsed={false}
+            />
+          </div>
+        )}
+
+        {/* Selected Pick Name */}
+        {selectedPickName && (
+          <div className="mb-6 bg-purple-500/20 border border-purple-500/30 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Tag className="w-5 h-5 text-purple-300" />
+                <div>
+                  <p className="text-white font-medium">Selected Pick Name: {selectedPickName.name}</p>
+                  {selectedPickName.description && (
+                    <p className="text-purple-200 text-sm">{selectedPickName.description}</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPickName(null)}
+                className="text-purple-300 hover:text-purple-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Instructions */}
         <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
           <div className="text-blue-200 space-y-1">
             <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
             <p>• Each click adds 1 pick to that team</p>
+            <p>• <strong>Optional:</strong> Select a pick name first to assign it to your pick</p>
             <p>• If your pick wins, you&apos;re eliminated</p>
             <p>• If your pick loses, you survive to next week</p>
             <p>• Last person standing wins!</p>
@@ -324,9 +433,11 @@ export default function PicksPage() {
               <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-white mb-1">
-                      {matchup.away_team} @ {matchup.home_team}
-                    </h3>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <StyledTeamName teamName={matchup.away_team} size="lg" />
+                      <span className="text-xl font-semibold text-white">@</span>
+                      <StyledTeamName teamName={matchup.home_team} size="lg" />
+                    </div>
                     <div className="flex items-center space-x-3 text-sm text-blue-200">
                       <span>{formatGameTime(matchup.game_time)}</span>
                       {isThursdayGame && (
@@ -351,7 +462,10 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => addPickToTeam(matchup.id, matchup.away_team)}
+                      onClick={() => selectedPickName 
+                        ? addNamedPickToTeam(matchup.id, matchup.away_team, selectedPickName)
+                        : addPickToTeam(matchup.id, matchup.away_team)
+                      }
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.away_team
@@ -360,13 +474,18 @@ export default function PicksPage() {
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
-                        <div className="text-lg font-semibold mb-2">{matchup.away_team}</div>
+                        <StyledTeamName teamName={matchup.away_team} size="md" className="mb-2" />
                         {userPick?.team_picked === matchup.away_team && (
                           <div className="flex items-center justify-center space-x-2">
                             <CheckCircle className="w-5 h-5 text-red-400" />
                             <span className="text-red-300 font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
                             </span>
+                          </div>
+                        )}
+                        {userPick?.pick_names && (
+                          <div className="mt-1 text-xs text-purple-300">
+                            {userPick.pick_names.name}
                           </div>
                         )}
                       </div>
@@ -392,7 +511,10 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => addPickToTeam(matchup.id, matchup.home_team)}
+                      onClick={() => selectedPickName 
+                        ? addNamedPickToTeam(matchup.id, matchup.home_team, selectedPickName)
+                        : addPickToTeam(matchup.id, matchup.home_team)
+                      }
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.home_team
@@ -401,13 +523,18 @@ export default function PicksPage() {
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
-                        <div className="text-lg font-semibold mb-2">{matchup.home_team}</div>
+                        <StyledTeamName teamName={matchup.home_team} size="md" className="mb-2" />
                         {userPick?.team_picked === matchup.home_team && (
                           <div className="flex items-center justify-center space-x-2">
                             <CheckCircle className="w-5 h-5 text-red-400" />
                             <span className="text-red-300 font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
                             </span>
+                          </div>
+                        )}
+                        {userPick?.pick_names && (
+                          <div className="mt-1 text-xs text-purple-300">
+                            {userPick.pick_names.name}
                           </div>
                         )}
                       </div>

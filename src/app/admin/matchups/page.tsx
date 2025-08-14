@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
+import StyledTeamName from '@/components/styled-team-name'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Trophy } from 'lucide-react'
@@ -148,6 +149,10 @@ export default async function AdminMatchupsPage() {
               game_time: string;
               away_score: number | null;
               home_score: number | null;
+              venue?: string;
+              weather_forecast?: string;
+              away_spread?: number;
+              home_spread?: number;
               totalPicks: number;
               activePicks: number;
               eliminatedPicks: number;
@@ -165,8 +170,10 @@ export default async function AdminMatchupsPage() {
                       <div key={matchup.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
                         <div className="flex-1">
                           <div className="flex items-center space-x-4">
-                            <div className="text-lg font-semibold text-white">
-                              {matchup.away_team} @ {matchup.home_team}
+                            <div className="flex items-center space-x-2">
+                              <StyledTeamName teamName={matchup.away_team} size="sm" />
+                              <span className="text-lg font-semibold text-white">@</span>
+                              <StyledTeamName teamName={matchup.home_team} size="sm" />
                             </div>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
@@ -178,10 +185,19 @@ export default async function AdminMatchupsPage() {
                           </div>
                           <div className="text-sm text-blue-200 mt-1">
                             {new Date(matchup.game_time).toLocaleString()}
+                            {matchup.venue && (
+                              <span className="ml-4">📍 {matchup.venue}</span>
+                            )}
                             {matchup.away_score !== null && matchup.home_score !== null && (
                               <span className="ml-4">
                                 Score: {matchup.away_score} - {matchup.home_score}
                               </span>
+                            )}
+                            {matchup.weather_forecast && (
+                              <span className="ml-4">🌤️ {matchup.weather_forecast}</span>
+                            )}
+                            {matchup.away_spread && matchup.home_spread && (
+                              <span className="ml-4">📊 {matchup.away_spread} / {matchup.home_spread}</span>
                             )}
                           </div>
                         </div>

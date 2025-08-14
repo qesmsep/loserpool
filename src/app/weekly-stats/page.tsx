@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Header from '@/components/header'
-import { getTeamColors } from '@/lib/team-logos'
+
+import StyledTeamName from '@/components/styled-team-name'
 import { formatGameTime } from '@/lib/timezone'
 
 interface TeamStats {
@@ -201,15 +202,10 @@ export default function WeeklyStatsPage() {
                   </div>
                 </div>
 
-                <div
-                  className="w-full p-3 sm:p-4 rounded-lg text-white font-bold shadow-lg mb-3"
-                  style={{
-                    background: `linear-gradient(135deg, ${getTeamColors(teamStat.team_name).primary} 0%, ${getTeamColors(teamStat.team_name).primary} 50%, ${getTeamColors(teamStat.team_name).secondary} 100%)`,
-                    color: 'white'
-                  }}
-                >
+                <div className="w-full p-3 sm:p-4 rounded-lg text-white font-bold shadow-lg mb-3 bg-white/10 border border-white/20">
                   <div className="text-center">
-                    <div className="text-2xl sm:text-3xl font-bold">
+                    <StyledTeamName teamName={teamStat.team_name} size="lg" className="mb-2" />
+                    <div className="text-2xl sm:text-3xl font-bold text-white">
                       {teamStat.total_picks}
                     </div>
                     <div className="text-sm sm:text-base opacity-90">
@@ -218,8 +214,10 @@ export default function WeeklyStatsPage() {
                   </div>
                 </div>
 
-                <div className="text-xs sm:text-sm text-blue-200 text-center">
-                  {teamStat.away_team} @ {teamStat.home_team}
+                <div className="flex items-center justify-center space-x-2 text-xs sm:text-sm">
+                  <StyledTeamName teamName={teamStat.away_team} size="sm" />
+                  <span className="text-blue-200">@</span>
+                  <StyledTeamName teamName={teamStat.home_team} size="sm" />
                 </div>
               </div>
             ))}

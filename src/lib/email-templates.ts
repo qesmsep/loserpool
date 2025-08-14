@@ -283,3 +283,61 @@ export async function sendWelcomeEmail(userId: string): Promise<boolean> {
     return false
   }
 }
+
+export const emailTemplates = {
+  'error-notification': {
+    subject: 'Loser Pool - Automated Update Error',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">🚨 Automated Update Error</h2>
+        
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="color: #dc2626; margin-top: 0;">Error Details</h3>
+          <p style="margin: 8px 0;"><strong>Error:</strong> {{error}}</p>
+          <p style="margin: 8px 0;"><strong>Timestamp:</strong> {{timestamp}}</p>
+          <p style="margin: 8px 0;"><strong>Environment:</strong> {{environment}}</p>
+        </div>
+        
+        <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="color: #0369a1; margin-top: 0;">What This Means</h3>
+          <p>The automated matchup update system encountered an error while trying to fetch and update game data from external APIs.</p>
+          <p>This may affect the real-time display of game information, weather data, or odds in the Loser Pool application.</p>
+        </div>
+        
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <h3 style="color: #166534; margin-top: 0;">Next Steps</h3>
+          <ul style="margin: 8px 0; padding-left: 20px;">
+            <li>Check the application logs for more detailed error information</li>
+            <li>Verify API keys and external service availability</li>
+            <li>Consider running a manual update to test the system</li>
+            <li>Review the admin dashboard for update status</li>
+          </ul>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          This is an automated notification from the Loser Pool system. 
+          Please investigate the issue to ensure continued functionality.
+        </p>
+      </div>
+    `,
+    text: `
+Automated Update Error
+
+Error Details:
+- Error: {{error}}
+- Timestamp: {{timestamp}}
+- Environment: {{environment}}
+
+What This Means:
+The automated matchup update system encountered an error while trying to fetch and update game data from external APIs. This may affect the real-time display of game information, weather data, or odds in the Loser Pool application.
+
+Next Steps:
+- Check the application logs for more detailed error information
+- Verify API keys and external service availability
+- Consider running a manual update to test the system
+- Review the admin dashboard for update status
+
+This is an automated notification from the Loser Pool system. Please investigate the issue to ensure continued functionality.
+    `
+  }
+}

@@ -338,6 +338,60 @@ export default async function AdminSettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Automated Updates */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+            <div className="px-6 py-4 border-b border-white/20">
+              <h2 className="text-xl font-semibold text-white">Automated Updates</h2>
+              <p className="text-blue-100">Monitor matchup data collection and API integrations</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Matchup Updates</div>
+                  <div className="text-sm text-blue-200">NFL.com scraping (6 AM & 6 PM CST)</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-200">
+                    Active
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Weather Data</div>
+                  <div className="text-sm text-blue-200">WeatherStack integration</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-200">
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Odds Data</div>
+                  <div className="text-sm text-blue-200">DraftKings Sportsbook integration</div>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-200">
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Link
+                  href="/admin/data-management"
+                  className="text-blue-200 hover:text-white transition-colors text-sm"
+                >
+                  Manage Data Updates →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}

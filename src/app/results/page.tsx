@@ -1,8 +1,9 @@
 import { requireAuth } from '@/lib/auth'
+import StyledTeamName from '@/components/styled-team-name'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { CheckCircle, XCircle, Minus } from 'lucide-react'
 import Header from '@/components/header'
-import { getTeamColors } from '@/lib/team-logos'
+
 import { formatGameTime } from '@/lib/timezone'
 
 interface Pick {
@@ -13,6 +14,11 @@ interface Pick {
   picks_count: number
   status: 'active' | 'eliminated' | 'safe'
   created_at: string
+  pick_name_id?: string
+  pick_names?: {
+    name: string
+    description?: string
+  }
   matchups?: {
     away_team: string
     home_team: string
@@ -32,6 +38,10 @@ export default async function ResultsPage() {
     .from('picks')
     .select(`
       *,
+      pick_names (
+        name,
+        description
+      ),
       matchups (
         away_team,
         home_team,
@@ -128,9 +138,11 @@ export default async function ResultsPage() {
                             <span className="text-sm text-blue-200">
                               {formatGameTime(matchup?.game_time || '')}
                             </span>
-                            <span className="font-medium text-white">
-                              {matchup?.away_team} @ {matchup?.home_team}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                              <StyledTeamName teamName={matchup?.away_team || ''} size="sm" />
+                              <span className="font-medium text-white">@</span>
+                              <StyledTeamName teamName={matchup?.home_team || ''} size="sm" />
+                            </div>
                             {matchup?.status === 'final' && (
                               <span className="text-xs text-green-300 bg-green-500/20 px-2 py-1 rounded">
                                 FINAL
@@ -155,17 +167,16 @@ export default async function ResultsPage() {
                         {/* Away Team */}
                         <div className="relative">
                           <div 
-                            className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
-                                                    style={{
-                          background: `linear-gradient(135deg, ${getTeamColors(matchup?.away_team || '').primary} 0%, ${getTeamColors(matchup?.away_team || '').primary} 50%, ${getTeamColors(matchup?.away_team || '').secondary} 100%)`,
-                          color: 'white',
-                          border: pick.team_picked === matchup?.away_team ? '2px solid white' : 'none'
-                        }}
+                            className={`w-full p-4 rounded-lg text-white relative font-bold shadow-lg ${
+                              pick.team_picked === matchup?.away_team ? 'ring-2 ring-white ring-opacity-50' : ''
+                            }`}
                           >
-                                                         <div className="text-center">
-                               <div className={`mb-1 ${pick.team_picked === matchup?.away_team ? 'text-xl font-bold' : 'font-semibold'}`}>
-                                 {matchup?.away_team}
-                               </div>
+                            <div className="text-center">
+                              <StyledTeamName 
+                                teamName={matchup?.away_team || ''} 
+                                size="lg" 
+                                className="mb-2" 
+                              />
                                <div className={`${pick.team_picked === matchup?.away_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
                                  {matchup?.status === 'final' ? matchup.away_score : ''}
                                </div>
@@ -176,17 +187,16 @@ export default async function ResultsPage() {
                         {/* Home Team */}
                         <div className="relative">
                           <div 
-                            className="w-full p-4 rounded-lg text-white relative font-bold shadow-lg"
-                                                    style={{
-                          background: `linear-gradient(135deg, ${getTeamColors(matchup?.home_team || '').primary} 0%, ${getTeamColors(matchup?.home_team || '').primary} 50%, ${getTeamColors(matchup?.home_team || '').secondary} 100%)`,
-                          color: 'white',
-                          border: pick.team_picked === matchup?.home_team ? '2px solid white' : 'none'
-                        }}
+                            className={`w-full p-4 rounded-lg text-white relative font-bold shadow-lg ${
+                              pick.team_picked === matchup?.home_team ? 'ring-2 ring-white ring-opacity-50' : ''
+                            }`}
                           >
-                                                         <div className="text-center">
-                               <div className={`mb-1 ${pick.team_picked === matchup?.home_team ? 'text-xl font-bold' : 'font-semibold'}`}>
-                                 {matchup?.home_team}
-                               </div>
+                            <div className="text-center">
+                              <StyledTeamName 
+                                teamName={matchup?.home_team || ''} 
+                                size="lg" 
+                                className="mb-2" 
+                              />
                                <div className={`${pick.team_picked === matchup?.home_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
                                  {matchup?.status === 'final' ? matchup.home_score : ''}
                                </div>
@@ -199,6 +209,11 @@ export default async function ResultsPage() {
                         <p className="text-lg font-bold text-white">
                           {pick.picks_count} loser pick{pick.picks_count > 1 ? 's' : ''} on {pick.team_picked}
                         </p>
+                        {pick.pick_names && (
+                          <p className="text-sm text-purple-300 mt-1">
+                            Named: {pick.pick_names.name}
+                          </p>
+                        )}
                       </div>
                     
                     </div>

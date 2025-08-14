@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { sendAdminPurchaseNotification } from '@/lib/email'
+import { PickNamesServiceServer } from '@/lib/pick-names-service-server'
 
 export async function POST(request: NextRequest) {
   // Check if Stripe is properly configured
@@ -84,6 +85,15 @@ export async function POST(request: NextRequest) {
               amount: purchase.amount_paid,
               purchaseId: purchase.id
             })
+
+            // Generate default pick names for the user
+            try {
+              const pickNamesService = new PickNamesServiceServer()
+              await pickNamesService.generateDefaultPickNames(purchase.user_id, purchase.picks_count)
+              console.log(`Generated ${purchase.picks_count} default pick names for user ${purchase.user_id}`)
+            } catch (pickNameError) {
+              console.error('Error generating default pick names:', pickNameError)
+            }
           }
         }
       } catch (error) {

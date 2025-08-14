@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
+import StyledTeamName from '@/components/styled-team-name'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Trophy, TrendingUp } from 'lucide-react'
@@ -192,8 +193,10 @@ export default async function AdminResultsPage() {
                       <div key={matchup.id} className="flex items-center justify-between p-4 border border-white/20 rounded-lg bg-white/5">
                         <div className="flex-1">
                           <div className="flex items-center space-x-4">
-                            <div className="text-lg font-semibold text-white">
-                              {matchup.away_team} @ {matchup.home_team}
+                            <div className="flex items-center space-x-2">
+                              <StyledTeamName teamName={matchup.away_team} size="sm" />
+                              <span className="text-lg font-semibold text-white">@</span>
+                              <StyledTeamName teamName={matchup.home_team} size="sm" />
                             </div>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
