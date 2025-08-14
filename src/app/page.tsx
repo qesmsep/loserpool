@@ -3,9 +3,28 @@ import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { getPoolStatus } from '@/lib/pool-status'
 
+// Force dynamic rendering to avoid static generation issues
+export const dynamic = 'force-dynamic'
+
 export default async function HomePage() {
-  const user = await getCurrentUser()
-  const poolStatus = await getPoolStatus()
+  let user = null
+  let poolStatus = null
+  
+  try {
+    user = await getCurrentUser()
+    poolStatus = await getPoolStatus()
+  } catch (error) {
+    console.log('Error during server-side rendering:', error)
+    // Fall back to default values
+    poolStatus = {
+      isLocked: false,
+      lockDate: null,
+      currentTime: new Date(),
+      timeUntilLock: null,
+      canRegister: true,
+      canPurchase: true
+    }
+  }
 
   if (user) {
     redirect('/dashboard')

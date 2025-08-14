@@ -13,7 +13,7 @@ export async function getCurrentUser() {
     console.log('User check:', { hasUser: !!user, error })
     
     if (error) {
-      console.error('Auth error:', error)
+      console.error('Auth error:', error.message || error)
       return null
     }
     
@@ -25,7 +25,7 @@ export async function getCurrentUser() {
     console.log('User authenticated:', user.email)
     return user
   } catch (err) {
-    console.error('getCurrentUser error:', err)
+    console.error('getCurrentUser error:', err instanceof Error ? err.message : err)
     return null
   }
 }
