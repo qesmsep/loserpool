@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       .from('global_settings')
       .upsert({
         key: 'current_week',
-        value: currentWeekInfo.week_number.toString()
+        value: currentWeekInfo.weekNumber.toString()
       })
 
     if (updateError) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Current week updated successfully',
-      current_week: currentWeekInfo.week_number,
+      current_week: currentWeekInfo.weekNumber,
       current_week_display: currentWeekInfo.current_week,
       season_type: currentWeekInfo.season_type
     })
