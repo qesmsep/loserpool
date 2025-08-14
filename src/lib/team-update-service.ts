@@ -86,7 +86,6 @@ interface TeamStats {
   OffensivePlays: number
   OffensiveYards: number
   OffensiveYardsPerPlay: number
-  Touchdowns: number
   RushingTouchdowns: number
   PassingTouchdowns: number
   OtherTouchdowns: number
@@ -118,11 +117,8 @@ interface TeamStats {
   FumblesRecovered: number
   FumbleReturnYards: number
   FumbleReturnTouchdowns: number
-  InterceptionReturnTouchdowns: number
   BlockedKicks: number
-  PuntReturnTouchdowns: number
   PuntReturnLong: number
-  KickReturnTouchdowns: number
   KickReturnLong: number
   BlockedKickReturnYards: number
   BlockedKickReturnTouchdowns: number
@@ -189,7 +185,6 @@ interface TeamStats {
   OpponentPuntNetYards: number
   IsGameOver: boolean
   GameID: number
-  SeasonType: number
   Updated: string
   Created: string
 }
@@ -207,7 +202,7 @@ export class TeamUpdateService {
       console.log(`Starting team data update for season ${season}`)
       
       // Get teams from SportsData.io
-      const teams = await sportsDataService.getTeams()
+      const teams = await sportsDataService.getTeams() as unknown as SportsDataTeam[]
       console.log(`Retrieved ${teams.length} teams from SportsData.io`)
 
       // Get team stats for the current season

@@ -189,7 +189,7 @@ function mapWeekToSeason(week: number, gameDate?: string, seasonType?: number): 
 }
 
 // Helper function to process games for a specific week
-async function processWeekGames(season: number, week: number, supabase: any): Promise<{ updated: number; added: number; skipped: number; errors: string[] }> {
+async function processWeekGames(season: number, week: number, supabase: Awaited<ReturnType<typeof getSupabase>>): Promise<{ updated: number; added: number; skipped: number; errors: string[] }> {
   const result = { updated: 0, added: 0, skipped: 0, errors: [] as string[] }
   
   try {
@@ -376,14 +376,14 @@ async function updatePreseason(season: number): Promise<UpdateResult> {
       return result
     }
     
-    // Group games by week
-    const gamesByWeek = games.reduce((acc, game) => {
-      if (!acc[game.Week]) {
-        acc[game.Week] = []
-      }
-      acc[game.Week].push(game)
-      return acc
-    }, {} as Record<number, any[]>)
+      // Group games by week
+  const gamesByWeek = games.reduce((acc, game) => {
+    if (!acc[game.Week]) {
+      acc[game.Week] = []
+    }
+    acc[game.Week].push(game)
+    return acc
+  }, {} as Record<number, typeof games>)
     
     // Process each week
     for (const [week, weekGames] of Object.entries(gamesByWeek)) {
@@ -405,7 +405,7 @@ async function updatePreseason(season: number): Promise<UpdateResult> {
             // Insert or update the matchup
             const { data: existingMatchup, error: selectError } = await supabase
               .from('matchups')
-              .select('id')
+              .select('id, api_update_count')
               .eq('week', matchup.week)
               .eq('away_team', matchup.away_team)
               .eq('home_team', matchup.home_team)
@@ -423,7 +423,7 @@ async function updatePreseason(season: number): Promise<UpdateResult> {
                   ...matchup,
                   updated_at: new Date().toISOString(),
                   last_api_update: new Date().toISOString(),
-                  api_update_count: supabase.raw('api_update_count + 1')
+                  api_update_count: (existingMatchup.api_update_count || 0) + 1
                 })
                 .eq('id', existingMatchup.id)
               
@@ -445,7 +445,7 @@ async function updatePreseason(season: number): Promise<UpdateResult> {
               result.gamesAdded++
             }
           } catch (error) {
-            const errorMsg = `Error processing preseason game ${game.GameKey}: ${error}`
+            const errorMsg = `Error processing preseason game ${game.GameKey}: ${error instanceof Error ? error.message : JSON.stringify(error)}`
             console.error(errorMsg)
             result.errors.push(errorMsg)
           }
@@ -462,7 +462,7 @@ async function updatePreseason(season: number): Promise<UpdateResult> {
     result.success = result.errors.length === 0
     console.log(`Preseason update complete: ${result.gamesUpdated} updated, ${result.gamesAdded} added, ${result.gamesSkipped} skipped`)
 
-  } catch (error) {
+  } catch (error: unknown) {
     result.errors.push(`Service error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     console.error('Preseason update service error:', error)
   }

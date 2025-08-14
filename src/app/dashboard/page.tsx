@@ -6,13 +6,12 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Trophy, Calendar, Save, Tag, ShoppingCart } from 'lucide-react'
 import Header from '@/components/header'
-import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, getDayDisplayOrder, sortMatchupsChronologically } from '@/lib/timezone'
+import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically } from '@/lib/timezone'
 import { DateTime } from 'luxon'
 import { useAuth } from '@/components/auth-provider'
 
 import { getCurrentWeekDisplay, isPreseason } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
-import StyledTeamName from '@/components/styled-team-name'
 import PickSelectionPopup from '@/components/pick-selection-popup'
 
 interface Matchup {
@@ -44,7 +43,7 @@ interface Pick {
   status: 'pending' | 'active' | 'lost' | 'safe'
   pick_name?: string
   // Week columns will be added dynamically
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface UserProfile {
@@ -357,7 +356,7 @@ export default function DashboardPage() {
     if (picks.length > 0) {
       const pick = picks[0]
       return {
-        team_picked: pick.team_picked || pick.away_team || pick.home_team || '',
+        team_picked: (pick as any).team_picked || (pick as any).away_team || (pick as any).home_team || '',
         picks_count: pick.picks_count || 0
       }
     }

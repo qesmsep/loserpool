@@ -240,7 +240,7 @@ export class SportsDataService {
   }
 
   // Get the current week number
-  async getCurrentWeek(season: number): Promise<number> {
+  async getCurrentWeek(_season: number): Promise<number> {
     try {
       const url = `${this.baseUrl}/scores/json/CurrentWeek?key=${this.apiKey}`
       
@@ -264,7 +264,7 @@ export class SportsDataService {
   }
 
   // Get team information
-  async getTeams(): Promise<any[]> {
+  async getTeams(): Promise<Record<string, unknown>[]> {
     try {
       const url = `${this.baseUrl}/scores/json/Teams?key=${this.apiKey}`
       
@@ -287,7 +287,7 @@ export class SportsDataService {
   }
 
   // Get odds for games
-  async getOdds(season: number, week: number): Promise<any[]> {
+  async getOdds(season: number, week: number): Promise<Record<string, unknown>[]> {
     try {
       const url = `${this.baseUrl}/odds/json/GameOddsByWeek/${season}/${week}?key=${this.apiKey}`
       
@@ -310,9 +310,8 @@ export class SportsDataService {
   }
 
   // Convert SportsData game format to our internal format
-  convertGameToMatchup(game: SportsDataGame): any {
+  convertGameToMatchup(game: SportsDataGame): Record<string, unknown> {
     return {
-      id: game.GameKey,
       week: game.Week,
       away_team: game.AwayTeam,
       home_team: game.HomeTeam,
@@ -324,16 +323,17 @@ export class SportsDataService {
       home_spread: game.PointSpread || null, // Positive for home team
       over_under: game.OverUnder || null,
       venue: game.StadiumDetails?.Name || null,
-      weather: {
-        temperature: game.ForecastTempHigh || null,
-        description: game.ForecastDescription || null,
-        windSpeed: game.ForecastWindSpeed || null
-      },
-      channel: game.Channel || null,
+      weather_forecast: game.ForecastDescription || null,
+      temperature: game.ForecastTempHigh || null,
+      wind_speed: game.ForecastWindSpeed || null,
+      humidity: null, // Not available from SportsData
+      is_dome: false, // Default value
+      odds_last_updated: null,
       data_source: 'sportsdata.io',
       last_api_update: new Date().toISOString(),
       api_update_count: 1,
-      winner: this.determineWinner(game)
+      winner: this.determineWinner(game),
+      season: '' // This will be set by the calling function
     }
   }
 

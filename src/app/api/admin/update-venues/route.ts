@@ -180,7 +180,7 @@ async function updateVenuesForMatchups(supabase: any, season: number, week?: num
     for (const weekNum of weeksToUpdate) {
       try {
         console.log(`Fetching venue data for Week ${weekNum}...`)
-        const games = await sportsDataService.getGames(season, weekNum)
+        const games = await sportsDataService.getGames(season, weekNum as number)
         
         for (const game of games) {
           const matchupKey = `${game.AwayTeam}@${game.HomeTeam}`

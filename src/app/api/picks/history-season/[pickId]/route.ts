@@ -67,7 +67,7 @@ export async function GET(
         .select('id, away_team, home_team, game_time, season, week')
         .in('id', matchupIds)
 
-      matchupDetails = matchups?.reduce((acc, matchup) => {
+      matchupDetails = matchups?.reduce((acc: any, matchup) => {
         acc[matchup.id] = matchup
         return acc
       }, {}) || {}

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     
     // Extract venue information
     const venueData = games.map(game => ({
-      gameId: game.GameID,
+      gameId: game.GameKey,
       awayTeam: game.AwayTeam,
       homeTeam: game.HomeTeam,
       venue: game.StadiumDetails?.Name || 'No venue data',

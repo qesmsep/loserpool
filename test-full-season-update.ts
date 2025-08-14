@@ -85,7 +85,7 @@ async function testFullSeasonUpdate() {
         console.log(`   ${season}: ${games.length} games`)
         
         // Show first few games for each season
-        games.slice(0, 3).forEach(game => {
+        games.slice(0, 3).forEach((game: any) => {
           console.log(`     - ${game.away_team} @ ${game.home_team} (Week ${game.week})`)
         })
         if (games.length > 3) {
