@@ -200,35 +200,21 @@ export default function DashboardPage() {
     }
   } catch (error) {
     console.error('Error loading matchup data:', error)
-    // Fallback to database with season filtering
-    // Determine current season type based on week
-    let currentSeason = 'REG'
-    if (week <= 4) {
-      currentSeason = 'PRE'
-    } else if (week > 21) {
-      currentSeason = 'POST'
-    }
-    
-    let nextSeason = 'REG'
-    if ((week + 1) <= 4) {
-      nextSeason = 'PRE'
-    } else if ((week + 1) > 21) {
-      nextSeason = 'POST'
-    }
-
+    // Fallback to database - get current week games only
     const { data: dbMatchupsData } = await supabase
       .from('matchups')
       .select('*')
       .eq('week', week)
-      .eq('season', `${currentSeason}${week}`)
-      .order('game_time')
+      .order('get_season_order(season)', { ascending: true })
+      .order('game_time', { ascending: true })
 
+    // Get next week games for preview
     const { data: dbNextWeekMatchupsData } = await supabase
       .from('matchups')
       .select('*')
-      .eq('week', week + 1) // Next week number
-      .eq('season', `${nextSeason}${week + 1}`)
-      .order('game_time')
+      .eq('week', week + 1)
+      .order('get_season_order(season)', { ascending: true })
+      .order('game_time', { ascending: true })
       
     matchupsData = dbMatchupsData || []
     nextWeekMatchupsData = dbNextWeekMatchupsData || []
@@ -750,8 +736,8 @@ export default function DashboardPage() {
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
                 <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-white">This Week&apos;s Games</h2>
-                <p className="text-sm sm:text-base text-blue-100">{currentWeekDisplay} - {matchups?.length || 0} games scheduled</p>
+                <h2 className="text-lg sm:text-xl font-semibold text-white">Current Week Games</h2>
+                <p className="text-sm sm:text-base text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <button
@@ -818,37 +804,27 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold text-white">Next Week&apos;s Games</h2>
-                <p className="text-sm sm:text-base text-blue-100">{nextWeekDisplay} - {nextWeekMatchups?.length || 0} games scheduled</p>
+                <p className="text-sm sm:text-base text-blue-100">Week {currentWeek + 1} - {nextWeekMatchups?.length || 0} games scheduled</p>
               </div>
-
             </div>
           </div>
           <div className="p-4 sm:p-6">
             {nextWeekMatchups && nextWeekMatchups.length > 0 ? (
               <div className="space-y-3 sm:space-y-4">
                 {nextWeekMatchups.map((matchup) => (
-                  <div key={matchup.id} className="bg-white/5 border border-white/20 rounded-lg p-3 sm:p-4 opacity-75">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs sm:text-sm text-blue-200 bg-blue-500/20 px-2 py-1 rounded">
-                          {new Date(matchup.game_time).getDay() === 4 ? 'TNF' : formatGameTime(matchup.game_time)}
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-300">
-                          {new Date(matchup.game_time).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                      <div className="text-center">
-                        <StyledTeamName teamName={matchup.away_team} size="md" className="text-center mb-1" />
-                        <div className="text-xs sm:text-sm text-gray-400">Away</div>
-                      </div>
-                      <div className="text-center">
-                        <StyledTeamName teamName={matchup.home_team} size="md" className="text-center mb-1" />
-                        <div className="text-xs sm:text-sm text-gray-400">Home</div>
-                      </div>
-                    </div>
-                  </div>
+                  <MatchupBox
+                    key={matchup.id}
+                    matchup={matchup}
+                    userPick={undefined}
+                    showControls={false}
+                    picksSaved={true}
+                    userPicks={[]}
+                    picksRemaining={0}
+                    checkDeadlinePassed={() => true}
+                    addPickToTeam={() => {}}
+                    removePickFromTeam={() => {}}
+                    formatGameTime={formatGameTime}
+                  />
                 ))}
               </div>
             ) : (

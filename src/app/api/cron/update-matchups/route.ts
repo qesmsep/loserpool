@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MatchupDataService } from '@/lib/matchup-data-service'
+import { MatchupUpdateServicePreserveUuid } from '@/lib/matchup-update-service-preserve-uuid'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,22 +44,25 @@ export async function POST(request: NextRequest) {
     }
     */
 
-    console.log('Starting automated matchup update...')
+    console.log('Starting automated matchup update with UUID preservation...')
     
-    const matchupService = new MatchupDataService()
-    const result = await matchupService.updateAllMatchups()
+    const matchupService = new MatchupUpdateServicePreserveUuid()
+    const result = await matchupService.updateMatchupsPreserveUuid()
 
     // Send error notification if there were errors
     if (result.errors.length > 0) {
       const errorMessage = `Automated update completed with ${result.errors.length} errors:\n${result.errors.join('\n')}`
-      await matchupService.sendErrorNotification(errorMessage)
+      console.error(errorMessage)
+      // TODO: Implement error notification if needed
     }
 
     return NextResponse.json({ 
-      message: 'Comprehensive matchup update completed successfully',
+      message: 'Matchup update with UUID preservation completed successfully',
       processed: result.processed,
       updated: result.updated,
+      created: result.created,
       errors: result.errors.length,
+      preservedUuids: result.preservedUuids.length,
       timestamp: new Date().toISOString()
     })
 
@@ -68,9 +71,9 @@ export async function POST(request: NextRequest) {
     
     // Send error notification
     try {
-      const matchupService = new MatchupDataService()
       const errorMessage = `Fatal error in automated matchup update: ${error instanceof Error ? error.message : 'Unknown error'}`
-      await matchupService.sendErrorNotification(errorMessage)
+      console.error(errorMessage)
+      // TODO: Implement error notification if needed
     } catch (emailError) {
       console.error('Failed to send error notification:', emailError)
     }
@@ -85,16 +88,18 @@ export async function POST(request: NextRequest) {
 // Also allow GET for manual testing
 export async function GET() {
   try {
-    console.log('Manual matchup update started')
+    console.log('Manual matchup update with UUID preservation started')
     
-    const matchupService = new MatchupDataService()
-    const result = await matchupService.updateAllMatchups()
+    const matchupService = new MatchupUpdateServicePreserveUuid()
+    const result = await matchupService.updateMatchupsPreserveUuid()
 
     return NextResponse.json({ 
       success: true,
       processed: result.processed,
       updated: result.updated,
+      created: result.created,
       errors: result.errors,
+      preservedUuids: result.preservedUuids.length,
       timestamp: new Date().toISOString()
     })
   } catch (error) {

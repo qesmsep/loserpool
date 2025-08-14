@@ -19,7 +19,8 @@ export default async function AdminResultsPage() {
       )
     `)
     .order('week', { ascending: false })
-    .order('game_time', { ascending: true })
+            .order('get_season_order(season)', { ascending: true })
+        .order('game_time', { ascending: true })
 
   // Calculate stats for each matchup
   const matchupsWithStats = matchups?.map(matchup => {

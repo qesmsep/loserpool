@@ -1,7 +1,8 @@
--- Add season column to matchups table
--- This will store the season type (PRE/REG/POST) and week number for better identification
+-- Update Season Ordering for Matchups
+-- This script adds the season column and proper ordering function
+-- SAFE VERSION - handles existing constraints
 
--- Add the season column
+-- Add the season column if it doesn't exist
 ALTER TABLE public.matchups 
 ADD COLUMN IF NOT EXISTS season TEXT;
 
@@ -26,15 +27,33 @@ WHERE season IS NULL;
 ALTER TABLE public.matchups 
 ALTER COLUMN season SET NOT NULL;
 
--- Add a check constraint to ensure valid season format
-ALTER TABLE public.matchups 
-ADD CONSTRAINT check_season_format 
-CHECK (season ~ '^(PRE|REG|POST)\d+$');
+-- Add a check constraint to ensure valid season format (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'check_season_format' 
+        AND conrelid = 'public.matchups'::regclass
+    ) THEN
+        ALTER TABLE public.matchups 
+        ADD CONSTRAINT check_season_format 
+        CHECK (season ~ '^(PRE|REG|POST)\d+$');
+    END IF;
+END $$;
 
--- Add a unique constraint to prevent duplicate matchups for the same season
-ALTER TABLE public.matchups 
-ADD CONSTRAINT unique_matchup_season_teams 
-UNIQUE (season, away_team, home_team);
+-- Add a unique constraint to prevent duplicate matchups for the same season (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'unique_matchup_season_teams' 
+        AND conrelid = 'public.matchups'::regclass
+    ) THEN
+        ALTER TABLE public.matchups 
+        ADD CONSTRAINT unique_matchup_season_teams 
+        UNIQUE (season, away_team, home_team);
+    END IF;
+END $$;
 
 -- Create a function to get the proper season ordering
 CREATE OR REPLACE FUNCTION get_season_order(season_text TEXT)
@@ -55,8 +74,23 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- Create an index for the season ordering function
 CREATE INDEX IF NOT EXISTS idx_matchups_season_order ON public.matchups(get_season_order(season));
 
--- Example of how to query matchups by season with proper ordering:
--- SELECT * FROM matchups ORDER BY get_season_order(season), game_time;
--- SELECT * FROM matchups WHERE season = 'PRE2';
--- SELECT * FROM matchups WHERE season = 'REG1';
--- SELECT * FROM matchups WHERE season = 'POST4';
+-- Test the ordering function
+SELECT 
+  week,
+  season,
+  get_season_order(season) as season_order,
+  away_team,
+  home_team,
+  game_time
+FROM public.matchups 
+ORDER BY get_season_order(season), game_time
+LIMIT 10;
+
+-- Verify the season column is populated correctly
+SELECT 
+  week,
+  season,
+  COUNT(*) as game_count
+FROM public.matchups 
+GROUP BY week, season
+ORDER BY get_season_order(season);

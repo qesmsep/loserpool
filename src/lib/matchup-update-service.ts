@@ -217,17 +217,23 @@ export class MatchupUpdateService {
         currentSeason = 'POST'
       }
 
+      // Build the season string (e.g., 'PRE1', 'REG1', 'POST1')
+      const seasonString = `${currentSeason}${weekNumber}`
+      console.log(`Filtering by season: ${seasonString}`)
+
       const { data, error } = await supabase
         .from('matchups')
         .select('*')
         .eq('week', weekNumber)
-        .order('game_time')
+        .eq('season', seasonString)
+        .order('game_time', { ascending: true })
 
       if (error) {
         console.error('Error fetching current week matchups:', error)
         return []
       }
 
+      console.log(`Found ${data?.length || 0} matchups for ${seasonString}`)
       return data || []
     } catch (error) {
       console.error('Error getting current week matchups:', error)
@@ -260,17 +266,23 @@ export class MatchupUpdateService {
         nextSeason = 'POST'
       }
 
+      // Build the season string (e.g., 'PRE2', 'REG2', 'POST2')
+      const seasonString = `${nextSeason}${nextWeekNumber}`
+      console.log(`Filtering by season: ${seasonString}`)
+
       const { data, error } = await supabase
         .from('matchups')
         .select('*')
         .eq('week', nextWeekNumber)
-        .order('game_time')
+        .eq('season', seasonString)
+        .order('game_time', { ascending: true })
 
       if (error) {
         console.error('Error fetching next week matchups:', error)
         return []
       }
 
+      console.log(`Found ${data?.length || 0} matchups for ${seasonString}`)
       return data || []
     } catch (error) {
       console.error('Error getting next week matchups:', error)

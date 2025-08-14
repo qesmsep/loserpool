@@ -79,12 +79,13 @@ export default function PicksPage() {
 
       const totalPicksPurchased = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
-      // Get current week matchups
+      // Get current week matchups ordered by season and game time
       const { data: matchupsData } = await supabase
         .from('matchups')
         .select('*')
         .eq('week', week)
-        .order('game_time')
+        .order('get_season_order(season)', { ascending: true })
+        .order('game_time', { ascending: true })
 
       // Get user's picks for current week with pick names
       const { data: picksData } = await supabase

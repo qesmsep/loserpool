@@ -38,7 +38,8 @@ export default async function AutomatedUpdatesPage() {
     .from('matchups')
     .select('*')
     .eq('week', currentWeek)
-    .order('game_time', { ascending: true })
+            .order('get_season_order(season)', { ascending: true })
+        .order('game_time', { ascending: true })
 
   const getStatusIcon = (status: string) => {
     switch (status) {
