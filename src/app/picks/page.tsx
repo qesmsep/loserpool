@@ -25,15 +25,14 @@ interface Matchup {
 interface Pick {
   id: string
   user_id: string
-  matchup_id: string
+  matchup_id: string | null
   team_picked: string
   picks_count: number
-  status: 'active' | 'eliminated' | 'safe'
-  pick_name_id?: string
-  pick_names?: {
-    name: string
-    description?: string
-  }
+  status: 'pending' | 'active' | 'eliminated' | 'safe'
+  pick_name: string | null
+  week: number
+  created_at: string
+  updated_at: string
 }
 
 export default function PicksPage() {
@@ -47,7 +46,6 @@ export default function PicksPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showPickNamesManager, setShowPickNamesManager] = useState(false)
-  const [selectedPickName, setSelectedPickName] = useState<PickNameWithUsage | null>(null)
 
   const router = useRouter()
 
@@ -87,16 +85,10 @@ export default function PicksPage() {
         .order('get_season_order(season)', { ascending: true })
         .order('game_time', { ascending: true })
 
-      // Get user's picks for current week with pick names
+      // Get user's picks for current week
       const { data: picksData } = await supabase
         .from('picks')
-        .select(`
-          *,
-          pick_names (
-            name,
-            description
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .in('matchup_id', matchupsData?.map(m => m.id) || [])
 
@@ -150,7 +142,11 @@ export default function PicksPage() {
         matchup_id: matchupId,
         team_picked: teamName,
         picks_count: 1,
-        status: 'active'
+        status: 'active',
+        pick_name: null,
+        week: currentWeek,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
       setUserPicks([...userPicks, newPick])
     }

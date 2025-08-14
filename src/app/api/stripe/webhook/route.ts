@@ -86,13 +86,35 @@ export async function POST(request: NextRequest) {
               purchaseId: purchase.id
             })
 
-            // Generate default pick names for the user
+            // Create default pick records in the picks table with default names
             try {
-              const pickNamesService = new PickNamesServiceServer()
-              await pickNamesService.generateDefaultPickNames(purchase.user_id, purchase.picks_count)
-              console.log(`Generated ${purchase.picks_count} default pick names for user ${purchase.user_id}`)
-            } catch (pickNameError) {
-              console.error('Error generating default pick names:', pickNameError)
+              const pickRecords = []
+              
+              for (let i = 1; i <= purchase.picks_count; i++) {
+                pickRecords.push({
+                  user_id: purchase.user_id,
+                  matchup_id: null, // Will be assigned when user makes picks
+                  team_picked: '', // Will be assigned when user makes picks
+                  picks_count: 1,
+                  status: 'pending' as const,
+                  pick_name: `Pick ${i}`, // Default name like "Pick 1", "Pick 2", etc.
+                  week: 1, // Default to week 1, will be updated when used
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+              }
+
+              const { error: picksError } = await supabase
+                .from('picks')
+                .insert(pickRecords)
+
+              if (picksError) {
+                console.error('Error creating pick records:', picksError)
+              } else {
+                console.log(`Created ${pickRecords.length} default pick records for user ${purchase.user_id}`)
+              }
+            } catch (pickCreationError) {
+              console.error('Error creating default pick records:', pickCreationError)
             }
           }
         }
