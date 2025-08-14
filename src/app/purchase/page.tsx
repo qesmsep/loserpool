@@ -183,6 +183,19 @@ export default function PurchasePage() {
   const poolRemaining = settings.maxTotalEntries - settings.totalPicksPurchased
   const maxPicksAllowed = Math.min(userRemaining, poolRemaining)
 
+  // Debug logging
+  console.log('Purchase page debug:', {
+    pickPrice: settings.pickPrice,
+    entriesPerUser: settings.entriesPerUser,
+    maxTotalEntries: settings.maxTotalEntries,
+    totalPicksPurchased: settings.totalPicksPurchased,
+    userPicksPurchased,
+    userRemaining,
+    poolRemaining,
+    maxPicksAllowed,
+    picksCount
+  })
+
   return (
     <div className="app-bg">
       {/* Header */}
@@ -221,6 +234,12 @@ export default function PurchasePage() {
           {error && (
             <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded mb-6">
               {error}
+            </div>
+          )}
+
+          {userRemaining === 0 && (
+            <div className="bg-blue-500/20 border border-blue-500/30 text-blue-200 px-4 py-3 rounded mb-6">
+              You have already purchased the maximum number of picks ({settings.entriesPerUser}). You cannot purchase any more picks.
             </div>
           )}
 
@@ -279,7 +298,10 @@ export default function PurchasePage() {
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {loading ? 'Processing...' : settings.pickPrice === 0 ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` : `Pay $${totalPrice.toFixed(2)}`}
+              {loading ? 'Processing...' : 
+               userRemaining === 0 ? 'Maximum Picks Reached' :
+               settings.pickPrice === 0 ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` : 
+               `Pay $${totalPrice.toFixed(2)}`}
             </button>
           </div>
 

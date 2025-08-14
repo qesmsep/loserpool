@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Trophy, Calendar, Save, Tag, ShoppingCart } from 'lucide-react'
 import Header from '@/components/header'
-import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining } from '@/lib/timezone'
+import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, getDayDisplayOrder, sortMatchupsChronologically } from '@/lib/timezone'
+import { DateTime } from 'luxon'
 import { useAuth } from '@/components/auth-provider'
 
 import { getCurrentWeekDisplay, isPreseason } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
 import StyledTeamName from '@/components/styled-team-name'
+import PickSelectionPopup from '@/components/pick-selection-popup'
 
 interface Matchup {
   id: string
@@ -38,11 +40,11 @@ interface ApiMatchup {
 interface Pick {
   id: string
   user_id: string
-  matchup_id: string
-  team_picked: string
   picks_count: number
-  week: number
-  status: 'active' | 'eliminated' | 'safe'
+  status: 'pending' | 'active' | 'lost' | 'safe'
+  pick_name?: string
+  // Week columns will be added dynamically
+  [key: string]: any
 }
 
 interface UserProfile {
@@ -72,11 +74,17 @@ export default function DashboardPage() {
   const [nextWeekMatchups, setNextWeekMatchups] = useState<Matchup[]>([])
   const [userPicks, setUserPicks] = useState<Pick[]>([])
   const [picksRemaining, setPicksRemaining] = useState(0)
+  const [dbPicksRemaining, setDbPicksRemaining] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+    const [error, setError] = useState('')
   const [picksSaved, setPicksSaved] = useState(false)
-  const [showControls, setShowControls] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+ 
+  const [showPickPopup, setShowPickPopup] = useState(false)
+  const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+
 
   const router = useRouter()
 
@@ -249,14 +257,30 @@ export default function DashboardPage() {
   }
   
   // Get user's picks for current week
+      // Get current week column - determine the correct prefix based on current week
+      let weekColumn: string
+      if (week <= 3) {
+        weekColumn = `pre${week}_team_matchup_id`
+      } else if (week <= 20) {
+        weekColumn = `reg${week - 3}_team_matchup_id`
+      } else {
+        weekColumn = `post${week - 20}_team_matchup_id`
+      }
+      
       const { data: picksData } = await supabase
         .from('picks')
         .select('*')
         .eq('user_id', user.id)
-        .in('matchup_id', matchupsData?.map(m => m.id) || [])
+        .not(weekColumn, 'is', null)
 
-      const picksUsed = picksData?.reduce((sum, pick: Pick) => sum + pick.picks_count, 0) || 0
-      const remaining = totalPicks - picksUsed
+      // Calculate picks remaining based on picks that haven't been assigned to the current week
+      const { data: allUserPicks } = await supabase
+        .from('picks')
+        .select('*')
+        .eq('user_id', user.id)
+        .is(weekColumn, null)
+
+      const dbPicksRemaining = allUserPicks?.reduce((sum, pick) => sum + pick.picks_count, 0) || 0
 
       // Calculate deadline based on current week's matchups
       const calculatedDeadline = calculatePicksDeadline(matchupsData || [])
@@ -265,8 +289,9 @@ export default function DashboardPage() {
       setMatchups(matchupsData || [])
       setNextWeekMatchups(nextWeekMatchupsData || [])
       setUserPicks(picksData || [])
-      setPicksRemaining(remaining)
+      setDbPicksRemaining(dbPicksRemaining)
       setPicksSaved((picksData || []).length > 0) // Set saved state based on existing picks
+      setIsEditing(false) // Reset edit state when data is loaded
       setLoading(false)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -281,72 +306,104 @@ export default function DashboardPage() {
     }
   }, [loadData, authLoading, user])
 
+  // Set picks remaining directly from database
+  useEffect(() => {
+    setPicksRemaining(dbPicksRemaining)
+  }, [dbPicksRemaining])
+
+  const getPicksForMatchup = (matchupId: string) => {
+    // Get the current week column - determine the correct prefix based on current week
+    let weekColumn: string
+    if (currentWeek <= 3) {
+      weekColumn = `pre${currentWeek}_team_matchup_id`
+    } else if (currentWeek <= 20) {
+      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
+    } else {
+      weekColumn = `post${currentWeek - 20}_team_matchup_id`
+    }
+    
+    // Get the current matchup to determine teams
+    const currentMatchup = matchups.find(m => m.id === matchupId)
+    if (!currentMatchup) {
+      return []
+    }
+    
+    // Get saved picks for this matchup (both pending and active)
+    const savedPicks = userPicks.filter(pick => {
+      const teamMatchupId = (pick as any)[weekColumn]
+      return teamMatchupId !== null && teamMatchupId !== undefined
+    })
+    
+    // Generate expected team_matchup_ids for both teams using simple logic
+    const awayTeamMatchupId = generateSimpleTeamMatchupId(matchupId, currentMatchup.away_team)
+    const homeTeamMatchupId = generateSimpleTeamMatchupId(matchupId, currentMatchup.home_team)
+    
+    const picksWithTeams = savedPicks.map(pick => {
+      const teamMatchupId = (pick as any)[weekColumn]
+      
+      // Determine which team this pick belongs to by checking against both teams
+      let team_picked = 'Unknown'
+      
+      if (teamMatchupId === awayTeamMatchupId) {
+        team_picked = currentMatchup.away_team
+      } else if (teamMatchupId === homeTeamMatchupId) {
+        team_picked = currentMatchup.home_team
+      }
+      
+      return {
+        team_picked,
+        picks_count: pick.picks_count,
+        pick_name: pick.pick_name,
+        status: pick.status
+      }
+    })
+    
+    return picksWithTeams
+  }
+
+  // Helper function to generate team_matchup_id using simple logic
+  const generateSimpleTeamMatchupId = (matchupId: string, teamName: string) => {
+    // Extract team initials (first letter of each word)
+    const teamInitials = teamName.replace(/([A-Z])[a-z]*/g, '$1')
+    
+    // Return matchup_id + team initials
+    return matchupId + '_' + teamInitials
+  }
+
   const getPickForMatchup = (matchupId: string) => {
-    return userPicks.find(pick => pick.matchup_id === matchupId)
+    const picks = getPicksForMatchup(matchupId)
+    return picks.length > 0 ? picks[0] : undefined
+  }
+
+  const handleTeamClick = (matchupId: string, teamName: string) => {
+    if (checkDeadlinePassed()) return
+    
+    setSelectedMatchup(matchupId)
+    setSelectedTeam(teamName)
+    setShowPickPopup(true)
+  }
+
+  const handlePicksAllocated = (newPicks: any[]) => {
+    console.log('Picks allocated:', newPicks)
+    console.log('Selected matchup:', selectedMatchup)
+    console.log('Selected team:', selectedTeam)
+    
+    // Refresh data to show the updated picks
+    loadData()
+    setPicksSaved(false) // Reset saved state when picks change - user needs to save
+    setIsEditing(true) // Enter edit mode when picks are allocated
+    setShowPickPopup(false)
   }
 
   const addPickToTeam = (matchupId: string, teamName: string) => {
-    setUserPicks(prevPicks => {
-      const existingPick = prevPicks.find(pick => pick.matchup_id === matchupId)
-      
-      if (existingPick) {
-        if (existingPick.team_picked === teamName) {
-          // Same team - add 1 pick
-          return prevPicks.map(pick => 
-            pick.id === existingPick.id 
-              ? { ...pick, picks_count: pick.picks_count + 1 }
-              : pick
-          )
-        } else {
-          // Different team - transfer picks
-          return prevPicks.map(pick => 
-            pick.id === existingPick.id 
-              ? { ...pick, team_picked: teamName }
-              : pick
-          )
-        }
-      } else {
-        // Create new pick
-        const newPick: Pick = {
-          id: `temp-${matchupId}`,
-          user_id: '',
-          matchup_id: matchupId,
-          team_picked: teamName,
-          picks_count: 1,
-          week: currentWeek,
-          status: 'active'
-        }
-        return [...prevPicks, newPick]
-      }
-    })
-    
-    setPicksRemaining(prev => prev - 1)
-    setPicksSaved(false) // Reset saved state when picks change
+    // This function is kept for backward compatibility but now triggers the popup
+    handleTeamClick(matchupId, teamName)
   }
 
-  const removePickFromTeam = (matchupId: string, teamName: string) => {
-    setUserPicks(prevPicks => {
-      const existingPick = prevPicks.find(pick => pick.matchup_id === matchupId)
-      
-      if (!existingPick || existingPick.team_picked !== teamName || existingPick.picks_count <= 0) {
-        return prevPicks
-      }
-      
-      if (existingPick.picks_count === 1) {
-        // Remove pick entirely
-        return prevPicks.filter(pick => pick.id !== existingPick.id)
-      } else {
-        // Decrease pick count
-        return prevPicks.map(pick => 
-          pick.id === existingPick.id 
-            ? { ...pick, picks_count: pick.picks_count - 1 }
-            : pick
-        )
-      }
-    })
-    
-    setPicksRemaining(prev => prev + 1)
-    setPicksSaved(false) // Reset saved state when picks change
+  const removePickFromTeam = async (matchupId: string, teamName: string) => {
+    // This function needs to be updated to work with the new schema
+    // For now, just refresh the data
+    await loadData()
   }
 
   const handleSave = async () => {
@@ -367,238 +424,48 @@ export default function DashboardPage() {
         return
       }
 
-      // Delete any existing picks for this user and week first
-      console.log('=== DELETE OPERATION START ===')
-      console.log('User ID:', user.id)
-      console.log('Current Week:', currentWeek)
-      
-      // First, let's see what picks exist before deletion
-      const { data: existingPicksBefore, error: fetchError } = await supabase
+      // Update all pending picks to active status
+      const { data: pendingPicks } = await supabase
         .from('picks')
-        .select('*')
+        .select('id')
         .eq('user_id', user.id)
-        .eq('week', currentWeek)
-      
-      console.log('Existing picks before deletion:', existingPicksBefore)
-      console.log('Number of existing picks:', existingPicksBefore?.length || 0)
-      
-      if (fetchError) {
-        console.error('Error fetching existing picks:', fetchError)
-        throw fetchError
-      }
-      
-      // Now attempt the deletion
-      const { data: deleteResult, error: deleteError } = await supabase
-        .from('picks')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('week', currentWeek)
-        .select() // Add this to see what was actually deleted
-      
-      console.log('Delete result:', deleteResult)
-      console.log('Number of picks deleted:', deleteResult?.length || 0)
-      
-      if (deleteError) {
-        console.error('Error deleting existing picks:', deleteError)
-        console.error('Delete error details:', {
-          message: deleteError?.message,
-          code: deleteError?.code,
-          details: deleteError?.details,
-          hint: deleteError?.hint
-        })
-        throw deleteError
-      }
-      
-      // Verify deletion by checking again
-      const { data: existingPicksAfter, error: verifyError } = await supabase
-        .from('picks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('week', currentWeek)
-      
-      console.log('Existing picks after deletion:', existingPicksAfter)
-      console.log('Number of picks after deletion:', existingPicksAfter?.length || 0)
-      console.log('=== DELETE OPERATION END ===')
+        .eq('status', 'pending')
 
-      // Create new picks for all current selections
-      for (const pick of userPicks) {
-        console.log('Creating new pick:', pick)
+      if (pendingPicks && pendingPicks.length > 0) {
+        console.log('Updating pending picks to active:', pendingPicks.length)
         
-        const insertData = {
-          user_id: user.id,
-          matchup_id: pick.matchup_id,
-          team_picked: pick.team_picked,
-          picks_count: pick.picks_count,
-          week: currentWeek,
-          status: 'active'
-        }
-        console.log('Inserting pick data:', insertData)
-        
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('picks')
-          .insert(insertData)
-        
-        if (error) {
-          console.error('Insert error:', error)
-          throw error
+          .update({
+            status: 'active'
+          })
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+
+        if (updateError) {
+          console.error('Error updating pending picks to active:', updateError)
+          throw updateError
         }
       }
 
-      // Reload data to refresh the display
+      // Refresh data and set saved state
       await loadData()
+      setPicksSaved(true)
+      setIsEditing(false) // Exit edit mode after saving
       setSaving(false)
-      setError('') // Clear any previous errors
-      setPicksSaved(true) // Mark that picks have been saved
-      setShowControls(true) // Show +/- buttons after initial save
-      // Show success message
-      const successMessage = document.createElement('div')
-      successMessage.className = 'fixed inset-0 flex items-center justify-center z-50'
-      successMessage.innerHTML = `
-        <div class="bg-white rounded-xl p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-200">
-          <div class="mb-4">
-            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-          </div>
-          <h3 class="text-2xl font-bold text-gray-800 mb-2">Picks Saved Successfully!</h3>
-          <p class="text-gray-600 mb-6">Your picks have been saved and can be updated until the deadline.</p>
-          <button id="okay-btn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg">
-            Got it
-          </button>
-        </div>
-      `
-      document.body.appendChild(successMessage)
       
-      // Add click handler for the okay button
-      const okayBtn = successMessage.querySelector('#okay-btn')
-      if (okayBtn) {
-        okayBtn.addEventListener('click', () => {
-          if (successMessage.parentNode) {
-            successMessage.parentNode.removeChild(successMessage)
-          }
-        })
-      }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Error saving picks:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      setError(`Failed to save picks: ${errorMessage}`)
+      setError('Failed to save picks')
       setSaving(false)
     }
   }
 
-
-
-  const handleUpdate = async () => {
-    setSaving(true)
+  const handleCancel = () => {
+    setIsEditing(false)
     setError('')
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
-
-      // Check if deadline has passed
-      if (deadline && new Date() > new Date(deadline)) {
-        setError('Picks deadline has passed. Picks are now locked.')
-        setSaving(false)
-        return
-      }
-
-      // Delete all existing picks for this user and week
-      console.log('Deleting all existing picks for week', currentWeek, 'user:', user.id)
-      
-      // First, let's see what picks exist
-      const { data: existingPicks, error: fetchError } = await supabase
-    .from('picks')
-    .select('*')
-    .eq('user_id', user.id)
-        .eq('week', currentWeek)
-      
-      console.log('Existing picks before deletion:', existingPicks)
-      
-      const { error: deleteError } = await supabase
-        .from('picks')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('week', currentWeek)
-      
-      if (deleteError) {
-        console.error('Error deleting existing picks:', deleteError)
-        throw deleteError
-      }
-      
-      console.log('Successfully deleted existing picks')
-
-      // Create new picks for all current selections
-      for (const pick of userPicks) {
-        console.log('Creating new pick:', pick)
-        
-        const insertData = {
-          user_id: user.id,
-          matchup_id: pick.matchup_id,
-          team_picked: pick.team_picked,
-          picks_count: pick.picks_count,
-          week: currentWeek,
-          status: 'active'
-        }
-        console.log('Inserting pick data:', insertData)
-        
-        const { error } = await supabase
-          .from('picks')
-          .insert(insertData)
-        
-        if (error) {
-          console.error('Insert error:', error)
-          throw error
-        }
-      }
-
-      // Reload data to refresh the display
-      await loadData()
-      setSaving(false)
-      setError('') // Clear any previous errors
-      setPicksSaved(true) // Mark that picks have been saved
-      setShowControls(false) // Hide +/- buttons after updating
-      // Show success message
-      const successMessage = document.createElement('div')
-      successMessage.className = 'fixed inset-0 flex items-center justify-center z-50'
-      successMessage.innerHTML = `
-        <div class="bg-white rounded-xl p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-200">
-          <div class="mb-4">
-            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-          </div>
-          <h3 class="text-2xl font-bold text-gray-800 mb-2">Picks Updated Successfully!</h3>
-          <p class="text-gray-600 mb-6">Your picks have been updated successfully!</p>
-          <button id="okay-btn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg">
-            Got it
-          </button>
-        </div>
-      `
-      document.body.appendChild(successMessage)
-      
-      // Add click handler for the okay button
-      const okayBtn = successMessage.querySelector('#okay-btn')
-      if (okayBtn) {
-        okayBtn.addEventListener('click', () => {
-          if (successMessage.parentNode) {
-            successMessage.parentNode.removeChild(successMessage)
-          }
-        })
-      }
-    } catch (error: unknown) {
-      console.error('Error updating picks:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      setError(`Failed to update picks: ${errorMessage}`)
-      setSaving(false)
-    }
+    // Reload data to reset any pending changes
+    loadData()
   }
 
   const checkDeadlinePassed = () => {
@@ -800,39 +667,39 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Cards - Mobile Optimized */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-green-200" />
+        <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center">
+              <div className="p-1 sm:p-2 bg-green-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
+                <Trophy className="w-3 h-3 sm:w-6 sm:h-6 text-green-200" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-green-100">Loser Picks Remaining</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">{picksRemaining}</p>
+              <div className="text-center sm:text-left sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-green-100">Loser Picks</p>
+                <p className="text-sm sm:text-2xl font-bold text-white">{picksRemaining}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-500/20 rounded-lg">
-                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-orange-200" />
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center">
+              <div className="p-1 sm:p-2 bg-orange-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
+                <Calendar className="w-3 h-3 sm:w-6 sm:h-6 text-orange-200" />
               </div>
-              <div className="ml-2 sm:ml-4">
+              <div className="text-center sm:text-left sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">{currentWeekDisplay}</p>
+                <p className="text-sm sm:text-2xl font-bold text-white">{currentWeekDisplay}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-red-200" />
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6 sm:col-span-2 lg:col-span-1">
+            <div className="flex flex-col sm:flex-row sm:items-center">
+              <div className="p-1 sm:p-2 bg-red-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
+                <Trophy className="w-3 h-3 sm:w-6 sm:h-6 text-red-200" />
               </div>
-              <div className="ml-2 sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-red-100">Wrong Picks Count</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
+              <div className="text-center sm:text-left sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-red-100">Wrong Picks</p>
+                <p className="text-sm sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'lost').length}</p>
               </div>
             </div>
           </div>
@@ -847,17 +714,41 @@ export default function DashboardPage() {
                 <p className="text-xs sm:text-base text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                <button
-                  onClick={picksSaved ? handleUpdate : handleSave}
-                  disabled={saving || checkDeadlinePassed() || userPicks.length === 0 || (picksSaved && !showControls)}
-                  className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm"
-                >
-                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : picksSaved ? 'Update Picks' : 'Save Picks'}
-                </button>
-                {picksSaved && !showControls && !checkDeadlinePassed() && (
+                {!isEditing ? (
+                  // Show Save button only when not editing and picks haven't been saved
+                  !picksSaved && (
+                    <button
+                      onClick={handleSave}
+                      disabled={saving || checkDeadlinePassed() || userPicks.length === 0}
+                      className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save'}
+                    </button>
+                  )
+                ) : (
+                  // Show Save and Cancel buttons when editing
+                  <>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving || checkDeadlinePassed()}
+                      className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="flex items-center justify-center bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 text-xs sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {picksSaved && !isEditing && !checkDeadlinePassed() && (
                   <button
-                    onClick={() => setShowControls(true)}
+                    onClick={() => setIsEditing(true)}
                     disabled={saving}
                     className="flex items-center justify-center bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm"
                   >
@@ -875,26 +766,60 @@ export default function DashboardPage() {
             )}
 
             {matchups && matchups.length > 0 ? (
-              <div className="space-y-2 sm:space-y-4">
-                {matchups.map((matchup) => {
-                  const userPick = getPickForMatchup(matchup.id)
+              <div className="space-y-6">
+                {(() => {
+                  // Sort matchups chronologically first
+                  const sortedMatchups = sortMatchupsChronologically(matchups)
+                  const groupedMatchups = groupMatchupsByDay(sortedMatchups)
                   
-                  return (
-                    <MatchupBox
-                      key={matchup.id}
-                      matchup={matchup}
-                      userPick={userPick}
-                      showControls={showControls}
-                      picksSaved={picksSaved}
-                      userPicks={userPicks}
-                      picksRemaining={picksRemaining}
-                      checkDeadlinePassed={checkDeadlinePassed}
-                      addPickToTeam={addPickToTeam}
-                      removePickFromTeam={removePickFromTeam}
-                      formatGameTime={formatGameTime}
-                    />
-                  )
-                })}
+                  // Get chronological day order based on actual game times
+                  const chronologicalDayOrder = Object.keys(groupedMatchups).sort((dayA, dayB) => {
+                    const gamesA = groupedMatchups[dayA]
+                    const gamesB = groupedMatchups[dayB]
+                    
+                    if (gamesA.length === 0 || gamesB.length === 0) return 0
+                    
+                    // Compare the earliest game time of each day
+                    const earliestA = DateTime.fromISO(gamesA[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+                    const earliestB = DateTime.fromISO(gamesB[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+                    
+                    return earliestA.toMillis() - earliestB.toMillis()
+                  })
+                  
+                  return chronologicalDayOrder
+                    .filter(day => groupedMatchups[day] && groupedMatchups[day].length > 0)
+                    .map(day => (
+                      <div key={day} className="space-y-3">
+                        <div className="border-b border-white/20 pb-2">
+                          <h3 className="text-lg font-semibold text-white">
+                            {day} ({groupedMatchups[day].length} game{groupedMatchups[day].length !== 1 ? 's' : ''})
+                          </h3>
+                        </div>
+                        <div className="space-y-2 sm:space-y-4">
+                          {groupedMatchups[day].map((matchup) => {
+                            const userPick = getPickForMatchup(matchup.id)
+                            
+                            return (
+                              <MatchupBox
+                                key={matchup.id}
+                                matchup={matchup}
+                                userPick={userPick}
+                                showControls={false}
+                                picksSaved={picksSaved}
+                                userPicks={userPicks}
+                                picksRemaining={picksRemaining}
+                                checkDeadlinePassed={checkDeadlinePassed}
+                                addPickToTeam={addPickToTeam}
+                                removePickFromTeam={removePickFromTeam}
+                                formatGameTime={formatGameTime}
+                                getPicksForMatchup={getPicksForMatchup}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
+                })()}
               </div>
             ) : (
               <div className="text-center py-6 sm:py-8">
@@ -917,22 +842,56 @@ export default function DashboardPage() {
           </div>
           <div className="p-3 sm:p-6">
             {nextWeekMatchups && nextWeekMatchups.length > 0 ? (
-              <div className="space-y-2 sm:space-y-4">
-                {nextWeekMatchups.map((matchup) => (
-                  <MatchupBox
-                    key={matchup.id}
-                    matchup={matchup}
-                    userPick={undefined}
-                    showControls={false}
-                    picksSaved={true}
-                    userPicks={[]}
-                    picksRemaining={0}
-                    checkDeadlinePassed={() => true}
-                    addPickToTeam={() => {}}
-                    removePickFromTeam={() => {}}
-                    formatGameTime={formatGameTime}
-                  />
-                ))}
+              <div className="space-y-6">
+                {(() => {
+                  // Sort matchups chronologically first
+                  const sortedMatchups = sortMatchupsChronologically(nextWeekMatchups)
+                  const groupedMatchups = groupMatchupsByDay(sortedMatchups)
+                  
+                  // Get chronological day order based on actual game times
+                  const chronologicalDayOrder = Object.keys(groupedMatchups).sort((dayA, dayB) => {
+                    const gamesA = groupedMatchups[dayA]
+                    const gamesB = groupedMatchups[dayB]
+                    
+                    if (gamesA.length === 0 || gamesB.length === 0) return 0
+                    
+                    // Compare the earliest game time of each day
+                    const earliestA = DateTime.fromISO(gamesA[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+                    const earliestB = DateTime.fromISO(gamesB[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+                    
+                    return earliestA.toMillis() - earliestB.toMillis()
+                  })
+                  
+                  return chronologicalDayOrder
+                    .filter(day => groupedMatchups[day] && groupedMatchups[day].length > 0)
+                    .map(day => (
+                      <div key={day} className="space-y-3">
+                        <div className="border-b border-white/20 pb-2">
+                          <h3 className="text-lg font-semibold text-white">
+                            {day} ({groupedMatchups[day].length} game{groupedMatchups[day].length !== 1 ? 's' : ''})
+                          </h3>
+                        </div>
+                        <div className="space-y-2 sm:space-y-4">
+                          {groupedMatchups[day].map((matchup) => (
+                            <MatchupBox
+                              key={matchup.id}
+                              matchup={matchup}
+                              userPick={undefined}
+                              showControls={false}
+                              picksSaved={true}
+                              userPicks={[]}
+                              picksRemaining={0}
+                              checkDeadlinePassed={() => true}
+                              addPickToTeam={() => {}}
+                              removePickFromTeam={() => {}}
+                              formatGameTime={formatGameTime}
+                              getPicksForMatchup={() => []}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                })()}
               </div>
             ) : (
               <div className="text-center py-6 sm:py-8">
@@ -943,6 +902,21 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Pick Selection Popup */}
+      {showPickPopup && selectedMatchup && selectedTeam && (
+        <PickSelectionPopup
+          isOpen={showPickPopup}
+          onClose={() => {
+            setShowPickPopup(false)
+            setSelectedMatchup(null)
+            setSelectedTeam(null)
+          }}
+          matchupId={selectedMatchup}
+          teamName={selectedTeam}
+          onPicksAllocated={handlePicksAllocated}
+        />
+      )}
     </div>
   )
 } 

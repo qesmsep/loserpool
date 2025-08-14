@@ -37,19 +37,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: purchaseError.message }, { status: 400 })
     }
 
-    // Create actual pick records in the picks table
+    // Get existing picks to determine the next sequential number
+    const { data: existingPicks } = await supabase
+      .from('picks')
+      .select('pick_name')
+      .eq('user_id', userId)
+      .not('pick_name', 'is', null)
+
+    // Find the highest existing pick number
+    let nextPickNumber = 1
+    if (existingPicks && existingPicks.length > 0) {
+      const pickNumbers = existingPicks
+        .map(pick => {
+          const match = pick.pick_name?.match(/^Pick (\d+)$/)
+          return match ? parseInt(match[1]) : 0
+        })
+        .filter(num => num > 0)
+      
+      if (pickNumbers.length > 0) {
+        nextPickNumber = Math.max(...pickNumbers) + 1
+      }
+    }
+
+    // Create actual pick records in the picks table with sequential names
     const pickRecords = []
-    for (let i = 1; i <= picksCount; i++) {
+    for (let i = 0; i < picksCount; i++) {
       pickRecords.push({
         user_id: userId,
-        matchup_id: null, // Will be NULL for pending picks
-        team_picked: null, // Will be NULL for pending picks
         picks_count: 1,
         status: 'pending',
-        pick_name: `Pick ${i}`,
-        week: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        pick_name: `Pick ${nextPickNumber + i}`
       })
     }
 

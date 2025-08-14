@@ -89,21 +89,40 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Create default pick records in the picks table with default names
+    // Create default pick records in the picks table with sequential names
     try {
+      // Get existing picks to determine the next sequential number
+      const { data: existingPicks } = await supabase
+        .from('picks')
+        .select('pick_name')
+        .eq('user_id', user.id)
+        .not('pick_name', 'is', null)
+
+      // Find the highest existing pick number
+      let nextPickNumber = 1
+      if (existingPicks && existingPicks.length > 0) {
+        const pickNumbers = existingPicks
+          .map(pick => {
+            const match = pick.pick_name?.match(/^Pick (\d+)$/)
+            return match ? parseInt(match[1]) : 0
+          })
+          .filter(num => num > 0)
+        
+        if (pickNumbers.length > 0) {
+          nextPickNumber = Math.max(...pickNumbers) + 1
+        }
+      }
+
+      // Create default pick records in the picks table with sequential names
       const pickRecords = []
       
-      for (let i = 1; i <= picks_count; i++) {
+      for (let i = 0; i < picks_count; i++) {
         pickRecords.push({
           user_id: user.id,
-          matchup_id: null, // Will be assigned when user makes picks
-          team_picked: null, // Will be assigned when user makes picks
           picks_count: 1,
           status: 'pending' as const,
-          pick_name: `Pick ${i}`, // Default name like "Pick 1", "Pick 2", etc.
-          week: 1, // Default to week 1, will be updated when used
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          pick_name: `Pick ${nextPickNumber + i}` // Sequential naming starting from next available number
+          // Note: matchup_id, team_picked, week columns removed from schema
         })
       }
 

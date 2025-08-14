@@ -113,12 +113,14 @@ interface MatchupBoxProps {
   addPickToTeam: (matchupId: string, teamName: string) => void
   removePickFromTeam: (matchupId: string, teamName: string) => void
   formatGameTime: (gameTime: string) => string
+  getPicksForMatchup?: (matchupId: string) => any[]
 }
 
 interface TeamCardProps {
   teamName: string
   isPicked: boolean
   picksCount: number
+  pickNames: string[]
   addPick: () => void
   removePick: () => void
   colors: {
@@ -135,6 +137,7 @@ function TeamCard({
   teamName,
   isPicked,
   picksCount,
+  pickNames,
   addPick,
   removePick,
   colors,
@@ -157,11 +160,7 @@ function TeamCard({
     textTransform: 'uppercase',
   } as React.CSSProperties
 
-  const innerGlowStyle = isPicked
-    ? {
-        boxShadow: `inset 0 0 8px 2px ${colors.secondary}`,
-      }
-    : {}
+  const innerGlowStyle = {}
 
   const carbonFiberOverlay = {
     content: "''",
@@ -192,12 +191,32 @@ function TeamCard({
 
   if (isPicked && picksCount > 0) {
     return (
-      <div
-        className="w-full transform transition-all duration-300 scale-105 relative"
+      <button
+        onClick={addPick}
+        disabled={disabled}
+        className="w-[90%] mx-auto transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+        aria-label={`Edit picks for ${fullTeamName}`}
       >
         <div style={{ ...teamCardStyle, ...innerGlowStyle }}>
           <div style={carbonFiberOverlay} />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, rgba(255,255,255,0) 70%, rgba(0,0,0,0.35) 100%)',
+              zIndex: 18
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'linear-gradient(20deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 15%, rgba(255,255,255,0) 30%)',
+              mixBlendMode: 'screen',
+              zIndex: 19
+            }}
+          />
           <TeamBackground
             teamName={fullTeamName}
             size="lg"
@@ -209,31 +228,6 @@ function TeamCard({
             duotoneLogo={false}
             croppedLogo
           >
-            <div
-              aria-hidden="true"
-              className="absolute top-0 left-0 right-0 h-[10px] pointer-events-none"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), rgba(255,255,255,0))',
-                zIndex: 18
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute bottom-0 left-0 right-0 h-[26px] pointer-events-none"
-              style={{
-                background: 'linear-gradient(to top, rgba(0,0,0,0.35), rgba(0,0,0,0))',
-                zIndex: 18
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(20deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 15%, rgba(255,255,255,0) 30%)',
-                mixBlendMode: 'screen',
-                zIndex: 19
-              }}
-            />
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
               {/* Team Stats Row */}
               <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
@@ -263,10 +257,15 @@ function TeamCard({
                   </button>
                 )}
                 <div
-                  className="font-normal sm:font-medium text-[12px] sm:text-[24px] leading-tight tracking-wide"
+                  className="font-normal sm:font-medium text-[11px] sm:text-[24px] leading-tight tracking-wide min-h-[2.5rem] sm:min-h-0 flex flex-col items-center justify-center"
                   style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
                 >
-                  {fullTeamName}
+                  <div className="text-[12px] sm:text-[24px] leading-none">
+                    {fullTeamName.split(' ').slice(0, -1).join(' ')}
+                  </div>
+                  <div className="text-[12px] sm:text-[24px] leading-none">
+                    {fullTeamName.split(' ').slice(-1)[0]}
+                  </div>
                 </div>
                 {showControls && (
                   <button
@@ -285,11 +284,12 @@ function TeamCard({
               >
                 {picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : ''}
               </div>
+
             </div>
           </TeamBackground>
           <div style={vignetteOverlay} />
         </div>
-      </div>
+      </button>
     )
   }
 
@@ -297,12 +297,29 @@ function TeamCard({
     <button
       onClick={addPick}
       disabled={disabled}
-      className="w-full transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-[90%] mx-auto transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col"
       style={{ fontFamily: "'Bebas Neue', sans-serif" }}
       aria-label={`Pick ${fullTeamName}`}
     >
       <div style={teamCardStyle}>
         <div style={carbonFiberOverlay} />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, rgba(255,255,255,0) 70%, rgba(0,0,0,0.35) 100%)',
+            zIndex: 18
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(20deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 15%, rgba(255,255,255,0) 30%)',
+            mixBlendMode: 'screen',
+            zIndex: 19
+          }}
+        />
         <TeamBackground
           teamName={fullTeamName}
           size="lg"
@@ -331,10 +348,15 @@ function TeamCard({
           </div>
           
           <div
-            className="mb-1 relative z-20 font-normal sm:font-medium text-[12px] sm:text-[24px] leading-tight tracking-wide"
+            className="mb-1 relative z-20 font-normal sm:font-medium text-[11px] sm:text-[24px] leading-tight tracking-wide min-h-[2.5rem] sm:min-h-0 flex flex-col items-center justify-center"
             style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
           >
-            {fullTeamName}
+            <div className="text-[12px] sm:text-[24px] leading-none">
+              {fullTeamName.split(' ').slice(0, -1).join(' ')}
+            </div>
+            <div className="text-[12px] sm:text-[24px] leading-none">
+              {fullTeamName.split(' ').slice(-1)[0]}
+            </div>
           </div>
           <div
             className="text-[8px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
@@ -361,15 +383,29 @@ export default function MatchupBox({
   checkDeadlinePassed,
   addPickToTeam,
   removePickFromTeam,
-  formatGameTime
+  formatGameTime,
+  getPicksForMatchup
 }: MatchupBoxProps) {
   const isThursdayGame = new Date(matchup.game_time).getDay() === 4
 
   const awayColors = getTeamColors(matchup.away_team)
   const homeColors = getTeamColors(matchup.home_team)
 
-  const awayIsPicked = userPick?.team_picked === matchup.away_team && userPick.picks_count > 0
-  const homeIsPicked = userPick?.team_picked === matchup.home_team && userPick.picks_count > 0
+  // Get all picks for this matchup
+  const matchupPicks = getPicksForMatchup ? getPicksForMatchup(matchup.id) : []
+  
+  // Get picks for each team
+  const awayTeamPicks = matchupPicks.filter(pick => pick.team_picked === matchup.away_team)
+  const homeTeamPicks = matchupPicks.filter(pick => pick.team_picked === matchup.home_team)
+  
+  const awayIsPicked = awayTeamPicks.length > 0
+  const homeIsPicked = homeTeamPicks.length > 0
+  
+  const awayPicksCount = awayTeamPicks.reduce((sum, pick) => sum + pick.picks_count, 0)
+  const homePicksCount = homeTeamPicks.reduce((sum, pick) => sum + pick.picks_count, 0)
+  
+  const awayPickNames = awayTeamPicks.map(pick => pick.pick_name).filter(Boolean)
+  const homePickNames = homeTeamPicks.map(pick => pick.pick_name).filter(Boolean)
 
   const disabled = checkDeadlinePassed()
   const canShowControls = showControls || (!picksSaved && userPicks.length > 0)
@@ -405,19 +441,28 @@ export default function MatchupBox({
       </div>
 
       {/* Team Selection Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 items-start">
         {/* Away Team */}
         <div className="relative">
           <TeamCard
             teamName={matchup.away_team}
             isPicked={awayIsPicked}
-            picksCount={userPick?.picks_count ?? 0}
+            picksCount={awayPicksCount}
+            pickNames={awayPickNames}
             addPick={() => addPickToTeam(matchup.id, matchup.away_team)}
             removePick={() => removePickFromTeam(matchup.id, matchup.away_team)}
             colors={awayColors}
-            disabled={disabled || (!awayIsPicked && picksRemaining <= 0)}
+            disabled={disabled}
             showControls={canShowControls}
           />
+          {/* Pick names below away team */}
+          {awayPickNames.length > 0 && (
+            <div className="mt-2 text-center">
+              <div className="text-xs text-blue-200">
+                {awayPickNames.join(', ')}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Home Team */}
@@ -425,14 +470,23 @@ export default function MatchupBox({
           <TeamCard
             teamName={matchup.home_team}
             isPicked={homeIsPicked}
-            picksCount={userPick?.picks_count ?? 0}
+            picksCount={homePicksCount}
+            pickNames={homePickNames}
             addPick={() => addPickToTeam(matchup.id, matchup.home_team)}
             removePick={() => removePickFromTeam(matchup.id, matchup.home_team)}
             colors={homeColors}
-            disabled={disabled || (!homeIsPicked && picksRemaining <= 0)}
+            disabled={disabled}
             showControls={canShowControls}
             isHomeTeam={true}
           />
+          {/* Pick names below home team */}
+          {homePickNames.length > 0 && (
+            <div className="mt-2 text-center">
+              <div className="text-xs text-blue-200">
+                {homePickNames.join(', ')}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

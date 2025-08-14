@@ -71,9 +71,18 @@ export default function StyledTeamName({
     lg: 'text-base sm:text-lg px-4 sm:px-6 py-2.5 sm:py-3'
   }
 
+  // Bevel effect using text shadows
+  const bevelTextShadow = '0 -1px 0 rgba(255,255,255,1), 0 -2px 0 rgba(255,255,255,0.6), 0 1px 0 rgba(0,0,0,0.8), 0 2px 0 rgba(0,0,0,0.4)'
+
   if (!showTeamColors) {
     return (
-      <span className={`${sizeClasses[size]} ${className}`} style={{ color: 'white' }}>
+      <span 
+        className={`${sizeClasses[size]} ${className}`} 
+        style={{ 
+          color: 'white',
+          textShadow: bevelTextShadow
+        }}
+      >
         {fullTeamName}
       </span>
     )
@@ -81,7 +90,7 @@ export default function StyledTeamName({
 
   return (
     <span
-      className={`${sizeClasses[size]} ${className} font-normal sm:font-bold rounded-lg inline-block relative`}
+      className={`${sizeClasses[size]} ${className} font-normal sm:font-bold rounded-lg inline-block`}
       style={{
         background: `linear-gradient(to bottom,
           rgba(255,255,255,0.18) 0%,
@@ -91,7 +100,7 @@ export default function StyledTeamName({
         color: 'white',
         textTransform: 'none',
         letterSpacing: '0.02em',
-        textShadow: '0 1px 2px rgba(0,0,0,0.55)',
+        textShadow: `${bevelTextShadow}, 0 1px 2px rgba(0,0,0,0.55)`,
         whiteSpace: 'nowrap',
         fontFamily: "'Inter', sans-serif"
       }}

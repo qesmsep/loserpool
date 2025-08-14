@@ -111,15 +111,7 @@ export function formatGameTime(gameTime: string): string {
     // Convert to user's local timezone
     const localDateTime = estDateTime.toLocal()
     
-    // Debug logging
-    console.log('Game time conversion:', {
-      original: gameTime,
-      timeWithoutOffset,
-      est: estDateTime.toISO(),
-      local: localDateTime.toISO(),
-      userZone: DateTime.local().zoneName,
-      formatted: localDateTime.toFormat('EEE, MMM d, h:mm a')
-    })
+    // Debug logging removed to prevent console spam
     
     return localDateTime.toFormat('EEE, MMM d, h:mm a')
   } catch (error) {
@@ -221,4 +213,102 @@ export function getDetailedTimeRemaining(cstDeadline: string): {
       isExpired: true
     }
   }
+} 
+
+/**
+ * Groups matchups by day of the week for better organization
+ * @param matchups - Array of matchups
+ * @returns Object with matchups grouped by day
+ */
+export function groupMatchupsByDay<T extends { game_time: string }>(matchups: T[]): {
+  [key: string]: T[]
+} {
+  const grouped: { [key: string]: T[] } = {}
+  
+  matchups.forEach(matchup => {
+    try {
+      // Parse the game time to get the day
+      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
+      const estDateTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
+      const localDateTime = estDateTime.toLocal()
+      
+      // Get day of week (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = localDateTime.weekday
+      
+      // Create day labels
+      const dayLabels: { [key: number]: string } = {
+        1: 'Monday Night Football',
+        2: 'Tuesday Games',
+        3: 'Wednesday Games', 
+        4: 'Thursday Night Football',
+        5: 'Friday Games',
+        6: 'Saturday Games',
+        7: 'Sunday Games'
+      }
+      
+      const dayLabel = dayLabels[dayOfWeek] || 'Other Games'
+      
+      if (!grouped[dayLabel]) {
+        grouped[dayLabel] = []
+      }
+      
+      grouped[dayLabel].push(matchup)
+    } catch (error) {
+      console.error('Error grouping matchup by day:', error)
+      // Fallback to "Other Games" if there's an error
+      if (!grouped['Other Games']) {
+        grouped['Other Games'] = []
+      }
+      grouped['Other Games'].push(matchup)
+    }
+  })
+  
+  // Sort matchups within each day by game time
+  Object.keys(grouped).forEach(day => {
+    grouped[day].sort((a, b) => {
+      try {
+        const timeA = DateTime.fromISO(a.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+        const timeB = DateTime.fromISO(b.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+        return timeA.toMillis() - timeB.toMillis()
+      } catch (error) {
+        return 0
+      }
+    })
+  })
+  
+  return grouped
+}
+
+/**
+ * Gets the display order for days of the week
+ * @returns Array of day labels in display order
+ */
+export function getDayDisplayOrder(): string[] {
+  return [
+    'Thursday Night Football',
+    'Saturday Games', 
+    'Sunday Games',
+    'Monday Night Football',
+    'Tuesday Games',
+    'Wednesday Games',
+    'Friday Games',
+    'Other Games'
+  ]
+}
+
+/**
+ * Sorts matchups chronologically by game time
+ * @param matchups - Array of matchups to sort
+ * @returns Sorted array of matchups
+ */
+export function sortMatchupsChronologically<T extends { game_time: string }>(matchups: T[]): T[] {
+  return [...matchups].sort((a, b) => {
+    try {
+      const timeA = DateTime.fromISO(a.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+      const timeB = DateTime.fromISO(b.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+      return timeA.toMillis() - timeB.toMillis()
+    } catch (error) {
+      return 0
+    }
+  })
 } 

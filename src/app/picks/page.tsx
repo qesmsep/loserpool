@@ -10,6 +10,7 @@ import PickNamesManager from '@/components/pick-names-manager'
 import StyledTeamName from '@/components/styled-team-name'
 import { PickNameWithUsage } from '@/lib/pick-names-service'
 import { useAuth } from '@/components/auth-provider'
+import PickSelectionPopup from '@/components/pick-selection-popup'
 
 interface Matchup {
   id: string
@@ -52,6 +53,9 @@ export default function PicksPage() {
   const [error, setError] = useState('')
   const [showPickNamesManager, setShowPickNamesManager] = useState(false)
   const [selectedPickName, setSelectedPickName] = useState<PickNameWithUsage | null>(null)
+  const [showPickPopup, setShowPickPopup] = useState(false)
+  const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
 
   const router = useRouter()
 
@@ -127,37 +131,22 @@ export default function PicksPage() {
     return userPicks.find(pick => pick.matchup_id === matchupId)
   }
 
+  const handleTeamClick = (matchupId: string, teamName: string) => {
+    if (checkDeadlinePassed() || picksRemaining <= 0) return
+    
+    setSelectedMatchup(matchupId)
+    setSelectedTeam(teamName)
+    setShowPickPopup(true)
+  }
+
+  const handlePicksAllocated = (newPicks: any[]) => {
+    // Refresh the data to show the new picks
+    loadData()
+  }
+
   const addPickToTeam = (matchupId: string, teamName: string) => {
-    if (picksRemaining <= 0) return
-    
-    const existingPick = getPickForMatchup(matchupId)
-    
-    if (existingPick) {
-      // Update existing pick
-      const updatedPicks = userPicks.map(pick => 
-        pick.id === existingPick.id 
-          ? { ...pick, team_picked: teamName, picks_count: pick.picks_count + 1 }
-          : pick
-      )
-      setUserPicks(updatedPicks)
-    } else {
-      // Create new pick
-      const newPick: Pick = {
-        id: `temp-${matchupId}`,
-        user_id: '',
-        matchup_id: matchupId,
-        team_picked: teamName,
-        picks_count: 1,
-        status: 'active',
-        pick_name: null,
-        week: currentWeek,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      setUserPicks([...userPicks, newPick])
-    }
-    
-    setPicksRemaining(picksRemaining - 1)
+    // This function is kept for backward compatibility but now triggers the popup
+    handleTeamClick(matchupId, teamName)
   }
 
   const addNamedPickToTeam = (matchupId: string, teamName: string, pickName: PickNameWithUsage) => {
@@ -419,8 +408,9 @@ export default function PicksPage() {
           <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
           <div className="text-blue-200 space-y-1">
             <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
-            <p>• Each click adds 1 pick to that team</p>
-            <p>• <strong>Optional:</strong> Select a pick name first to assign it to your pick</p>
+            <p>• A popup will appear showing your available picks</p>
+            <p>• Select one or more picks to allocate to that team</p>
+            <p>• You can select multiple picks at once for bulk allocation</p>
             <p>• If your pick wins, you&apos;re eliminated</p>
             <p>• If your pick loses, you survive to next week</p>
             <p>• Last person standing wins!</p>
@@ -466,10 +456,7 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => selectedPickName 
-                        ? addNamedPickToTeam(matchup.id, matchup.away_team, selectedPickName)
-                        : addPickToTeam(matchup.id, matchup.away_team)
-                      }
+                      onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.away_team
@@ -496,7 +483,7 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => addPickToTeam(matchup.id, matchup.away_team)}
+                      onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -515,10 +502,7 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => selectedPickName 
-                        ? addNamedPickToTeam(matchup.id, matchup.home_team, selectedPickName)
-                        : addPickToTeam(matchup.id, matchup.home_team)
-                      }
+                      onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.home_team
@@ -545,7 +529,7 @@ export default function PicksPage() {
                     </button>
                     
                     <button
-                      onClick={() => addPickToTeam(matchup.id, matchup.home_team)}
+                      onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -558,6 +542,21 @@ export default function PicksPage() {
           })}
         </div>
       </div>
+
+      {/* Pick Selection Popup */}
+      {showPickPopup && selectedMatchup && selectedTeam && (
+        <PickSelectionPopup
+          isOpen={showPickPopup}
+          onClose={() => {
+            setShowPickPopup(false)
+            setSelectedMatchup(null)
+            setSelectedTeam(null)
+          }}
+          matchupId={selectedMatchup}
+          teamName={selectedTeam}
+          onPicksAllocated={handlePicksAllocated}
+        />
+      )}
     </div>
   )
 } 
