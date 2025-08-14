@@ -38,10 +38,6 @@ export default function DataManagementPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const router = useRouter()
 
-  useEffect(() => {
-    checkAuthAndLoadData()
-  }, [checkAuthAndLoadData])
-
   const checkAuthAndLoadData = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -71,6 +67,10 @@ export default function DataManagementPage() {
       router.push('/login')
     }
   }, [router])
+
+  useEffect(() => {
+    checkAuthAndLoadData()
+  }, [checkAuthAndLoadData])
 
   const loadLogs = async () => {
     try {
