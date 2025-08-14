@@ -60,6 +60,23 @@ export default function PickNamesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      console.log('Loading picks for user:', user.id)
+      
+      // First try a simple query to check if the table exists and has data
+      const { data: simplePicks, error: simpleError } = await supabase
+        .from('picks')
+        .select('id, user_id, pick_name, status')
+        .eq('user_id', user.id)
+        .limit(5)
+      
+      console.log('Simple picks query:', { simplePicks, simpleError })
+      
+      if (simpleError) {
+        console.error('Simple query error:', simpleError)
+        throw simpleError
+      }
+      
+      // Now try the full query
       const { data: picksData, error } = await supabase
         .from('picks')
         .select(`
@@ -73,10 +90,21 @@ export default function PickNamesPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      console.log('Picks query result:', { picksData, error })
+      
+      if (error) {
+        console.error('Database error:', error)
+        throw error
+      }
+      
       setPicks(picksData || [])
     } catch (error) {
       console.error('Error loading picks:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error: JSON.stringify(error, null, 2)
+      })
       setError('Failed to load picks')
     }
   }
