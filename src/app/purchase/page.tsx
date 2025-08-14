@@ -7,10 +7,24 @@ import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
 import { checkPoolLock } from '@/lib/pool-status-client'
 
+interface PurchaseSettings {
+  pickPrice: number
+  maxTotalEntries: number
+  entriesPerUser: number
+  totalPicksPurchased: number
+}
+
 export default function PurchasePage() {
   const [picksCount, setPicksCount] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [settings, setSettings] = useState<PurchaseSettings>({
+    pickPrice: 21,
+    maxTotalEntries: 2100,
+    entriesPerUser: 10,
+    totalPicksPurchased: 0
+  })
+  const [userPicksPurchased, setUserPicksPurchased] = useState(0)
   const router = useRouter()
 
   const checkUser = useCallback(async () => {
@@ -21,9 +35,57 @@ export default function PurchasePage() {
     }
   }, [router])
 
+  const loadSettings = useCallback(async () => {
+    try {
+      // Get admin settings from global_settings
+      const { data: settingsData } = await supabase
+        .from('global_settings')
+        .select('key, value')
+        .in('key', ['pick_price', 'max_total_entries', 'entries_per_user'])
+
+      // Get total picks purchased
+      const { data: purchases } = await supabase
+        .from('purchases')
+        .select('picks_count')
+        .eq('status', 'completed')
+
+      // Get current user's picks purchased
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: userPurchases } = await supabase
+          .from('purchases')
+          .select('picks_count')
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+
+        const userTotal = userPurchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+        setUserPicksPurchased(userTotal)
+      }
+
+      const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+
+      // Create settings map
+      const settingsMap = settingsData?.reduce((acc, setting) => {
+        acc[setting.key] = setting.value
+        return acc
+      }, {} as Record<string, string>) || {}
+
+      setSettings({
+        pickPrice: parseInt(settingsMap.pick_price || '21'),
+        maxTotalEntries: parseInt(settingsMap.max_total_entries || '2100'),
+        entriesPerUser: parseInt(settingsMap.entries_per_user || '10'),
+        totalPicksPurchased
+      })
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      setError('Failed to load pool settings')
+    }
+  }, [])
+
   useEffect(() => {
     checkUser()
-  }, [checkUser])
+    loadSettings()
+  }, [checkUser, loadSettings])
 
   const handlePurchase = async () => {
     setLoading(true)
@@ -38,6 +100,46 @@ export default function PurchasePage() {
         return
       }
 
+      // Check if user has reached their limit
+      if (userPicksPurchased + picksCount > settings.entriesPerUser) {
+        setError(`You can only purchase up to ${settings.entriesPerUser} picks total. You already have ${userPicksPurchased} picks.`)
+        setLoading(false)
+        return
+      }
+
+      // Check if pool has reached capacity
+      if (settings.totalPicksPurchased + picksCount > settings.maxTotalEntries) {
+        setError(`Pool has reached maximum capacity of ${settings.maxTotalEntries} picks.`)
+        setLoading(false)
+        return
+      }
+
+      // If price is $0, bypass Stripe and create free purchase
+      if (settings.pickPrice === 0) {
+        const response = await fetch('/api/purchases/free', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            picks_count: picksCount,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (result.error) {
+          setError(result.error)
+          setLoading(false)
+          return
+        }
+
+        // Redirect to dashboard with success message
+        router.push('/dashboard?success=true&message=Free picks added successfully!')
+        return
+      }
+
+      // Otherwise, proceed with Stripe checkout
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -76,7 +178,10 @@ export default function PurchasePage() {
     }
   }
 
-  const totalPrice = picksCount * 21
+  const totalPrice = picksCount * settings.pickPrice
+  const userRemaining = settings.entriesPerUser - userPicksPurchased
+  const poolRemaining = settings.maxTotalEntries - settings.totalPicksPurchased
+  const maxPicksAllowed = Math.min(userRemaining, poolRemaining)
 
   return (
     <div className="app-bg">
@@ -109,7 +214,7 @@ export default function PurchasePage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Buy Your Picks</h2>
             <p className="text-blue-100">
-              Each pick costs $21. More picks = more chances to survive!
+              Each pick costs ${settings.pickPrice}. More picks = more chances to survive!
             </p>
           </div>
 
@@ -127,7 +232,8 @@ export default function PurchasePage() {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setPicksCount(Math.max(1, picksCount - 1))}
-                  className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white"
+                  disabled={picksCount <= 1}
+                  className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   -
                 </button>
@@ -135,18 +241,25 @@ export default function PurchasePage() {
                   {picksCount}
                 </span>
                 <button
-                  onClick={() => setPicksCount(Math.min(10, picksCount + 1))}
-                  className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white"
+                  onClick={() => setPicksCount(Math.min(maxPicksAllowed, picksCount + 1))}
+                  disabled={picksCount >= maxPicksAllowed}
+                  className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white/10 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   +
                 </button>
+              </div>
+              <div className="mt-2 text-sm text-blue-200">
+                You can purchase up to {userRemaining} more picks (you have {userPicksPurchased} already)
+              </div>
+              <div className="mt-1 text-sm text-blue-200">
+                Pool has {poolRemaining} picks remaining out of {settings.maxTotalEntries} total
               </div>
             </div>
 
             <div className="bg-white/10 rounded-lg p-4 border border-white/20">
               <div className="flex justify-between items-center">
                 <span className="text-blue-200">Price per pick:</span>
-                <span className="font-medium text-white">$21.00</span>
+                <span className="font-medium text-white">${settings.pickPrice.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center mt-2">
                 <span className="text-blue-200">Quantity:</span>
@@ -162,7 +275,7 @@ export default function PurchasePage() {
 
             <button
               onClick={handlePurchase}
-              disabled={loading}
+              disabled={loading || picksCount > maxPicksAllowed}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <CreditCard className="w-5 h-5 mr-2" />
@@ -174,8 +287,9 @@ export default function PurchasePage() {
             <h3 className="text-lg font-semibold text-white mb-2">Important Notes:</h3>
             <ul className="text-blue-200 space-y-1 text-sm">
               <li>• Picks can only be purchased before the season starts</li>
-              <li>• Each pick costs $21 ($20 to pool, $1 for fees)</li>
-              <li>• Maximum 10 picks per purchase</li>
+              <li>• Each pick costs ${settings.pickPrice} (configured by admin)</li>
+              <li>• Maximum {settings.entriesPerUser} picks per user</li>
+              <li>• Pool capacity: {settings.maxTotalEntries} total picks</li>
               <li>• Picks are used to make selections each week</li>
               <li>• Unused picks are given the default pick</li>
             </ul>

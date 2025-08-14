@@ -29,6 +29,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Pool is locked - no new purchases allowed' }, { status: 400 })
     }
 
+    // Get admin settings
+    const { data: settings } = await supabase
+      .from('global_settings')
+      .select('key, value')
+      .in('key', ['pick_price', 'max_total_entries', 'entries_per_user'])
+
+    // Get total picks purchased
+    const { data: purchases } = await supabase
+      .from('purchases')
+      .select('picks_count')
+      .eq('status', 'completed')
+
+    // Get current user's picks purchased
+    const { data: userPurchases } = await supabase
+      .from('purchases')
+      .select('picks_count')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+
+    // Create settings map
+    const settingsMap = settings?.reduce((acc, setting) => {
+      acc[setting.key] = setting.value
+      return acc
+    }, {} as Record<string, string>) || {}
+
+    const pickPrice = parseInt(settingsMap.pick_price || '21')
+    const maxTotalEntries = parseInt(settingsMap.max_total_entries || '2100')
+    const entriesPerUser = parseInt(settingsMap.entries_per_user || '10')
+    const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+    const userPicksPurchased = userPurchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+
+    // Validate limits
+    if (userPicksPurchased + picks_count > entriesPerUser) {
+      return NextResponse.json({ 
+        error: `You can only purchase up to ${entriesPerUser} picks total. You already have ${userPicksPurchased} picks.` 
+      }, { status: 400 })
+    }
+
+    if (totalPicksPurchased + picks_count > maxTotalEntries) {
+      return NextResponse.json({ 
+        error: `Pool has reached maximum capacity of ${maxTotalEntries} picks.` 
+      }, { status: 400 })
+    }
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -40,7 +84,7 @@ export async function POST(request: NextRequest) {
               name: `${picks_count} Pick${picks_count > 1 ? 's' : ''} - The Loser Pool`,
               description: `Purchase ${picks_count} pick${picks_count > 1 ? 's' : ''} for The Loser Pool`,
             },
-            unit_amount: 2100, // $21.00 in cents
+            unit_amount: pickPrice * 100, // Convert to cents
           },
           quantity: picks_count,
         },
@@ -60,7 +104,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         stripe_session_id: session.id,
-        amount: picks_count * 21,
+        amount: picks_count * pickPrice,
         picks_count: picks_count,
         status: 'pending',
       })
