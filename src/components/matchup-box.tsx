@@ -390,12 +390,25 @@ function TeamCard({
               {fullTeamName.split(' ').slice(-1)[0]}
             </div>
           </div>
-          <div
-            className="text-[8px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
-            style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-          >
-            Click to pick
-          </div>
+          {pickNames.length > 0 && (
+            <div
+              className="text-[8px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
+              style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+            >
+              <div className="space-y-0.5">
+                {pickNames.slice(0, 2).map((name, index) => (
+                  <div key={index} className="text-[7px] sm:text-[10px] opacity-90">
+                    {name}
+                  </div>
+                ))}
+                {pickNames.length > 2 && (
+                  <div className="text-[7px] sm:text-[10px] opacity-70">
+                    +{pickNames.length - 2} more
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </TeamBackground>
         <div style={vignetteOverlay} />
       </div>
