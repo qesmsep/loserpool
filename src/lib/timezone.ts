@@ -98,16 +98,28 @@ export function debugGameTime(gameTime: string): void {
 
 /**
  * Formats a game time for display in user's local timezone
- * @param gameTime - The game time (stored in Eastern Time in database)
+ * @param gameTime - The game time (stored in EST in database)
  * @returns Formatted game time in user's local timezone
  */
 export function formatGameTime(gameTime: string): string {
   try {
-    // Parse the Eastern Time from the database
-    const etDateTime = DateTime.fromISO(gameTime, { zone: 'America/New_York' })
+    // Remove the timezone offset and parse as EST
+    // The database stores times like '2025-09-14T16:25:00+00:00' but they're actually EST
+    const timeWithoutOffset = gameTime.replace(/[+-]\d{2}:\d{2}$/, '')
+    const estDateTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
     
     // Convert to user's local timezone
-    const localDateTime = etDateTime.toLocal()
+    const localDateTime = estDateTime.toLocal()
+    
+    // Debug logging
+    console.log('Game time conversion:', {
+      original: gameTime,
+      timeWithoutOffset,
+      est: estDateTime.toISO(),
+      local: localDateTime.toISO(),
+      userZone: DateTime.local().zoneName,
+      formatted: localDateTime.toFormat('EEE, MMM d, h:mm a')
+    })
     
     return localDateTime.toFormat('EEE, MMM d, h:mm a')
   } catch (error) {
