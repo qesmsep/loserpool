@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Edit, Trash2, Check, X, Tag } from 'lucide-react'
 import { PickNamesService, PickNameWithUsage } from '@/lib/pick-names-service'
 import { useAuth } from './auth-provider'
@@ -28,13 +28,7 @@ export default function PickNamesManager({
 
   const pickNamesService = new PickNamesService()
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      loadPickNames()
-    }
-  }, [loadPickNames, authLoading, user])
-
-  const loadPickNames = async () => {
+  const loadPickNames = useCallback(async () => {
     setLoading(true)
     try {
       const names = await pickNamesService.getUserPickNamesWithUsage()
@@ -44,7 +38,13 @@ export default function PickNamesManager({
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      loadPickNames()
+    }
+  }, [loadPickNames, authLoading, user])
 
   const handleCreate = async () => {
     if (!newName.trim()) {

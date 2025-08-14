@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Current week updated successfully',
       current_week: currentWeekInfo.weekNumber,
-      current_week_display: currentWeekInfo.current_week,
+      current_week_display: currentWeekInfo.currentWeek,
       season_type: currentWeekInfo.seasonType
     })
 

@@ -74,14 +74,40 @@ export function isDeadlinePassed(cstDeadline: string): boolean {
 }
 
 /**
+ * Debug function to understand timezone conversion
+ */
+export function debugGameTime(gameTime: string): void {
+  try {
+    const utcDateTime = DateTime.fromISO(gameTime, { zone: 'utc' })
+    const localDateTime = utcDateTime.toLocal()
+    const cstDateTime = utcDateTime.setZone('America/Chicago')
+    
+    console.log('Game time debug:', {
+      original: gameTime,
+      utc: utcDateTime.toISO(),
+      local: localDateTime.toISO(),
+      cst: cstDateTime.toISO(),
+      userZone: DateTime.local().zoneName,
+      localFormatted: localDateTime.toFormat('EEE, MMM d, h:mm a'),
+      cstFormatted: cstDateTime.toFormat('EEE, MMM d, h:mm a')
+    })
+  } catch (error) {
+    console.error('Error debugging game time:', error)
+  }
+}
+
+/**
  * Formats a game time for display in user's local timezone
- * @param gameTime - The game time (assumed to be in UTC from database)
+ * @param gameTime - The game time (stored in Eastern Time in database)
  * @returns Formatted game time in user's local timezone
  */
 export function formatGameTime(gameTime: string): string {
   try {
-    const utcDateTime = DateTime.fromISO(gameTime, { zone: 'utc' })
-    const localDateTime = utcDateTime.toLocal()
+    // Parse the Eastern Time from the database
+    const etDateTime = DateTime.fromISO(gameTime, { zone: 'America/New_York' })
+    
+    // Convert to user's local timezone
+    const localDateTime = etDateTime.toLocal()
     
     return localDateTime.toFormat('EEE, MMM d, h:mm a')
   } catch (error) {

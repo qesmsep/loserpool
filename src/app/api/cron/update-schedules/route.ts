@@ -19,15 +19,13 @@ export async function POST(request: NextRequest) {
     const result = await updateService.updateAllMatchups()
 
     const executionTime = Date.now() - startTime
-    const totalGames = result.current_week_games + result.next_week_games
     
-    console.log(`Scheduled update completed in ${executionTime}ms: ${totalGames} total games updated`)
+    console.log(`Scheduled update completed in ${executionTime}ms: ${result.total_games} total games updated`)
 
     return NextResponse.json({
       success: true,
-      current_week_games: result.current_week_games,
-      next_week_games: result.next_week_games,
-      total_games: totalGames,
+      total_games: result.total_games,
+      weeks_updated: result.weeks_updated,
       execution_time_ms: executionTime,
       errors: result.errors.length > 0 ? result.errors : null
     })

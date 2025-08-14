@@ -50,7 +50,7 @@ export class MatchupUpdateServiceSportsData {
       errors: [],
       details: {
         week,
-        season,
+        season: typeof season === 'string' ? parseInt(season) : season,
         timestamp: new Date().toISOString()
       }
     }

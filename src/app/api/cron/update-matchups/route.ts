@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       message: 'Comprehensive matchup update completed successfully',
-      total_games: result.total_games,
-      weeks_updated: result.weeks_updated,
+      processed: result.processed,
+      updated: result.updated,
       errors: result.errors.length,
       timestamp: new Date().toISOString()
     })
@@ -92,8 +92,8 @@ export async function GET() {
 
     return NextResponse.json({ 
       success: true,
-      total_games: result.total_games,
-      weeks_updated: result.weeks_updated,
+      processed: result.processed,
+      updated: result.updated,
       errors: result.errors,
       timestamp: new Date().toISOString()
     })

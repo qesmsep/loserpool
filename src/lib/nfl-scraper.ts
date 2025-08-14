@@ -157,7 +157,7 @@ export class NFLScraperService {
         }).filter(game => game.away_team && game.home_team)
         
         return {
-          current_week: currentWeek,
+          current_week: currentWeek || 'Unknown Week',
           games: games,
           last_updated: new Date().toISOString()
         }
@@ -308,7 +308,7 @@ export class NFLScraperService {
         }).filter(game => game.away_team && game.home_team)
         
         return {
-          current_week: currentWeek,
+          current_week: currentWeek || 'Unknown Week',
           games: games,
           last_updated: new Date().toISOString()
         }
@@ -341,7 +341,7 @@ export class NFLScraperService {
       const games: NFLGame[] = this.extractGamesFromHTML(html)
 
       return {
-        current_week: currentWeek,
+        current_week: currentWeek || 'Unknown Week',
         games,
         last_updated: new Date().toISOString()
       }
@@ -403,7 +403,7 @@ export class NFLScraperService {
   }
 
   // Parse individual game from cheerio element
-  private parseGameFromElement($: cheerio.CheerioAPI, element: cheerio.Element): NFLGame | null {
+  private parseGameFromElement($: cheerio.Root, element: cheerio.Element): NFLGame | null {
     try {
       const $element = $(element)
       

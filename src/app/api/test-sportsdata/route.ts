@@ -58,7 +58,7 @@ export async function GET() {
         teamsCount: teams.length,
         sampleGame: sampleGame ? {
           original: {
-            GameID: sampleGame.GameID,
+            GameKey: sampleGame.GameKey,
             AwayTeam: sampleGame.AwayTeam,
             HomeTeam: sampleGame.HomeTeam,
             DateTime: sampleGame.DateTime,

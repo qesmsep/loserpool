@@ -80,9 +80,9 @@ export class PickNamesService {
       // Create a map of used pick names
       const usedPickNames = new Map<string, { week: number; team: string }>()
       picks?.forEach(pick => {
-        if (pick.pick_name_id && pick.matchups) {
+        if (pick.pick_name_id && pick.matchups && pick.matchups.length > 0) {
           usedPickNames.set(pick.pick_name_id, {
-            week: pick.matchups.week,
+            week: pick.matchups[0].week,
             team: pick.team_picked
           })
         }

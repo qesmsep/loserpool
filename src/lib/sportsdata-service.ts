@@ -150,9 +150,6 @@ interface SportsDataResponse {
   TimeRemainingMinutes?: number
   TimeRemainingSeconds?: number
   PointSpread?: number
-  OverUnder?: number
-  AwayTeamMoneyLine?: number
-  HomeTeamMoneyLine?: number
   GlobalGameID?: number
   GlobalAwayTeamID?: number
   GlobalHomeTeamID?: number

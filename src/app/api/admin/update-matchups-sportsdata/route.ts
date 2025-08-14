@@ -4,10 +4,15 @@ import { matchupUpdateServiceSportsData } from '@/lib/matchup-update-service-spo
 
 interface UpdateResult {
   success: boolean
-  message: string
-  gamesFound?: number
-  gamesUpdated?: number
-  error?: string
+  gamesUpdated: number
+  gamesAdded: number
+  gamesSkipped: number
+  errors: string[]
+  details: {
+    week: number
+    season: number
+    timestamp: string
+  }
 }
 
 export async function POST(request: Request) {
@@ -20,7 +25,7 @@ export async function POST(request: Request) {
 
     console.log(`Admin matchup update request: season=${season}, week=${week}, action=${action}`)
 
-    let result: UpdateResult
+    let result: any
 
     switch (action) {
       case 'current':
@@ -101,7 +106,7 @@ export async function GET(request: Request) {
 
     console.log(`Admin matchup update GET request: season=${season}, week=${week}, action=${action}`)
 
-    let result: UpdateResult
+    let result: any
 
     switch (action) {
       case 'test':

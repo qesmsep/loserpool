@@ -622,42 +622,42 @@ export class MatchupDataService {
           // Prepare update data
           const updateData: Partial<MatchupUpdate> = {
             status: gameData.status,
-            away_score: gameData.away_score,
-            home_score: gameData.home_score,
+            awayScore: gameData.away_score,
+            homeScore: gameData.home_score,
             venue: gameData.venue,
-            weather_forecast: gameData.weather_forecast,
+            weatherForecast: gameData.weather_forecast,
             temperature: gameData.temperature,
-            wind_speed: gameData.wind_speed,
+            windSpeed: gameData.wind_speed,
             humidity: gameData.humidity,
-            is_dome: gameData.is_dome,
-            away_spread: gameData.away_spread,
-            home_spread: gameData.home_spread,
-            over_under: gameData.over_under,
-            odds_last_updated: gameData.odds_last_updated,
-            data_source: gameData.data_source,
-            last_api_update: gameData.last_api_update,
+            isDome: gameData.is_dome,
+            awaySpread: gameData.away_spread,
+            homeSpread: gameData.home_spread,
+            overUnder: gameData.over_under,
+            oddsLastUpdated: gameData.odds_last_updated,
+            dataSource: gameData.data_source,
+            lastApiUpdate: gameData.last_api_update,
             winner: gameData.winner
           }
 
           // Add weather data if not a dome (API-Sports doesn't provide venue info, so we'll skip for now)
           // TODO: Integrate with a venue database to get location info for weather
-          if (updateData.is_dome) {
-            updateData.weather_forecast = 'Indoor Game'
+          if (updateData.isDome) {
+            updateData.weatherForecast = 'Indoor Game'
             updateData.temperature = 72
-            updateData.wind_speed = 0
+            updateData.windSpeed = 0
             updateData.humidity = 50
           }
 
           // Add odds data
           const oddsData = await this.fetchOddsData(gameData.away_team, gameData.home_team)
-          updateData.away_spread = oddsData.awaySpread
-          updateData.home_spread = oddsData.homeSpread
-          updateData.over_under = oddsData.overUnder
-          updateData.odds_last_updated = oddsData.lastUpdated
+          updateData.awaySpread = oddsData.awaySpread
+          updateData.homeSpread = oddsData.homeSpread
+          updateData.overUnder = oddsData.overUnder
+          updateData.oddsLastUpdated = oddsData.lastUpdated
 
           // Determine winner if scores are available
-          if (updateData.away_score !== undefined && updateData.home_score !== undefined) {
-            updateData.winner = this.determineWinner(updateData.away_score, updateData.home_score)
+          if (updateData.awayScore !== undefined && updateData.homeScore !== undefined) {
+            updateData.winner = this.determineWinner(updateData.awayScore, updateData.homeScore)
           }
 
           // Update the matchup in database
@@ -808,8 +808,8 @@ export class MatchupDataService {
           const updateData: Partial<MatchupUpdate> = {
             status: gameData.status,
             venue: gameData.venue,
-            data_source: gameData.data_source || 'nfl-scraper',
-            last_api_update: new Date()
+            dataSource: gameData.data_source || 'nfl-scraper',
+            lastApiUpdate: new Date()
           }
 
           // Update the matchup in database
@@ -912,8 +912,8 @@ export class MatchupDataService {
           const updateData: Partial<MatchupUpdate> = {
             status: gameData.status,
             venue: gameData.venue,
-            data_source: gameData.data_source || 'nfl-scraper',
-            last_api_update: new Date()
+            dataSource: gameData.data_source || 'nfl-scraper',
+            lastApiUpdate: new Date()
           }
 
           // Update the matchup in database

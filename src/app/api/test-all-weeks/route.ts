@@ -26,9 +26,10 @@ export async function GET() {
     for (const weekInfo of testWeeks) {
       try {
         console.log(`Testing ${weekInfo.seasonType}${weekInfo.week}...`)
-        const schedule = await updateService.scraper.scrapeWeekSchedule(weekInfo.week, weekInfo.seasonType)
+        const scraper = new NFLScheduleScraper()
+        const schedule = await scraper.scrapeWeekSchedule(weekInfo.week, weekInfo.seasonType)
 
-        const result = {
+        const result: any = {
           week: `${weekInfo.seasonType}${weekInfo.week}`,
           games_found: schedule.games.length,
           week_number: schedule.week_number,

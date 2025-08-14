@@ -12,7 +12,7 @@ export async function GET() {
     console.log('Current week info:', currentWeekInfo)
     
     // Scrape current week schedule
-    const schedule = await scraper.scrapeWeekSchedule(currentWeekInfo.week_number, currentWeekInfo.season_type)
+    const schedule = await scraper.scrapeWeekSchedule(currentWeekInfo.weekNumber, currentWeekInfo.seasonType)
     console.log('Scraped schedule:', schedule)
     
     return NextResponse.json({
