@@ -236,34 +236,34 @@ function TeamCard({
             />
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
               {/* Team Stats Row */}
-              <div className="flex items-center justify-center space-x-2 mb-1">
-                <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+              <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
+                <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                   {teamStats.record}
                 </span>
                 {isHomeTeam ? (
-                  <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                  <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                     HOME
                   </span>
                 ) : (
-                  <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                  <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                     AWAY
                   </span>
                 )}
               </div>
               
-              <div className="flex items-center justify-center space-x-3 mb-1">
+              <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-1">
                 {showControls && (
                   <button
                     onClick={removePick}
                     disabled={disabled}
-                    className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
+                    className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Remove pick from ${fullTeamName}`}
                   >
-                    <Minus className="w-3 h-3" />
+                    <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   </button>
                 )}
                 <div
-                  className="font-medium text-[20px] sm:text-[24px] leading-tight tracking-wide"
+                  className="font-normal sm:font-medium text-[12px] sm:text-[24px] leading-tight tracking-wide"
                   style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
                 >
                   {fullTeamName}
@@ -272,15 +272,15 @@ function TeamCard({
                   <button
                     onClick={addPick}
                     disabled={disabled}
-                    className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
+                    className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Add pick to ${fullTeamName}`}
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   </button>
                 )}
               </div>
               <div
-                className="font-medium text-[10px] sm:text-[11px] tracking-wide opacity-80"
+                className="font-normal sm:font-medium text-[8px] sm:text-[11px] tracking-wide opacity-80"
                 style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
               >
                 {picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : ''}
@@ -315,29 +315,29 @@ function TeamCard({
           croppedLogo
         >
           {/* Team Stats Row */}
-          <div className="flex items-center justify-center space-x-2 mb-1">
-            <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+          <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
+            <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
               {teamStats.record}
             </span>
             {isHomeTeam ? (
-              <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+              <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                 HOME
               </span>
             ) : (
-              <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+              <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                 AWAY
               </span>
             )}
           </div>
           
           <div
-            className="mb-1 relative z-20 font-medium text-[20px] sm:text-[24px] leading-tight tracking-wide"
+            className="mb-1 relative z-20 font-normal sm:font-medium text-[12px] sm:text-[24px] leading-tight tracking-wide"
             style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
           >
             {fullTeamName}
           </div>
           <div
-            className="text-[10px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
+            className="text-[8px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
             style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
           >
             Click to pick
@@ -381,20 +381,20 @@ export default function MatchupBox({
         <div className="flex-1">
           <div className="flex flex-col space-y-1">
             {/* Game Time */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <Clock className="w-3 h-3 text-blue-200" />
               <span className="text-xs sm:text-sm text-blue-200">
                 {formatGameTime(matchup.game_time)}
               </span>
               {isThursdayGame && (
-                <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded">
+                <span className="text-xs text-orange-300 bg-orange-500/20 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                   TNF
                 </span>
               )}
             </div>
             
             {/* Venue Info */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <MapPin className="w-3 h-3 text-blue-200" />
               <span className="text-xs text-blue-200">
                 {getTeamStats(matchup.home_team).venue}, {getTeamStats(matchup.home_team).city}

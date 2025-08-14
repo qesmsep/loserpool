@@ -169,3 +169,56 @@ export function calculatePicksDeadline(matchups: Array<{ game_time: string }>): 
     return tomorrow.set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toISO() || ''
   }
 } 
+
+/**
+ * Gets the detailed time remaining until deadline with days, hours, minutes, and seconds
+ * @param cstDeadline - The deadline in CST
+ * @returns Object with days, hours, minutes, and seconds remaining
+ */
+export function getDetailedTimeRemaining(cstDeadline: string): {
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+  isExpired: boolean
+} {
+  try {
+    const cstDateTime = DateTime.fromISO(cstDeadline, { zone: 'America/Chicago' })
+    const localDateTime = cstDateTime.toLocal()
+    const now = DateTime.now()
+    
+    const diff = localDateTime.diff(now)
+    
+    if (diff.milliseconds <= 0) {
+      return {
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isExpired: true
+      }
+    }
+    
+    const days = Math.floor(diff.as('days'))
+    const hours = Math.floor(diff.as('hours') % 24)
+    const minutes = Math.floor(diff.as('minutes') % 60)
+    const seconds = Math.floor(diff.as('seconds') % 60)
+    
+    return {
+      days,
+      hours,
+      minutes,
+      seconds,
+      isExpired: false
+    }
+  } catch (error) {
+    console.error('Error calculating detailed time remaining:', error)
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      isExpired: true
+    }
+  }
+} 

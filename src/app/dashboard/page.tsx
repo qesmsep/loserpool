@@ -593,28 +593,28 @@ export default function DashboardPage() {
 
   return (
     <div className="app-bg">
-             <Header 
-         title="Dashboard"
+      <Header 
+        title="Dashboard"
         subtitle={`Welcome back, ${profile?.username || profile?.email}`}
-       />
+      />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Picks Deadline */}
         {deadline && (
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div className="flex items-center">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-200 mr-2 sm:mr-3" />
+          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3 sm:p-6 mb-4 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+              <div className="flex items-center">
+                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-200 mr-2 sm:mr-3" />
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white">Picks Deadline</h3>
-                  <p className="text-sm sm:text-base text-yellow-200">
+                  <h3 className="text-sm sm:text-lg font-semibold text-white">Picks Deadline</h3>
+                  <p className="text-xs sm:text-base text-yellow-200">
                     Deadline: {formatDeadlineForUser(deadline)} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
                   </p>
                 </div>
               </div>
               <div className="text-center sm:text-right">
-                <p className="text-sm text-yellow-200">Time Remaining</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">
+                <p className="text-xs sm:text-sm text-yellow-200">Time Remaining</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">
                   {getTimeRemaining(deadline)}
                 </p>
               </div>
@@ -622,49 +622,49 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Leaderboard/Results/Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Mobile-Optimized 2x2 Grid for Top Cards */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-6 mb-4 sm:mb-8">
           <Link
             href="/leaderboard"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
           >
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
-            <p className="text-sm sm:text-base text-blue-100">See who&apos;s still in the running</p>
+            <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
+            <p className="text-xs sm:text-base text-blue-100">See who&apos;s still in the running</p>
           </Link>
 
           <Link
             href="/results"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
           >
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Results</h3>
-            <p className="text-sm sm:text-base text-blue-100">Check last week&apos;s results</p>
+            <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Results</h3>
+            <p className="text-xs sm:text-base text-blue-100">Check last week&apos;s results</p>
           </Link>
 
           <Link
             href="/pick-names"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
           >
             <div className="flex items-center mb-1 sm:mb-2">
-              <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-purple-300 mr-2" />
-              <h3 className="text-base sm:text-lg font-semibold text-white">Pick Names</h3>
+              <Tag className="w-3 h-3 sm:w-5 sm:h-5 text-purple-300 mr-1 sm:mr-2" />
+              <h3 className="text-sm sm:text-lg font-semibold text-white">Pick Names</h3>
             </div>
-            <p className="text-sm sm:text-base text-blue-100">Manage your named picks</p>
+            <p className="text-xs sm:text-base text-blue-100">Manage your named picks</p>
           </Link>
 
           <Link
             href="/weekly-stats"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 hover:bg-white/20 transition-all"
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
           >
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">This Week&apos;s Stats</h3>
-            <p className="text-sm sm:text-base text-blue-100">See total picks for each team</p>
+            <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">This Week&apos;s Stats</h3>
+            <p className="text-xs sm:text-base text-blue-100">See total picks for each team</p>
           </Link>
         </div>
 
-        {/* How to Pick and Rules */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+        {/* How to Pick and Rules - Mobile Optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
-            <div className="text-sm sm:text-base text-blue-200 space-y-1">
+            <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
+            <div className="text-xs sm:text-base text-blue-200 space-y-1">
               <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
               <p>• Each click adds 1 pick to that team</p>
               <p>• Use the + and - buttons to adjust your pick allocation</p>
@@ -675,8 +675,8 @@ export default function DashboardPage() {
           </div>
           
           <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3 sm:p-4">
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-2">Pool Rules:</h3>
-            <div className="text-sm sm:text-base text-purple-200 space-y-1">
+            <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">Pool Rules:</h3>
+            <div className="text-xs sm:text-base text-purple-200 space-y-1">
               <p>• Pick the team you think will <strong>LOSE</strong></p>
               <p>• Ties are eliminations</p>
               <p>• Picks cost $21 each</p>
@@ -684,7 +684,7 @@ export default function DashboardPage() {
               <p>• Winner takes all prize pool</p>
               <Link 
                 href="/rules" 
-                className="inline-block mt-2 text-purple-300 hover:text-purple-100 underline font-medium"
+                className="inline-block mt-2 text-purple-300 hover:text-purple-100 underline font-medium text-xs sm:text-sm"
               >
                 View Full Rules →
               </Link>
@@ -692,40 +692,40 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
+        {/* Stats Cards - Mobile Optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-green-500/20 rounded-lg">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-green-200" />
+                <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-green-200" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-green-100">Loser Picks Remaining</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{picksRemaining}</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{picksRemaining}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6">
             <div className="flex items-center">
               <div className="p-2 bg-orange-500/20 rounded-lg">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-orange-200" />
+                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-orange-200" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{currentWeekDisplay}</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{currentWeekDisplay}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center">
               <div className="p-2 bg-red-500/20 rounded-lg">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-red-200" />
+                <Trophy className="w-4 h-4 sm:w-6 sm:h-6 text-red-200" />
               </div>
-              <div className="ml-3 sm:ml-4">
+              <div className="ml-2 sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-red-100">Wrong Picks Count</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'eliminated').length}</p>
               </div>
             </div>
           </div>
@@ -733,26 +733,26 @@ export default function DashboardPage() {
 
         {/* Current Week Matchups with Picking */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-                <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-white">Current Week Games</h2>
-                <p className="text-sm sm:text-base text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+              <div>
+                <h2 className="text-base sm:text-xl font-semibold text-white">Current Week Games</h2>
+                <p className="text-xs sm:text-base text-blue-100">Week {currentWeek} - {matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 <button
                   onClick={picksSaved ? handleUpdate : handleSave}
                   disabled={saving || checkDeadlinePassed() || userPicks.length === 0 || (picksSaved && !showControls)}
-                  className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                  className="flex items-center justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm"
                 >
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : picksSaved ? 'Update Picks' : 'Save Picks'}
                 </button>
                 {picksSaved && !showControls && !checkDeadlinePassed() && (
                   <button
                     onClick={() => setShowControls(true)}
                     disabled={saving}
-                    className="flex items-center justify-center bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+                    className="flex items-center justify-center bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm"
                   >
                     Edit Picks
                   </button>
@@ -760,15 +760,15 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="p-4 sm:p-6">
+          <div className="p-3 sm:p-6">
             {error && (
-              <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-3 sm:px-4 py-3 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base">
+              <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-3 sm:px-4 py-3 rounded-lg mb-3 sm:mb-6 text-xs sm:text-base">
                 {error}
-          </div>
-        )}
+              </div>
+            )}
 
             {matchups && matchups.length > 0 ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2 sm:space-y-4">
                 {matchups.map((matchup) => {
                   const userPick = getPickForMatchup(matchup.id)
                   
@@ -790,27 +790,27 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-red-200 mb-2">⚠️ Unable to load schedule data</p>
-                <p className="text-blue-200 text-sm">Please try again later or contact support</p>
+              <div className="text-center py-6 sm:py-8">
+                <p className="text-red-200 mb-2 text-sm sm:text-base">⚠️ Unable to load schedule data</p>
+                <p className="text-blue-200 text-xs sm:text-sm">Please try again later or contact support</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Next Week Matchups (Read Only) */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mt-6">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/20">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mt-4 sm:mt-6">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
               <div>
-                <h2 className="text-lg sm:text-xl font-semibold text-white">Next Week&apos;s Games</h2>
-                <p className="text-sm sm:text-base text-blue-100">Week {currentWeek + 1} - {nextWeekMatchups?.length || 0} games scheduled</p>
+                <h2 className="text-base sm:text-xl font-semibold text-white">Next Week&apos;s Games</h2>
+                <p className="text-xs sm:text-base text-blue-100">Week {currentWeek + 1} - {nextWeekMatchups?.length || 0} games scheduled</p>
               </div>
             </div>
           </div>
-          <div className="p-4 sm:p-6">
+          <div className="p-3 sm:p-6">
             {nextWeekMatchups && nextWeekMatchups.length > 0 ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2 sm:space-y-4">
                 {nextWeekMatchups.map((matchup) => (
                   <MatchupBox
                     key={matchup.id}
@@ -828,9 +828,9 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-red-200 mb-2">⚠️ Unable to load next week&apos;s schedule</p>
-                <p className="text-blue-200 text-sm">Please try again later or contact support</p>
+              <div className="text-center py-6 sm:py-8">
+                <p className="text-red-200 mb-2 text-sm sm:text-base">⚠️ Unable to load next week&apos;s schedule</p>
+                <p className="text-blue-200 text-xs sm:text-sm">Please try again later or contact support</p>
               </div>
             )}
           </div>

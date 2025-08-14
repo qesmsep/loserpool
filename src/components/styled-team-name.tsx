@@ -66,9 +66,9 @@ export default function StyledTeamName({
   const colors = getTeamColors(fullTeamName)
   
   const sizeClasses = {
-    sm: 'text-sm px-4 py-2',
-    md: 'text-base px-5 py-2.5',
-    lg: 'text-lg px-6 py-3'
+    sm: 'text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2',
+    md: 'text-sm sm:text-base px-3 sm:px-5 py-2 sm:py-2.5',
+    lg: 'text-base sm:text-lg px-4 sm:px-6 py-2.5 sm:py-3'
   }
 
   if (!showTeamColors) {
@@ -81,7 +81,7 @@ export default function StyledTeamName({
 
   return (
     <span
-      className={`${sizeClasses[size]} ${className} font-bold rounded-lg inline-block relative`}
+      className={`${sizeClasses[size]} ${className} font-normal sm:font-bold rounded-lg inline-block relative`}
       style={{
         background: `linear-gradient(to bottom,
           rgba(255,255,255,0.18) 0%,
