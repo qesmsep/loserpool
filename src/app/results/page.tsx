@@ -1,5 +1,4 @@
 import { requireAuth } from '@/lib/auth'
-import StyledTeamName from '@/components/styled-team-name'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { CheckCircle, XCircle, Minus } from 'lucide-react'
 import Header from '@/components/header'
@@ -139,9 +138,9 @@ export default async function ResultsPage() {
                               {formatGameTime(matchup?.game_time || '')}
                             </span>
                             <div className="flex items-center space-x-2">
-                              <StyledTeamName teamName={matchup?.away_team || ''} size="sm" />
+                              <span className="text-sm font-semibold text-white">{matchup?.away_team || ''}</span>
                               <span className="font-medium text-white">@</span>
-                              <StyledTeamName teamName={matchup?.home_team || ''} size="sm" />
+                              <span className="text-sm font-semibold text-white">{matchup?.home_team || ''}</span>
                             </div>
                             {matchup?.status === 'final' && (
                               <span className="text-xs text-green-300 bg-green-500/20 px-2 py-1 rounded">
@@ -172,11 +171,9 @@ export default async function ResultsPage() {
                             }`}
                           >
                             <div className="text-center">
-                              <StyledTeamName 
-                                teamName={matchup?.away_team || ''} 
-                                size="lg" 
-                                className="mb-2" 
-                              />
+                              <span className="text-lg font-semibold text-white mb-2 block">
+                                {matchup?.away_team || ''}
+                              </span>
                                <div className={`${pick.team_picked === matchup?.away_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
                                  {matchup?.status === 'final' ? matchup.away_score : ''}
                                </div>
@@ -192,11 +189,9 @@ export default async function ResultsPage() {
                             }`}
                           >
                             <div className="text-center">
-                              <StyledTeamName 
-                                teamName={matchup?.home_team || ''} 
-                                size="lg" 
-                                className="mb-2" 
-                              />
+                              <span className="text-lg font-semibold text-white mb-2 block">
+                                {matchup?.home_team || ''}
+                              </span>
                                <div className={`${pick.team_picked === matchup?.home_team ? 'text-lg font-bold' : 'text-sm font-medium opacity-90'}`}>
                                  {matchup?.status === 'final' ? matchup.home_score : ''}
                                </div>

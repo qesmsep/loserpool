@@ -1,5 +1,4 @@
 import { requireAdmin } from '@/lib/auth'
-import StyledTeamName from '@/components/styled-team-name'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Trophy, TrendingUp } from 'lucide-react'
@@ -96,13 +95,13 @@ export default async function AdminResultsPage() {
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
           <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => window.location.href = '/api/admin/assign-default-picks'}
+            <Link
+              href="/api/admin/assign-default-picks"
               className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
               Assign Default Picks
-            </button>
+            </Link>
             <Link
               href="/api/admin/assign-default-picks"
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
@@ -194,9 +193,9 @@ export default async function AdminResultsPage() {
                         <div className="flex-1">
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-2">
-                              <StyledTeamName teamName={matchup.away_team} size="sm" />
+                              <span className="text-sm font-semibold text-white">{matchup.away_team}</span>
                               <span className="text-lg font-semibold text-white">@</span>
-                              <StyledTeamName teamName={matchup.home_team} size="sm" />
+                              <span className="text-sm font-semibold text-white">{matchup.home_team}</span>
                             </div>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               matchup.status === 'final' ? 'bg-green-500/20 text-green-200' :
