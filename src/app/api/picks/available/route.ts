@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/auth'
 
+// Type for pick data with dynamic week columns
+type PickData = {
+  pick_name: string
+  status: string
+  [key: string]: any // Allow dynamic week column properties
+}
+
 export async function GET() {
   try {
     // Verify user is authenticated
@@ -36,7 +43,7 @@ export async function GET() {
         status
       `)
       .eq('user_id', user.id)
-      .not('pick_name', 'is', null)
+      .not('pick_name', 'is', null) as { data: PickData[] | null }
 
     // Get all matchups for the current week to map team_matchup_id to team names
     const { data: matchupsData } = await supabase
@@ -54,9 +61,9 @@ export async function GET() {
     })
 
     // Convert to the format expected by the popup
-    const availablePicks = allPicksData?.map(pick => {
+    const availablePicks = allPicksData?.map((pick: PickData) => {
       const isAllocated = !!pick[weekColumn]
-      const allocatedTeam = isAllocated ? teamMatchupMapping[pick[weekColumn]] : null
+      const allocatedTeam = isAllocated ? teamMatchupMapping[pick[weekColumn] as string] : null
       
       return {
         id: pick.pick_name,

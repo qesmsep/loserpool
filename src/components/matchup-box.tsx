@@ -58,10 +58,10 @@ function getFullTeamName(teamName: string): string {
   return TEAM_ABBREVIATIONS[teamName] || teamName
 }
 
-// Function to get team stats
+// Function to get team stats (placeholder for now - will be replaced with database lookup)
 function getTeamStats(teamName: string) {
   const fullName = getFullTeamName(teamName)
-  return TEAM_STATS[fullName] || { rank: 0, record: '0-0', venue: 'Unknown', city: 'Unknown' }
+  return DEFAULT_TEAM_DATA
 }
 
 interface MatchupBoxProps {
@@ -200,11 +200,8 @@ function TeamCard({
             croppedLogo
           >
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-              {/* Team Stats Row */}
-              <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
-                <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-                  {teamStats.record}
-                </span>
+              {/* Team Location Badge */}
+              <div className="flex items-center justify-center mb-1">
                 {isHomeTeam ? (
                   <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                     HOME
@@ -302,11 +299,8 @@ function TeamCard({
           duotoneLogo={false}
           croppedLogo
         >
-          {/* Team Stats Row */}
-          <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
-            <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
-              {teamStats.record}
-            </span>
+          {/* Team Location Badge */}
+          <div className="flex items-center justify-center mb-1">
             {isHomeTeam ? (
               <span className="text-[7px] sm:text-[9px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded text-white/90">
                 HOME
@@ -404,7 +398,7 @@ export default function MatchupBox({
             <div className="flex items-center space-x-1 sm:space-x-2">
               <MapPin className="w-3 h-3 text-blue-200" />
               <span className="text-xs text-blue-200">
-                {getTeamStats(matchup.home_team).venue}, {getTeamStats(matchup.home_team).city}
+                {getTeamStats(matchup.home_team).venue}
               </span>
             </div>
           </div>
