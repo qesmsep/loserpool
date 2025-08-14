@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Trophy, Calendar, Save, Tag } from 'lucide-react'
 import Header from '@/components/header'
-import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline } from '@/lib/timezone'
+import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining } from '@/lib/timezone'
 import { useAuth } from '@/components/auth-provider'
 
 import { getCurrentWeekDisplay } from '@/lib/week-utils'
@@ -61,6 +61,13 @@ export default function DashboardPage() {
   const [currentWeekDisplay, setCurrentWeekDisplay] = useState('Week 1')
   const [nextWeekDisplay, setNextWeekDisplay] = useState('Week 2')
   const [deadline, setDeadline] = useState<string | null>(null)
+  const [countdown, setCountdown] = useState<{
+    days: number
+    hours: number
+    minutes: number
+    seconds: number
+    isExpired: boolean
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: false })
   const [matchups, setMatchups] = useState<Matchup[]>([])
   const [nextWeekMatchups, setNextWeekMatchups] = useState<Matchup[]>([])
   const [userPicks, setUserPicks] = useState<Pick[]>([])
@@ -72,6 +79,24 @@ export default function DashboardPage() {
   const [showControls, setShowControls] = useState(false)
 
   const router = useRouter()
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!deadline) return
+
+    const updateCountdown = () => {
+      const detailedTime = getDetailedTimeRemaining(deadline)
+      setCountdown(detailedTime)
+    }
+
+    // Update immediately
+    updateCountdown()
+
+    // Update every second
+    const interval = setInterval(updateCountdown, 1000)
+
+    return () => clearInterval(interval)
+  }, [deadline])
 
   const loadData = useCallback(async () => {
     try {
@@ -601,22 +626,88 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Picks Deadline */}
         {deadline && (
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3 sm:p-6 mb-4 sm:mb-8">
+          <div className={`border rounded-lg p-3 sm:p-6 mb-4 sm:mb-8 ${
+            countdown.isExpired 
+              ? 'bg-red-500/20 border-red-500/30' 
+              : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+              ? 'bg-red-500/20 border-red-500/30'
+              : 'bg-yellow-500/20 border-yellow-500/30'
+          }`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
               <div className="flex items-center">
-                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-200 mr-2 sm:mr-3" />
+                <Calendar className={`w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 ${
+                  countdown.isExpired 
+                    ? 'text-red-200' 
+                    : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                    ? 'text-red-200'
+                    : 'text-yellow-200'
+                }`} />
                 <div>
                   <h3 className="text-sm sm:text-lg font-semibold text-white">Picks Deadline</h3>
-                  <p className="text-xs sm:text-base text-yellow-200">
+                  <p className={`text-xs sm:text-base ${
+                    countdown.isExpired 
+                      ? 'text-red-200' 
+                      : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                      ? 'text-red-200'
+                      : 'text-yellow-200'
+                  }`}>
                     Deadline: {formatDeadlineForUser(deadline)} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
                   </p>
                 </div>
               </div>
               <div className="text-center sm:text-right">
-                <p className="text-xs sm:text-sm text-yellow-200">Time Remaining</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">
-                  {getTimeRemaining(deadline)}
-                </p>
+                <p className={`text-xs sm:text-sm mb-1 ${
+                  countdown.isExpired 
+                    ? 'text-red-200' 
+                    : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                    ? 'text-red-200'
+                    : 'text-yellow-200'
+                }`}>Time Remaining</p>
+                {countdown.isExpired ? (
+                  <p className="text-lg sm:text-2xl font-bold text-red-400">EXPIRED</p>
+                ) : (
+                  <div className="text-lg sm:text-2xl font-bold text-white">
+                    {countdown.days > 0 && (
+                      <>
+                        <span className="inline-block mr-2">
+                          <span className={`text-sm sm:text-base ${
+                            countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                              ? 'text-red-200'
+                              : 'text-yellow-200'
+                          }`}>Days</span>
+                          <div>{countdown.days}</div>
+                        </span>
+                        <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                      </>
+                    )}
+                    <span className="inline-block mr-2">
+                      <span className={`text-sm sm:text-base ${
+                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                          ? 'text-red-200'
+                          : 'text-yellow-200'
+                      }`}>Hours</span>
+                      <div>{countdown.hours.toString().padStart(2, '0')}</div>
+                    </span>
+                    <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                    <span className="inline-block mr-2">
+                      <span className={`text-sm sm:text-base ${
+                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                          ? 'text-red-200'
+                          : 'text-yellow-200'
+                      }`}>Min</span>
+                      <div>{countdown.minutes.toString().padStart(2, '0')}</div>
+                    </span>
+                    <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                    <span className="inline-block">
+                      <span className={`text-sm sm:text-base ${
+                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                          ? 'text-red-200'
+                          : 'text-yellow-200'
+                      }`}>Sec</span>
+                      <div>{countdown.seconds.toString().padStart(2, '0')}</div>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
