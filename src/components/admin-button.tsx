@@ -24,7 +24,7 @@ export default function AdminButton() {
           console.log('Checking admin status for user:', user.email)
           
           // Temporarily check if user email contains admin for debugging
-          const isAdminByEmail = user.email?.includes('admin') || user.email?.includes('qesmsep')
+          const isAdminByEmail = !!(user.email?.includes('admin') || user.email?.includes('qesmsep'))
           console.log('Admin check by email:', isAdminByEmail)
           
           try {
