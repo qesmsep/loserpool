@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { formatDeadlineForUser, isDeadlinePassed, formatGameTime, calculatePicksDeadline } from '@/lib/timezone'
-import { Save, Clock, AlertTriangle, CheckCircle, Plus, Minus, Tag } from 'lucide-react'
+import { Save, Clock, AlertTriangle, CheckCircle, Plus, Minus, Tag, X } from 'lucide-react'
 import Header from '@/components/header'
 import PickNamesManager from '@/components/pick-names-manager'
 import StyledTeamName from '@/components/styled-team-name'
-import { PickNamesService, PickNameWithUsage } from '@/lib/pick-names-service'
+import { PickNameWithUsage } from '@/lib/pick-names-service'
 import { useAuth } from '@/components/auth-provider'
 
 interface Matchup {
@@ -48,7 +48,7 @@ export default function PicksPage() {
   const [error, setError] = useState('')
   const [showPickNamesManager, setShowPickNamesManager] = useState(false)
   const [selectedPickName, setSelectedPickName] = useState<PickNameWithUsage | null>(null)
-  const [availablePickNames, setAvailablePickNames] = useState<PickNameWithUsage[]>([])
+
   const router = useRouter()
 
   const loadData = useCallback(async () => {
@@ -110,18 +110,13 @@ export default function PicksPage() {
       setUserPicks(picksData || [])
       setPicksRemaining(remaining)
       
-      // Load available pick names
-      const pickNamesService = new PickNamesService()
-      const availableNames = await pickNamesService.getAvailablePickNames()
-      setAvailablePickNames(availableNames)
-      
       setLoading(false)
     } catch (error) {
       console.error('Error loading data:', error)
       setError('Failed to load data')
       setLoading(false)
     }
-  }, [router])
+  }, [router, user])
 
   useEffect(() => {
     if (!authLoading && user) {

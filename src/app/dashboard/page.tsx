@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
@@ -22,6 +22,17 @@ interface Matchup {
   away_score: number | null
   home_score: number | null
   status: 'scheduled' | 'live' | 'final'
+}
+
+interface ApiMatchup {
+  id: string
+  week: number
+  away_team: string
+  home_team: string
+  game_time: string
+  away_score: number | null
+  home_score: number | null
+  status: string
 }
 
 interface Pick {
@@ -62,7 +73,7 @@ export default function DashboardPage() {
 
   const router = useRouter()
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // Check if user is authenticated
       if (!user) {
@@ -139,8 +150,8 @@ export default function DashboardPage() {
       setNextWeekDisplay('Loading...')
 
   // Get current week matchups from database via API
-  let matchupsData: any[] = []
-  let nextWeekMatchupsData: any[] = []
+  let matchupsData: Matchup[] = []
+  let nextWeekMatchupsData: Matchup[] = []
   
   try {
     // Fetch current week matchups
@@ -150,7 +161,7 @@ export default function DashboardPage() {
     if (currentWeekResult.success) {
       setCurrentWeekDisplay(currentWeekResult.week_display)
       
-      matchupsData = currentWeekResult.matchups.map((matchup: any) => ({
+      matchupsData = currentWeekResult.matchups.map((matchup: ApiMatchup) => ({
         id: matchup.id,
         week: matchup.week,
         away_team: matchup.away_team,
@@ -172,7 +183,7 @@ export default function DashboardPage() {
     if (nextWeekResult.success) {
       setNextWeekDisplay(nextWeekResult.week_display)
       
-      nextWeekMatchupsData = nextWeekResult.matchups.map((matchup: any) => ({
+      nextWeekMatchupsData = nextWeekResult.matchups.map((matchup: ApiMatchup) => ({
         id: matchup.id,
         week: matchup.week,
         away_team: matchup.away_team,
@@ -230,7 +241,7 @@ export default function DashboardPage() {
         .eq('user_id', user.id)
         .in('matchup_id', matchupsData?.map(m => m.id) || [])
 
-      const picksUsed = picksData?.reduce((sum, pick) => sum + pick.picks_count, 0) || 0
+      const picksUsed = picksData?.reduce((sum, pick: Pick) => sum + pick.picks_count, 0) || 0
       const remaining = totalPicks - picksUsed
 
       // Calculate deadline based on current week's matchups
@@ -248,13 +259,13 @@ export default function DashboardPage() {
       setError('Failed to load data')
       setLoading(false)
     }
-  }
+  }, [user, router])
 
   useEffect(() => {
     if (!authLoading && user) {
       loadData()
     }
-  }, [authLoading, user])
+  }, [loadData, authLoading, user])
 
   const getPickForMatchup = (matchupId: string) => {
     return userPicks.find(pick => pick.matchup_id === matchupId)
@@ -842,7 +853,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-red-200 mb-2">⚠️ Unable to load next week's schedule</p>
+                <p className="text-red-200 mb-2">⚠️ Unable to load next week&apos;s schedule</p>
                 <p className="text-blue-200 text-sm">Please try again later or contact support</p>
               </div>
             )}

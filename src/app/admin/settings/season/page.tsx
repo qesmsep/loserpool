@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminHeader from '@/components/admin-header'
 
@@ -36,7 +35,7 @@ export default function AdminSeasonPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+
 
   const [season, setSeason] = useState<SeasonData>({
     seasonStartType: 'regularSeason',

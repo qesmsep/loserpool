@@ -89,10 +89,11 @@ export default function StyledTeamName({
           ${colors.primary} 60%,
           rgba(0,0,0,0.28) 100%)`,
         color: 'white',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
+        textTransform: 'none',
+        letterSpacing: '0.02em',
         textShadow: '0 1px 2px rgba(0,0,0,0.55)',
-        whiteSpace: 'nowrap'
+        whiteSpace: 'nowrap',
+        fontFamily: "'Inter', sans-serif"
       }}
     >
       {fullTeamName}

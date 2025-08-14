@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Lock, Unlock, AlertTriangle } from 'lucide-react'
@@ -17,7 +16,7 @@ export default function PoolLockPage() {
   const [lockDate, setLockDate] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+
 
   useEffect(() => {
     loadPoolData()

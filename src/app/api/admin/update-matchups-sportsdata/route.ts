@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { matchupUpdateServiceSportsData } from '@/lib/matchup-update-service-sportsdata'
 
+interface UpdateResult {
+  success: boolean
+  message: string
+  gamesFound?: number
+  gamesUpdated?: number
+  error?: string
+}
+
 export async function POST(request: Request) {
   try {
     // Verify admin access
@@ -12,7 +20,7 @@ export async function POST(request: Request) {
 
     console.log(`Admin matchup update request: season=${season}, week=${week}, action=${action}`)
 
-    let result: any
+    let result: UpdateResult
 
     switch (action) {
       case 'current':
@@ -93,7 +101,7 @@ export async function GET(request: Request) {
 
     console.log(`Admin matchup update GET request: season=${season}, week=${week}, action=${action}`)
 
-    let result: any
+    let result: UpdateResult
 
     switch (action) {
       case 'test':

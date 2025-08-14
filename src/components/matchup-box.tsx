@@ -1,7 +1,6 @@
 'use client'
 
-import { Plus, Minus } from 'lucide-react'
-import StyledTeamName from './styled-team-name'
+import { Plus, Minus, MapPin, Clock } from 'lucide-react'
 import TeamBackground from './team-background'
 import { getTeamColors } from '@/lib/team-logos'
 
@@ -41,6 +40,42 @@ const TEAM_ABBREVIATIONS: Record<string, string> = {
   'NE': 'New England Patriots'
 }
 
+// Mock team stats and venue data
+const TEAM_STATS: Record<string, { rank: number; record: string; venue: string; city: string }> = {
+  'Green Bay Packers': { rank: 12, record: '9-8', venue: 'Lambeau Field', city: 'Green Bay, WI' },
+  'Chicago Bears': { rank: 28, record: '7-10', venue: 'Soldier Field', city: 'Chicago, IL' },
+  'Dallas Cowboys': { rank: 5, record: '12-5', venue: 'AT&T Stadium', city: 'Arlington, TX' },
+  'New York Giants': { rank: 25, record: '6-11', venue: 'MetLife Stadium', city: 'East Rutherford, NJ' },
+  'Philadelphia Eagles': { rank: 3, record: '11-6', venue: 'Lincoln Financial Field', city: 'Philadelphia, PA' },
+  'Washington Commanders': { rank: 26, record: '4-13', venue: 'FedExField', city: 'Landover, MD' },
+  'Detroit Lions': { rank: 8, record: '12-5', venue: 'Ford Field', city: 'Detroit, MI' },
+  'Kansas City Chiefs': { rank: 1, record: '11-6', venue: 'Arrowhead Stadium', city: 'Kansas City, MO' },
+  'Carolina Panthers': { rank: 32, record: '2-15', venue: 'Bank of America Stadium', city: 'Charlotte, NC' },
+  'Atlanta Falcons': { rank: 20, record: '7-10', venue: 'Mercedes-Benz Stadium', city: 'Atlanta, GA' },
+  'Houston Texans': { rank: 15, record: '10-7', venue: 'NRG Stadium', city: 'Houston, TX' },
+  'Baltimore Ravens': { rank: 2, record: '13-4', venue: 'M&T Bank Stadium', city: 'Baltimore, MD' },
+  'Cincinnati Bengals': { rank: 16, record: '9-8', venue: 'Paycor Stadium', city: 'Cincinnati, OH' },
+  'Cleveland Browns': { rank: 13, record: '11-6', venue: 'Cleveland Browns Stadium', city: 'Cleveland, OH' },
+  'Jacksonville Jaguars': { rank: 14, record: '9-8', venue: 'EverBank Stadium', city: 'Jacksonville, FL' },
+  'Indianapolis Colts': { rank: 22, record: '9-8', venue: 'Lucas Oil Stadium', city: 'Indianapolis, IN' },
+  'Tampa Bay Buccaneers': { rank: 18, record: '9-8', venue: 'Raymond James Stadium', city: 'Tampa, FL' },
+  'Minnesota Vikings': { rank: 21, record: '7-10', venue: 'U.S. Bank Stadium', city: 'Minneapolis, MN' },
+  'Tennessee Titans': { rank: 27, record: '6-11', venue: 'Nissan Stadium', city: 'Nashville, TN' },
+  'New Orleans Saints': { rank: 19, record: '9-8', venue: 'Caesars Superdome', city: 'New Orleans, LA' },
+  'San Francisco 49ers': { rank: 4, record: '12-5', venue: 'Levi\'s Stadium', city: 'Santa Clara, CA' },
+  'Pittsburgh Steelers': { rank: 17, record: '10-7', venue: 'Acrisure Stadium', city: 'Pittsburgh, PA' },
+  'Arizona Cardinals': { rank: 31, record: '4-13', venue: 'State Farm Stadium', city: 'Glendale, AZ' },
+  'Las Vegas Raiders': { rank: 24, record: '8-9', venue: 'Allegiant Stadium', city: 'Las Vegas, NV' },
+  'Denver Broncos': { rank: 29, record: '8-9', venue: 'Empower Field at Mile High', city: 'Denver, CO' },
+  'Miami Dolphins': { rank: 6, record: '11-6', venue: 'Hard Rock Stadium', city: 'Miami Gardens, FL' },
+  'Los Angeles Chargers': { rank: 23, record: '5-12', venue: 'SoFi Stadium', city: 'Inglewood, CA' },
+  'Los Angeles Rams': { rank: 11, record: '10-7', venue: 'SoFi Stadium', city: 'Inglewood, CA' },
+  'Seattle Seahawks': { rank: 9, record: '9-8', venue: 'Lumen Field', city: 'Seattle, WA' },
+  'Buffalo Bills': { rank: 7, record: '11-6', venue: 'Highmark Stadium', city: 'Orchard Park, NY' },
+  'New York Jets': { rank: 30, record: '7-10', venue: 'MetLife Stadium', city: 'East Rutherford, NJ' },
+  'New England Patriots': { rank: 10, record: '4-13', venue: 'Gillette Stadium', city: 'Foxborough, MA' }
+}
+
 // Function to get full team name
 function getFullTeamName(teamName: string): string {
   // If it's already a full name, return as-is
@@ -52,12 +87,19 @@ function getFullTeamName(teamName: string): string {
   return TEAM_ABBREVIATIONS[teamName] || teamName
 }
 
+// Function to get team stats
+function getTeamStats(teamName: string) {
+  const fullName = getFullTeamName(teamName)
+  return TEAM_STATS[fullName] || { rank: 0, record: '0-0', venue: 'Unknown', city: 'Unknown' }
+}
+
 interface MatchupBoxProps {
   matchup: {
     id: string
     away_team: string
     home_team: string
     game_time: string
+    venue?: string
   }
   userPick?: {
     team_picked: string
@@ -86,6 +128,7 @@ interface TeamCardProps {
   }
   disabled: boolean
   showControls: boolean
+  isHomeTeam?: boolean
 }
 
 function TeamCard({
@@ -96,9 +139,11 @@ function TeamCard({
   removePick,
   colors,
   disabled,
-  showControls
+  showControls,
+  isHomeTeam = false
 }: TeamCardProps) {
   const fullTeamName = getFullTeamName(teamName)
+  const teamStats = getTeamStats(teamName)
   
   const teamCardStyle = {
     borderRadius: '8px',
@@ -120,28 +165,28 @@ function TeamCard({
 
   const carbonFiberOverlay = {
     content: "''",
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
     backgroundImage:
       'url("data:image/svg+xml,%3csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3cpath d=\'M0 0L40 40M40 0L0 40\' stroke=\'%23222222\' stroke-opacity=\'0.15\' stroke-width=\'1\'/%3e%3c/svg%3e")',
-    pointerEvents: 'none' as 'none',
+    pointerEvents: 'none' as const,
     opacity: 0.15,
     zIndex: 1,
   }
 
   const vignetteOverlay = {
     content: "''",
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
     background:
       'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100%)',
-    pointerEvents: 'none' as 'none',
+    pointerEvents: 'none' as const,
     zIndex: 2,
   }
 
@@ -190,20 +235,36 @@ function TeamCard({
               }}
             />
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+              {/* Team Stats Row */}
+              <div className="flex items-center justify-center space-x-2 mb-1">
+                <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                  {teamStats.record}
+                </span>
+                {isHomeTeam ? (
+                  <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                    HOME
+                  </span>
+                ) : (
+                  <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                    AWAY
+                  </span>
+                )}
+              </div>
+              
               <div className="flex items-center justify-center space-x-3 mb-1">
                 {showControls && (
                   <button
                     onClick={removePick}
                     disabled={disabled}
-                    className="bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-base hover:bg-red-800 disabled:opacity-50"
+                    className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Remove pick from ${fullTeamName}`}
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-3 h-3" />
                   </button>
                 )}
                 <div
-                  className="font-bold text-[28px] sm:text-[34px] leading-tight tracking-widest"
-                  style={{ fontFamily: "'Bebas Neue', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                  className="font-medium text-[20px] sm:text-[24px] leading-tight tracking-wide"
+                  style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
                 >
                   {fullTeamName}
                 </div>
@@ -211,16 +272,16 @@ function TeamCard({
                   <button
                     onClick={addPick}
                     disabled={disabled}
-                    className="bg-green-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-base hover:bg-green-800 disabled:opacity-50"
+                    className="bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Add pick to ${fullTeamName}`}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3" />
                   </button>
                 )}
               </div>
               <div
-                className="font-semibold text-[12px] sm:text-[13px] tracking-wider opacity-80"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                className="font-medium text-[10px] sm:text-[11px] tracking-wide opacity-80"
+                style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
               >
                 {picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : ''}
               </div>
@@ -253,15 +314,31 @@ function TeamCard({
           duotoneLogo={false}
           croppedLogo
         >
+          {/* Team Stats Row */}
+          <div className="flex items-center justify-center space-x-2 mb-1">
+            <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+              {teamStats.record}
+            </span>
+            {isHomeTeam ? (
+              <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                HOME
+              </span>
+            ) : (
+              <span className="text-[8px] sm:text-[9px] bg-white/20 px-1.5 py-0.5 rounded text-white/90">
+                AWAY
+              </span>
+            )}
+          </div>
+          
           <div
-            className="mb-2 relative z-20 font-bold text-[28px] sm:text-[34px] leading-tight tracking-wide"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+            className="mb-1 relative z-20 font-medium text-[20px] sm:text-[24px] leading-tight tracking-wide"
+            style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
           >
             {fullTeamName}
           </div>
           <div
-            className="text-[12px] sm:text-[13px] tracking-wider opacity-70 relative z-20"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+            className="text-[10px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
+            style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
           >
             Click to pick
           </div>
@@ -272,22 +349,7 @@ function TeamCard({
   )
 }
 
-// Helper function to darken a hex color by a percentage
-function darken(hexColor: string, percent: number): string {
-  let r = parseInt(hexColor.slice(1, 3), 16)
-  let g = parseInt(hexColor.slice(3, 5), 16)
-  let b = parseInt(hexColor.slice(5, 7), 16)
 
-  r = Math.max(0, Math.min(255, Math.floor(r * (1 - percent))))
-  g = Math.max(0, Math.min(255, Math.floor(g * (1 - percent))))
-  b = Math.max(0, Math.min(255, Math.floor(b * (1 - percent))))
-
-  const rr = r.toString(16).padStart(2, '0')
-  const gg = g.toString(16).padStart(2, '0')
-  const bb = b.toString(16).padStart(2, '0')
-
-  return `#${rr}${gg}${bb}`
-}
 
 export default function MatchupBox({
   matchup,
@@ -313,25 +375,37 @@ export default function MatchupBox({
   const canShowControls = showControls || (!picksSaved && userPicks.length > 0)
 
   return (
-    <div className="bg-white/5 border border-white/20 rounded-lg p-3 sm:p-4">
+    <div className="bg-white/5 border border-white/20 rounded-lg p-2 sm:p-3">
       {/* Game Info Header */}
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
         <div className="flex-1">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
-            <span className="text-xs sm:text-sm text-blue-200">
-              {formatGameTime(matchup.game_time)}
-            </span>
-            {isThursdayGame && (
-              <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded self-start">
-                TNF
+          <div className="flex flex-col space-y-1">
+            {/* Game Time */}
+            <div className="flex items-center space-x-2">
+              <Clock className="w-3 h-3 text-blue-200" />
+              <span className="text-xs sm:text-sm text-blue-200">
+                {formatGameTime(matchup.game_time)}
               </span>
-            )}
+              {isThursdayGame && (
+                <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded">
+                  TNF
+                </span>
+              )}
+            </div>
+            
+            {/* Venue Info */}
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-3 h-3 text-blue-200" />
+              <span className="text-xs text-blue-200">
+                {getTeamStats(matchup.home_team).venue}, {getTeamStats(matchup.home_team).city}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Team Selection Grid */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {/* Away Team */}
         <div className="relative">
           <TeamCard
@@ -357,6 +431,7 @@ export default function MatchupBox({
             colors={homeColors}
             disabled={disabled || (!homeIsPicked && picksRemaining <= 0)}
             showControls={canShowControls}
+            isHomeTeam={true}
           />
         </div>
       </div>

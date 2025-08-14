@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { RefreshCw, Clock, Database, AlertTriangle, CheckCircle, XCircle, Play, Pause, Settings } from 'lucide-react'
+import { RefreshCw, Clock, Database, CheckCircle, XCircle, Play, Pause, Settings } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface UpdateLog {
@@ -24,7 +24,7 @@ interface AutomatedSettings {
 }
 
 export default function DataManagementPage() {
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<{ id: string; is_admin: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [logs, setLogs] = useState<UpdateLog[]>([])
@@ -40,9 +40,9 @@ export default function DataManagementPage() {
 
   useEffect(() => {
     checkAuthAndLoadData()
-  }, [])
+  }, [checkAuthAndLoadData])
 
-  const checkAuthAndLoadData = async () => {
+  const checkAuthAndLoadData = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -70,7 +70,7 @@ export default function DataManagementPage() {
       console.error('Error checking auth:', error)
       router.push('/login')
     }
-  }
+  }, [router])
 
   const loadLogs = async () => {
     try {
@@ -277,7 +277,7 @@ export default function DataManagementPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold text-white">Manual Data Update</h2>
-              <p className="text-gray-300">Trigger an immediate update from NFL.com for both current and next week's games</p>
+              <p className="text-gray-300">Trigger an immediate update from NFL.com for both current and next week&apos;s games</p>
             </div>
             <div className="flex space-x-3">
               <button

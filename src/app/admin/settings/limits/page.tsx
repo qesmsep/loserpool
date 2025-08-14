@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminHeader from '@/components/admin-header'
 
@@ -17,7 +16,7 @@ export default function AdminLimitsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+
 
   const [limits, setLimits] = useState<LimitsData>({
     maxTotalEntries: 2100,

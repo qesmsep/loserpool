@@ -32,14 +32,14 @@ export default function PickNamesManager({
     if (!authLoading && user) {
       loadPickNames()
     }
-  }, [authLoading, user])
+  }, [loadPickNames, authLoading, user])
 
   const loadPickNames = async () => {
     setLoading(true)
     try {
       const names = await pickNamesService.getUserPickNamesWithUsage()
       setPickNames(names)
-    } catch (error) {
+    } catch {
       setError('Failed to load pick names')
     } finally {
       setLoading(false)
@@ -65,7 +65,7 @@ export default function PickNamesManager({
       } else {
         setError('Failed to create pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to create pick name')
     }
   }
@@ -87,7 +87,7 @@ export default function PickNamesManager({
       } else {
         setError('Failed to update pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to update pick name')
     }
   }
@@ -105,7 +105,7 @@ export default function PickNamesManager({
       } else {
         setError('Failed to delete pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to delete pick name')
     }
   }

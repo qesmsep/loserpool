@@ -71,7 +71,7 @@ Return the data in this exact JSON format:
 
 Extract all preseason games shown on the current week's schedule. Make sure all game times are in 2025. Use proper team names (e.g., "Bills", "Dolphins", etc.). Convert game times to ISO format with 2025 dates. If venue or network info is not available, omit those fields.
 
-IMPORTANT: Return ONLY valid JSON without any comments, explanations, or markdown formatting. Do not include "//" comments or ```json``` blocks.`
+IMPORTANT: Return ONLY valid JSON without any comments, explanations, or markdown formatting. Do not include "//" comments or \`\`\`json\`\`\` blocks.`;
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -170,7 +170,7 @@ Return the data in this exact JSON format:
 
 Extract all preseason games shown for Preseason Week 4. Make sure all game times are in 2025. Use proper team names (e.g., "Bills", "Dolphins", etc.). Convert game times to ISO format with 2025 dates. If venue or network info is not available, omit those fields.
 
-IMPORTANT: Return ONLY valid JSON without any comments, explanations, or markdown formatting. Do not include "//" comments or ```json``` blocks.`
+IMPORTANT: Return ONLY valid JSON without any comments, explanations, or markdown formatting. Do not include "//" comments or \`\`\`json\`\`\` blocks.`;
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -228,7 +228,7 @@ IMPORTANT: Return ONLY valid JSON without any comments, explanations, or markdow
   }
 
   // Convert ChatGPT game to our internal format
-  convertToMatchupFormat(game: ChatGPTNFLGame): any {
+  convertToMatchupFormat(game: ChatGPTNFLGame): Record<string, unknown> {
     return {
       away_team: game.away_team,
       home_team: game.home_team,

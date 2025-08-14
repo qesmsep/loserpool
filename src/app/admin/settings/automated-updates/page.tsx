@@ -32,10 +32,7 @@ export default async function AutomatedUpdatesPage() {
   const currentWeekDisplay = await matchupService.getCurrentWeekDisplay()
   const currentWeek = await matchupService.getCurrentWeek()
   
-  // Determine if we're in preseason
-  const now = new Date()
-  const regularSeasonStart = new Date('2025-09-04')
-  const isPreseason = now < regularSeasonStart
+
   
   // Get current week matchups with update info
   const { data: currentMatchups } = await supabase

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Header from '@/components/header'
@@ -8,7 +8,7 @@ import { PickNamesService, PickNameWithUsage } from '@/lib/pick-names-service'
 import { Edit, Save, X, Tag, Plus } from 'lucide-react'
 
 export default function PickNamesPage() {
-  const [user, setUser] = useState<any>(null)
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -23,18 +23,13 @@ export default function PickNamesPage() {
 
   const pickNamesService = new PickNamesService()
 
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
         return
       }
-      setUser(user)
       loadPickNames()
     } catch (error) {
       console.error('Auth error:', error)
@@ -42,13 +37,17 @@ export default function PickNamesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
 
   const loadPickNames = async () => {
     try {
       const names = await pickNamesService.getUserPickNamesWithUsage()
       setPickNames(names)
-    } catch (error) {
+    } catch {
       setError('Failed to load pick names')
     }
   }
@@ -79,7 +78,7 @@ export default function PickNamesPage() {
       } else {
         setError('Failed to update pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to update pick name')
     }
   }
@@ -110,7 +109,7 @@ export default function PickNamesPage() {
       } else {
         setError('Failed to create pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to create pick name')
     }
   }
@@ -128,7 +127,7 @@ export default function PickNamesPage() {
       } else {
         setError('Failed to delete pick name')
       }
-    } catch (error) {
+    } catch {
       setError('Failed to delete pick name')
     }
   }
@@ -169,9 +168,9 @@ export default function PickNamesPage() {
         <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-white mb-2">About Pick Names</h3>
           <div className="text-blue-200 space-y-1">
-            <p>• Name each of your picks individually (e.g., "Chad1", "Chad2", "Finance 1", "Sales 1")</p>
+            <p>• Name each of your picks individually (e.g., &quot;Chad1&quot;, &quot;Chad2&quot;, &quot;Finance 1&quot;, &quot;Sales 1&quot;)</p>
             <p>• Pick names help you track and organize your picks</p>
-            <p>• You can edit names anytime before they're used</p>
+            <p>• You can edit names anytime before they&apos;re used</p>
             <p>• Used pick names are locked and cannot be changed</p>
           </div>
         </div>

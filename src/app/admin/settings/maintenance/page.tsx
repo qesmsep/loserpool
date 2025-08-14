@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminHeader from '@/components/admin-header'
 
@@ -16,7 +15,7 @@ export default function AdminMaintenancePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+
 
   const [maintenance, setMaintenance] = useState<MaintenanceData>({
     maintenanceMode: false,

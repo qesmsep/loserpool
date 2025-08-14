@@ -79,18 +79,18 @@ export default function TeamBackground({
   const colors = getTeamColors(fullTeamName)
   
   const sizeClasses = {
-    sm: 'p-2 text-sm',
-    md: 'p-3.5 text-base',
-    lg: 'p-5 text-lg'
+    sm: 'p-1.5 text-sm',
+    md: 'p-2.5 text-base',
+    lg: 'p-3.5 text-lg'
   }
 
   const backgroundStyle: React.CSSProperties = {
     background: gradientDepth
       ? `linear-gradient(to bottom,
-          rgba(255,255,255,0.18) 0%,
-          ${colors.primary} 10%,
-          ${colors.primary} 55%,
-          rgba(0,0,0,0.28) 100%)`
+          rgba(255,255,255,0.12) 0%,
+          ${colors.primary} 15%,
+          ${colors.primary} 70%,
+          rgba(0,0,0,0.15) 100%)`
       : colors.primary,
     border: 'none',
     boxShadow: 'none',
@@ -98,9 +98,9 @@ export default function TeamBackground({
     position: 'relative',
     overflow: 'hidden',
     color: 'white',
-    fontFamily: "'Bebas Neue', sans-serif",
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
+    fontFamily: "'Inter', sans-serif",
+    letterSpacing: '0.02em',
+    textTransform: 'none',
     transition: 'box-shadow 0.3s ease',
     textShadow: '0 1px 2px rgba(0,0,0,0.6)'
   }
@@ -123,13 +123,38 @@ export default function TeamBackground({
         />
       )}
 
-      {/* Top micro-sheen band */}
+      {/* Top subtle accent */}
       <div
         aria-hidden="true"
-        className="absolute top-0 left-0 right-0 h-[10px] pointer-events-none"
+        className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none"
         style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), rgba(255,255,255,0))',
+          background: `linear-gradient(to bottom, ${colors.secondary}40 0%, transparent 100%)`,
           zIndex: 18
+        }}
+      />
+
+      {/* Wrapped border accent */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            linear-gradient(to left, ${colors.secondary} 0%, ${colors.secondary}40 30%, transparent 60%) 0 0 / 100% 3px no-repeat,
+            linear-gradient(to bottom, ${colors.secondary} 0%, ${colors.secondary}40 50%, transparent 80%) 100% 0 / 3px 100% no-repeat,
+            linear-gradient(to right, ${colors.secondary} 0%, ${colors.secondary}40 30%, transparent 60%) 0 100% / 100% 3px no-repeat,
+            linear-gradient(to top, ${colors.secondary} 0%, ${colors.secondary}40 50%, transparent 80%) 0 0 / 3px 100% no-repeat
+          `,
+          zIndex: 19
+        }}
+      />
+
+      {/* Subtle sheen */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 30%, transparent 60%)`,
+          zIndex: 20
         }}
       />
 
@@ -148,7 +173,7 @@ export default function TeamBackground({
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `linear-gradient(20deg, ${colors.secondary}FF 0%, ${colors.secondary}50 20%, ${colors.secondary}10 45%, ${colors.secondary}00 70%)`,
+          background: `linear-gradient(20deg, ${colors.secondary}40 0%, ${colors.secondary}20 30%, ${colors.secondary}05 60%, ${colors.secondary}00 80%)`,
           mixBlendMode: 'screen',
           zIndex: 19
         }}
