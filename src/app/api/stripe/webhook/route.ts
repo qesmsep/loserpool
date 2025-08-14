@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
                 pickRecords.push({
                   user_id: purchase.user_id,
                   matchup_id: null, // Will be assigned when user makes picks
-                  team_picked: '', // Will be assigned when user makes picks
+                  team_picked: null, // Will be assigned when user makes picks
                   picks_count: 1,
                   status: 'pending' as const,
                   pick_name: `Pick ${i}`, // Default name like "Pick 1", "Pick 2", etc.

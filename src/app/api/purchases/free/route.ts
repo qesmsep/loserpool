@@ -89,6 +89,43 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Create default pick records in the picks table with default names
+    try {
+      const pickRecords = []
+      
+      for (let i = 1; i <= picks_count; i++) {
+        pickRecords.push({
+          user_id: user.id,
+          matchup_id: null, // Will be assigned when user makes picks
+          team_picked: null, // Will be assigned when user makes picks
+          picks_count: 1,
+          status: 'pending' as const,
+          pick_name: `Pick ${i}`, // Default name like "Pick 1", "Pick 2", etc.
+          week: 1, // Default to week 1, will be updated when used
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      }
+
+      const { error: picksError } = await supabase
+        .from('picks')
+        .insert(pickRecords)
+
+      if (picksError) {
+        console.error('Error creating pick records for free picks:', picksError)
+        return NextResponse.json({ 
+          error: 'Failed to create pick records' 
+        }, { status: 500 })
+      }
+
+      console.log(`Created ${pickRecords.length} default pick records for free picks for user ${user.id}`)
+    } catch (pickCreationError) {
+      console.error('Error creating default pick records for free picks:', pickCreationError)
+      return NextResponse.json({ 
+        error: 'Failed to create pick records' 
+      }, { status: 500 })
+    }
+
     return NextResponse.json({ 
       success: true,
       message: `Successfully added ${picks_count} free pick${picks_count > 1 ? 's' : ''}`,
