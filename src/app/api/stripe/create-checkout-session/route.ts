@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         stripe_session_id: session.id,
         amount: picks_count * pickPrice,
+        amount_paid: picks_count * pickPrice, // For consistency with webhook
         picks_count: picks_count,
         status: 'pending',
       })

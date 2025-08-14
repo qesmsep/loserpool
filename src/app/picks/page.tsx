@@ -30,6 +30,11 @@ interface Pick {
   picks_count: number
   status: 'pending' | 'active' | 'eliminated' | 'safe'
   pick_name: string | null
+  pick_name_id?: string
+  pick_names?: {
+    name: string
+    description?: string
+  }
   week: number
   created_at: string
   updated_at: string
@@ -46,6 +51,7 @@ export default function PicksPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showPickNamesManager, setShowPickNamesManager] = useState(false)
+  const [selectedPickName, setSelectedPickName] = useState<PickNameWithUsage | null>(null)
 
   const router = useRouter()
 
@@ -182,8 +188,12 @@ export default function PicksPage() {
         team_picked: teamName,
         picks_count: 1,
         status: 'active',
+        pick_name: null,
         pick_name_id: pickName.id,
-        pick_names: { name: pickName.name, description: pickName.description }
+        pick_names: { name: pickName.name, description: pickName.description },
+        week: currentWeek,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
       setUserPicks([...userPicks, newPick])
     }
@@ -302,49 +312,32 @@ export default function PicksPage() {
         backText="Back"
       />
       
-      {/* Picks Counter and Save Button */}
-      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-6">
-              <div className="text-center">
-                <p className="text-sm text-blue-200">Picks Remaining</p>
-                <p className="text-3xl font-bold text-white">{picksRemaining}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-blue-200">Total Picks Used</p>
-                <p className="text-xl font-bold text-green-300">
-                  {userPicks.reduce((sum, pick) => sum + pick.picks_count, 0)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowPickNamesManager(!showPickNamesManager)}
-                className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Tag className="w-4 h-4 mr-2" />
-                Manage Pick Names
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || checkDeadlinePassed()}
-                className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-              >
-                <Save className="w-5 h-5 mr-2" />
-                {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {error && (
           <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
+
+        {/* Stats Section - Moved above deadline */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-6">
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <p className="text-sm text-blue-200 mb-1">Loser Picks Remaining</p>
+              <p className="text-3xl font-bold text-white">{picksRemaining}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-blue-200 mb-1">Current Week</p>
+              <p className="text-3xl font-bold text-white">{currentWeek}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-blue-200 mb-1">Wrong Picks Count</p>
+              <p className="text-3xl font-bold text-green-300">
+                {userPicks.reduce((sum, pick) => sum + pick.picks_count, 0)}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Deadline Warning */}
         {deadline && (
@@ -368,6 +361,25 @@ export default function PicksPage() {
             </div>
           </div>
         )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={() => setShowPickNamesManager(!showPickNamesManager)}
+            className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Tag className="w-4 h-4 mr-2" />
+            Manage Pick Names
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || checkDeadlinePassed()}
+            className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
+          </button>
+        </div>
 
         {/* Pick Names Manager */}
         {showPickNamesManager && (

@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     for (let i = 1; i <= picksCount; i++) {
       pickRecords.push({
         user_id: userId,
-        matchup_id: null,
-        team_picked: '',
+        matchup_id: null, // Will be NULL for pending picks
+        team_picked: null, // Will be NULL for pending picks
         picks_count: 1,
         status: 'pending',
         pick_name: `Pick ${i}`,
