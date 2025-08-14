@@ -48,9 +48,12 @@ export default function DebugPickNamesPage() {
         return
       }
 
-      // Try to get pick names
-      const pickNamesService = new PickNamesService()
-      const pickNames = await pickNamesService.getUserPickNamesWithUsage()
+      // Get user's picks directly from picks table
+      const { data: picks, error: picksError } = await supabase
+        .from('picks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
       // Get user's purchases
       const { data: purchases, error: purchasesError } = await supabase
@@ -63,8 +66,9 @@ export default function DebugPickNamesPage() {
         user: user.email,
         userId: user.id,
         tableExists: true,
-        pickNamesCount: pickNames.length,
-        pickNames: pickNames,
+        picksCount: picks?.length || 0,
+        picks: picks,
+        picksError: picksError?.message,
         purchasesCount: purchases?.length || 0,
         purchases: purchases,
         purchasesError: purchasesError?.message
@@ -95,11 +99,26 @@ export default function DebugPickNamesPage() {
 
       const totalPicks = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
-      // Call the function to generate default pick names
-      const { error } = await supabase.rpc('generate_default_pick_names', {
-        user_uuid: user.id,
-        count: totalPicks
-      })
+      // Create default pick records in the picks table
+      const pickRecords = []
+      
+      for (let i = 1; i <= totalPicks; i++) {
+        pickRecords.push({
+          user_id: user.id,
+          matchup_id: null,
+          team_picked: '',
+          picks_count: 1,
+          status: 'pending',
+          pick_name: `Pick ${i}`,
+          week: 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      }
+
+      const { error } = await supabase
+        .from('picks')
+        .insert(pickRecords)
 
       if (error) {
         setError(`Failed to generate pick names: ${error.message}`)

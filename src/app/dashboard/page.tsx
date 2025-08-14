@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Trophy, Calendar, Save, Tag } from 'lucide-react'
+import { Trophy, Calendar, Save, Tag, ShoppingCart } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, getTimeRemaining, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining } from '@/lib/timezone'
 import { useAuth } from '@/components/auth-provider'
 
-import { getCurrentWeekDisplay } from '@/lib/week-utils'
+import { getCurrentWeekDisplay, isPreseason } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
 import StyledTeamName from '@/components/styled-team-name'
 
@@ -79,6 +79,9 @@ export default function DashboardPage() {
   const [showControls, setShowControls] = useState(false)
 
   const router = useRouter()
+
+  // Check if the season has started
+  const hasSeasonStarted = currentWeek > 0 && !isPreseason()
 
   // Countdown timer effect
   useEffect(() => {
@@ -715,13 +718,26 @@ export default function DashboardPage() {
 
         {/* Mobile-Optimized 2x2 Grid for Top Cards */}
         <div className="grid grid-cols-2 gap-2 sm:gap-6 mb-4 sm:mb-8">
-          <Link
-            href="/leaderboard"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
-          >
-            <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
-            <p className="text-xs sm:text-base text-blue-100">See who&apos;s still in the running</p>
-          </Link>
+          {hasSeasonStarted ? (
+            <Link
+              href="/leaderboard"
+              className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
+            >
+              <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
+              <p className="text-xs sm:text-base text-blue-100">See who&apos;s still in the running</p>
+            </Link>
+          ) : (
+            <Link
+              href="/purchase"
+              className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
+            >
+              <div className="flex items-center mb-1 sm:mb-2">
+                <ShoppingCart className="w-3 h-3 sm:w-5 sm:h-5 text-green-300 mr-1 sm:mr-2" />
+                <h3 className="text-sm sm:text-lg font-semibold text-white">Buy Picks</h3>
+              </div>
+              <p className="text-xs sm:text-base text-blue-100">Purchase picks before the season starts</p>
+            </Link>
+          )}
 
           <Link
             href="/results"
