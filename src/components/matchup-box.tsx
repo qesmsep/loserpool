@@ -40,40 +40,11 @@ const TEAM_ABBREVIATIONS: Record<string, string> = {
   'NE': 'New England Patriots'
 }
 
-// Mock team stats and venue data
-const TEAM_STATS: Record<string, { rank: number; record: string; venue: string; city: string }> = {
-  'Green Bay Packers': { rank: 12, record: '9-8', venue: 'Lambeau Field', city: 'Green Bay, WI' },
-  'Chicago Bears': { rank: 28, record: '7-10', venue: 'Soldier Field', city: 'Chicago, IL' },
-  'Dallas Cowboys': { rank: 5, record: '12-5', venue: 'AT&T Stadium', city: 'Arlington, TX' },
-  'New York Giants': { rank: 25, record: '6-11', venue: 'MetLife Stadium', city: 'East Rutherford, NJ' },
-  'Philadelphia Eagles': { rank: 3, record: '11-6', venue: 'Lincoln Financial Field', city: 'Philadelphia, PA' },
-  'Washington Commanders': { rank: 26, record: '4-13', venue: 'FedExField', city: 'Landover, MD' },
-  'Detroit Lions': { rank: 8, record: '12-5', venue: 'Ford Field', city: 'Detroit, MI' },
-  'Kansas City Chiefs': { rank: 1, record: '11-6', venue: 'Arrowhead Stadium', city: 'Kansas City, MO' },
-  'Carolina Panthers': { rank: 32, record: '2-15', venue: 'Bank of America Stadium', city: 'Charlotte, NC' },
-  'Atlanta Falcons': { rank: 20, record: '7-10', venue: 'Mercedes-Benz Stadium', city: 'Atlanta, GA' },
-  'Houston Texans': { rank: 15, record: '10-7', venue: 'NRG Stadium', city: 'Houston, TX' },
-  'Baltimore Ravens': { rank: 2, record: '13-4', venue: 'M&T Bank Stadium', city: 'Baltimore, MD' },
-  'Cincinnati Bengals': { rank: 16, record: '9-8', venue: 'Paycor Stadium', city: 'Cincinnati, OH' },
-  'Cleveland Browns': { rank: 13, record: '11-6', venue: 'Cleveland Browns Stadium', city: 'Cleveland, OH' },
-  'Jacksonville Jaguars': { rank: 14, record: '9-8', venue: 'EverBank Stadium', city: 'Jacksonville, FL' },
-  'Indianapolis Colts': { rank: 22, record: '9-8', venue: 'Lucas Oil Stadium', city: 'Indianapolis, IN' },
-  'Tampa Bay Buccaneers': { rank: 18, record: '9-8', venue: 'Raymond James Stadium', city: 'Tampa, FL' },
-  'Minnesota Vikings': { rank: 21, record: '7-10', venue: 'U.S. Bank Stadium', city: 'Minneapolis, MN' },
-  'Tennessee Titans': { rank: 27, record: '6-11', venue: 'Nissan Stadium', city: 'Nashville, TN' },
-  'New Orleans Saints': { rank: 19, record: '9-8', venue: 'Caesars Superdome', city: 'New Orleans, LA' },
-  'San Francisco 49ers': { rank: 4, record: '12-5', venue: 'Levi\'s Stadium', city: 'Santa Clara, CA' },
-  'Pittsburgh Steelers': { rank: 17, record: '10-7', venue: 'Acrisure Stadium', city: 'Pittsburgh, PA' },
-  'Arizona Cardinals': { rank: 31, record: '4-13', venue: 'State Farm Stadium', city: 'Glendale, AZ' },
-  'Las Vegas Raiders': { rank: 24, record: '8-9', venue: 'Allegiant Stadium', city: 'Las Vegas, NV' },
-  'Denver Broncos': { rank: 29, record: '8-9', venue: 'Empower Field at Mile High', city: 'Denver, CO' },
-  'Miami Dolphins': { rank: 6, record: '11-6', venue: 'Hard Rock Stadium', city: 'Miami Gardens, FL' },
-  'Los Angeles Chargers': { rank: 23, record: '5-12', venue: 'SoFi Stadium', city: 'Inglewood, CA' },
-  'Los Angeles Rams': { rank: 11, record: '10-7', venue: 'SoFi Stadium', city: 'Inglewood, CA' },
-  'Seattle Seahawks': { rank: 9, record: '9-8', venue: 'Lumen Field', city: 'Seattle, WA' },
-  'Buffalo Bills': { rank: 7, record: '11-6', venue: 'Highmark Stadium', city: 'Orchard Park, NY' },
-  'New York Jets': { rank: 30, record: '7-10', venue: 'MetLife Stadium', city: 'East Rutherford, NJ' },
-  'New England Patriots': { rank: 10, record: '4-13', venue: 'Gillette Stadium', city: 'Foxborough, MA' }
+// Default team data fallback (will be replaced by database data)
+const DEFAULT_TEAM_DATA = {
+  record: '0-0',
+  venue: 'Unknown',
+  city: 'Unknown'
 }
 
 // Function to get full team name

@@ -4,14 +4,15 @@ import { requireAuth } from '@/lib/auth'
 
 export async function GET(
   request: Request,
-  { params }: { params: { pickId: string } }
+  { params }: { params: Promise<{ pickId: string }> }
 ) {
+  const { pickId } = await params
   try {
     // Verify user is authenticated
     const user = await requireAuth()
     const supabase = await createServerSupabaseClient()
 
-    const { pickId } = params
+
 
     if (!pickId) {
       return NextResponse.json(
