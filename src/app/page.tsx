@@ -2,11 +2,17 @@ import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { getPoolStatus } from '@/lib/pool-status'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { cookies } from 'next/headers'
 
 // Force dynamic rendering to avoid static generation issues
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { code?: string; error?: string; error_code?: string; error_description?: string }
+}) {
   let user = null
   let poolStatus = null
   
@@ -24,6 +30,37 @@ export default async function HomePage() {
       canRegister: true,
       canPurchase: true
     }
+  }
+
+  // Handle auth callback from root URL (for old confirmation emails)
+  if (searchParams.code) {
+    try {
+      const supabase = await createServerSupabaseClient()
+      const { error } = await supabase.auth.exchangeCodeForSession(searchParams.code)
+      
+      if (!error) {
+        // Successful confirmation, redirect to dashboard
+        redirect('/dashboard')
+      } else {
+        console.error('Auth callback error:', error)
+        // Redirect to login with error
+        redirect('/login?error=confirmation_failed')
+      }
+    } catch (error) {
+      console.error('Auth callback exception:', error)
+      // Redirect to login with error
+      redirect('/login?error=confirmation_failed')
+    }
+  }
+
+  // Handle auth errors from root URL
+  if (searchParams.error) {
+    console.error('Auth error from root URL:', {
+      error: searchParams.error,
+      error_code: searchParams.error_code,
+      error_description: searchParams.error_description
+    })
+    redirect('/login?error=confirmation_failed')
   }
 
   if (user) {
