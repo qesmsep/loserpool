@@ -135,10 +135,18 @@ export function calculatePicksDeadline(matchups: Array<{ game_time: string }>): 
 
     // Find the earliest game time for the week
     const earliestGame = matchups.reduce((earliest, matchup) => {
-      const gameTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
-      const earliestTime = earliest ? DateTime.fromISO(earliest.game_time, { zone: 'utc' }) : null
+      // Parse game time as EST (same as formatGameTime function)
+      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
+      const gameTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
       
-      if (!earliestTime || gameTime < earliestTime) {
+      if (!earliest) {
+        return matchup
+      }
+      
+      const timeWithoutOffsetEarliest = earliest.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
+      const earliestTime = DateTime.fromISO(timeWithoutOffsetEarliest, { zone: 'America/New_York' })
+      
+      if (gameTime < earliestTime) {
         return matchup
       }
       return earliest
@@ -146,7 +154,8 @@ export function calculatePicksDeadline(matchups: Array<{ game_time: string }>): 
 
     if (earliestGame) {
       // Set deadline to the start of the first game (same time as game start)
-      const gameTime = DateTime.fromISO(earliestGame.game_time, { zone: 'utc' })
+      const timeWithoutOffset = earliestGame.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
+      const gameTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
       const deadline = gameTime.setZone('America/Chicago')
       return deadline.toISO() || ''
     }
