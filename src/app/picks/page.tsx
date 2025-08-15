@@ -350,18 +350,19 @@ export default function PicksPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3 mb-6">
           <button
             onClick={() => setShowPickNamesManager(!showPickNamesManager)}
-            className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            className="flex items-center justify-center bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base"
           >
             <Tag className="w-4 h-4 mr-2" />
-            Manage Pick Names
+            <span className="hidden sm:inline">Manage Pick Names</span>
+            <span className="sm:hidden">Pick Names</span>
           </button>
           <button
             onClick={handleSave}
             disabled={saving || checkDeadlinePassed()}
-            className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium text-sm sm:text-base"
           >
             <Save className="w-5 h-5 mr-2" />
             {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
