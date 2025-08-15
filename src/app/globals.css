@@ -136,6 +136,127 @@ body {
   }
 }
 
+/* Safari desktop viewport fix - force desktop layout on larger screens */
+@media screen and (min-width: 768px) and (-webkit-min-device-pixel-ratio: 0) {
+  /* Override mobile styles for desktop Safari */
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  
+  .sm\:flex-row {
+    flex-direction: row !important;
+  }
+  
+  .sm\:items-center {
+    align-items: center !important;
+  }
+  
+  .sm\:justify-between {
+    justify-content: space-between !important;
+  }
+  
+  .sm\:text-left {
+    text-align: left !important;
+  }
+  
+  .sm\:text-xl {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+  
+  .sm\:text-2xl {
+    font-size: 1.5rem !important;
+    line-height: 2rem !important;
+  }
+  
+  .sm\:text-sm {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+  
+  .sm\:text-base {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+  }
+  
+  .sm\:px-6 {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  
+  .sm\:py-4 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  
+  .sm\:p-6 {
+    padding: 1.5rem !important;
+  }
+  
+  .sm\:mb-8 {
+    margin-bottom: 2rem !important;
+  }
+  
+  .sm\:gap-6 {
+    gap: 1.5rem !important;
+  }
+  
+  .sm\:space-x-2 > * + * {
+    margin-left: 0.5rem !important;
+  }
+  
+  .sm\:space-y-0 > * + * {
+    margin-top: 0 !important;
+  }
+  
+  .sm\:w-6 {
+    width: 1.5rem !important;
+  }
+  
+  .sm\:h-6 {
+    height: 1.5rem !important;
+  }
+  
+  .sm\:w-4 {
+    width: 1rem !important;
+  }
+  
+  .sm\:h-4 {
+    height: 1rem !important;
+  }
+  
+  .sm\:mr-2 {
+    margin-right: 0.5rem !important;
+  }
+  
+  .sm\:px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .sm\:py-2 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .sm\:text-xs {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+  }
+  
+  .sm\:col-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+  
+  .sm\:col-span-1 {
+    grid-column: span 1 / span 1 !important;
+  }
+}
+
 /* Fix for Safari-specific team card layout issues */
 @supports (-webkit-appearance: none) {
   .team-card {
@@ -155,6 +276,20 @@ body {
   .gradient-overlay {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
     mask-image: radial-gradient(circle, white 100%, black 100%);
+  }
+  
+  /* Force desktop layout for team cards on larger screens in Safari */
+  @media screen and (min-width: 768px) {
+    .team-card {
+      width: 90% !important;
+      margin: 0 auto !important;
+    }
+    
+    /* Ensure proper team card sizing in Safari */
+    .team-card > div {
+      height: 100% !important;
+      min-height: 120px !important;
+    }
   }
 }
 
