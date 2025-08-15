@@ -94,10 +94,17 @@ export default function PicksPage() {
         .order('get_season_order(season)', { ascending: true })
         .order('game_time', { ascending: true })
 
-      // Get user's picks for current week
+      // Get user's picks for current week with pick names
       const { data: picksData } = await supabase
         .from('picks')
-        .select('*')
+        .select(`
+          *,
+          pick_names (
+            id,
+            name,
+            description
+          )
+        `)
         .eq('user_id', user.id)
         .in('matchup_id', matchupsData?.map(m => m.id) || [])
 
@@ -126,8 +133,12 @@ export default function PicksPage() {
     }
   }, [loadData, authLoading, user])
 
-  const getPickForMatchup = (matchupId: string) => {
-    return userPicks.find(pick => pick.matchup_id === matchupId)
+  const getPicksForMatchup = (matchupId: string) => {
+    return userPicks.filter(pick => pick.matchup_id === matchupId)
+  }
+
+  const getPicksForTeam = (matchupId: string, teamName: string) => {
+    return userPicks.filter(pick => pick.matchup_id === matchupId && pick.team_picked === teamName)
   }
 
   const handleTeamClick = (matchupId: string, teamName: string) => {
@@ -151,62 +162,35 @@ export default function PicksPage() {
   const addNamedPickToTeam = (matchupId: string, teamName: string, pickName: PickNameWithUsage) => {
     if (picksRemaining <= 0) return
     
-    const existingPick = getPickForMatchup(matchupId)
-    
-    if (existingPick) {
-      // Update existing pick
-      const updatedPicks = userPicks.map(pick => 
-        pick.id === existingPick.id 
-          ? { 
-              ...pick, 
-              team_picked: teamName, 
-              picks_count: pick.picks_count + 1,
-              pick_name_id: pickName.id,
-              pick_names: { name: pickName.name, description: pickName.description }
-            }
-          : pick
-      )
-      setUserPicks(updatedPicks)
-    } else {
-      // Create new pick
-      const newPick: Pick = {
-        id: `temp-${matchupId}`,
-        user_id: '',
-        matchup_id: matchupId,
-        team_picked: teamName,
-        picks_count: 1,
-        status: 'active',
-        pick_name: null,
-        pick_name_id: pickName.id,
-        pick_names: { name: pickName.name, description: pickName.description },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      setUserPicks([...userPicks, newPick])
+    // Create new pick
+    const newPick: Pick = {
+      id: `temp-${matchupId}-${Date.now()}`,
+      user_id: '',
+      matchup_id: matchupId,
+      team_picked: teamName,
+      picks_count: 1,
+      status: 'active',
+      pick_name: null,
+      pick_name_id: pickName.id,
+      pick_names: { name: pickName.name, description: pickName.description },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }
+    setUserPicks([...userPicks, newPick])
     
     setPicksRemaining(picksRemaining - 1)
     setSelectedPickName(null)
   }
 
   const removePickFromTeam = (matchupId: string, teamName: string) => {
-    const existingPick = getPickForMatchup(matchupId)
+    const teamPicks = getPicksForTeam(matchupId, teamName)
     
-    if (!existingPick || existingPick.team_picked !== teamName || existingPick.picks_count <= 0) return
+    if (teamPicks.length === 0) return
     
-    if (existingPick.picks_count === 1) {
-      // Remove pick entirely
-      const updatedPicks = userPicks.filter(pick => pick.id !== existingPick.id)
-      setUserPicks(updatedPicks)
-    } else {
-      // Decrease pick count
-      const updatedPicks = userPicks.map(pick => 
-        pick.id === existingPick.id 
-          ? { ...pick, picks_count: pick.picks_count - 1 }
-          : pick
-      )
-      setUserPicks(updatedPicks)
-    }
+    // Remove the first pick for this team
+    const pickToRemove = teamPicks[0]
+    const updatedPicks = userPicks.filter(pick => pick.id !== pickToRemove.id)
+    setUserPicks(updatedPicks)
     
     setPicksRemaining(picksRemaining + 1)
   }
@@ -419,7 +403,7 @@ export default function PicksPage() {
         {/* Games List */}
         <div className="space-y-3 sm:space-y-4">
           {matchups.map((matchup) => {
-            const userPick = getPickForMatchup(matchup.id)
+            const userPicksForMatchup = getPicksForMatchup(matchup.id)
             const isThursdayGame = new Date(matchup.game_time).getDay() === 4
             
             return (
@@ -449,7 +433,7 @@ export default function PicksPage() {
                   <div className="flex items-center space-x-1 sm:space-x-2">
                     <button
                       onClick={() => removePickFromTeam(matchup.id, matchup.away_team)}
-                      disabled={checkDeadlinePassed() || !userPick || userPick.team_picked !== matchup.away_team || userPick.picks_count <= 0}
+                      disabled={checkDeadlinePassed() || getPicksForTeam(matchup.id, matchup.away_team).length === 0}
                       className="bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -459,28 +443,38 @@ export default function PicksPage() {
                       onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 min-w-0 p-2 sm:p-4 rounded-lg border-2 transition-all ${
-                        userPick?.team_picked === matchup.away_team
+                        getPicksForTeam(matchup.id, matchup.away_team).length > 0
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center min-w-0">
                         <StyledTeamName teamName={matchup.away_team} size="md" className="mb-1 sm:mb-2" />
-                        {userPick?.team_picked === matchup.away_team ? (
-                          userPick.pick_names ? (
-                            <div className="text-purple-300 text-xs sm:text-sm font-medium truncate">
-                              {userPick.pick_names.name}
-                            </div>
-                          ) : (
-                            <div className="text-red-300 text-xs sm:text-sm font-medium">
-                              {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
-                            </div>
-                          )
-                        ) : (
-                          <div className="text-blue-200 text-xs sm:text-sm opacity-70">
-                            Click to pick
-                          </div>
-                        )}
+                        {(() => {
+                          const teamPicks = getPicksForTeam(matchup.id, matchup.away_team)
+                          if (teamPicks.length > 0) {
+                            const namedPicks = teamPicks.filter(pick => pick.pick_names)
+                            if (namedPicks.length > 0) {
+                              return (
+                                <div className="text-purple-300 text-xs sm:text-sm font-medium">
+                                  {namedPicks.map(pick => pick.pick_names?.name).join(', ')}
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="text-red-300 text-xs sm:text-sm font-medium">
+                                  {teamPicks.length} pick{teamPicks.length !== 1 ? 's' : ''}
+                                </div>
+                              )
+                            }
+                          } else {
+                            return (
+                              <div className="text-blue-200 text-xs sm:text-sm opacity-70">
+                                Click to pick
+                              </div>
+                            )
+                          }
+                        })()}
                       </div>
                     </button>
                     
@@ -497,7 +491,7 @@ export default function PicksPage() {
                   <div className="flex items-center space-x-1 sm:space-x-2">
                     <button
                       onClick={() => removePickFromTeam(matchup.id, matchup.home_team)}
-                      disabled={checkDeadlinePassed() || !userPick || userPick.team_picked !== matchup.home_team || userPick.picks_count <= 0}
+                      disabled={checkDeadlinePassed() || getPicksForTeam(matchup.id, matchup.home_team).length === 0}
                       className="bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
                       <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -507,28 +501,38 @@ export default function PicksPage() {
                       onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
                       className={`flex-1 min-w-0 p-2 sm:p-4 rounded-lg border-2 transition-all ${
-                        userPick?.team_picked === matchup.home_team
+                        getPicksForTeam(matchup.id, matchup.home_team).length > 0
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center min-w-0">
                         <StyledTeamName teamName={matchup.home_team} size="md" className="mb-1 sm:mb-2" />
-                        {userPick?.team_picked === matchup.home_team ? (
-                          userPick.pick_names ? (
-                            <div className="text-purple-300 text-xs sm:text-sm font-medium truncate">
-                              {userPick.pick_names.name}
-                            </div>
-                          ) : (
-                            <div className="text-red-300 text-xs sm:text-sm font-medium">
-                              {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
-                            </div>
-                          )
-                        ) : (
-                          <div className="text-blue-200 text-xs sm:text-sm opacity-70">
-                            Click to pick
-                          </div>
-                        )}
+                        {(() => {
+                          const teamPicks = getPicksForTeam(matchup.id, matchup.home_team)
+                          if (teamPicks.length > 0) {
+                            const namedPicks = teamPicks.filter(pick => pick.pick_names)
+                            if (namedPicks.length > 0) {
+                              return (
+                                <div className="text-purple-300 text-xs sm:text-sm font-medium">
+                                  {namedPicks.map(pick => pick.pick_names?.name).join(', ')}
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="text-red-300 text-xs sm:text-sm font-medium">
+                                  {teamPicks.length} pick{teamPicks.length !== 1 ? 's' : ''}
+                                </div>
+                              )
+                            }
+                          } else {
+                            return (
+                              <div className="text-blue-200 text-xs sm:text-sm opacity-70">
+                                Click to pick
+                              </div>
+                            )
+                          }
+                        })()}
                       </div>
                     </button>
                     

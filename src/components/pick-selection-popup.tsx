@@ -175,7 +175,7 @@ export default function PickSelectionPopup({
               }
             }}
           >
-            <p className="text-base sm:text-lg">
+            <div className="text-base sm:text-lg">
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -198,7 +198,7 @@ export default function PickSelectionPopup({
                   </span>
                 </>
               )}
-            </p>
+            </div>
           </div>
 
           {/* Error Message */}
