@@ -58,12 +58,12 @@ function SignupForm() {
       let user = null
 
       for (let attempt = 0; attempt <= retryCount; attempt++) {
-        // Sign up with email confirmation disabled
+        // Sign up with hardcoded email redirect
         const { data: { user: signUpUser }, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+            emailRedirectTo: 'https://loserpool.vercel.app/api/auth/confirm-email',
             // Uncomment the line below to disable email confirmation (for testing)
             // emailConfirm: false,
             data: {
