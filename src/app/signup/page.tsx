@@ -58,15 +58,22 @@ function SignupForm() {
       let user = null
 
       for (let attempt = 0; attempt <= retryCount; attempt++) {
+        // Sign up with email confirmation disabled
         const { data: { user: signUpUser }, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+            // Uncomment the line below to disable email confirmation (for testing)
+            // emailConfirm: false,
             data: {
               phone,
               first_name: firstName,
               last_name: lastName,
-              username,
+              username: username || null,
+              is_admin: false,
+              entries_used: 0,
+              max_entries: 10
             }
           }
         })
