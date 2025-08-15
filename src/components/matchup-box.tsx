@@ -255,7 +255,7 @@ function TeamCard({
       <button
         onClick={addPick}
         disabled={disabled}
-        className="w-[90%] mx-auto transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-[90%] mx-auto transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card"
         style={{ fontFamily: "'Bebas Neue', sans-serif" }}
         aria-label={`Edit picks for ${fullTeamName}`}
       >
@@ -344,7 +344,7 @@ function TeamCard({
     <button
       onClick={addPick}
       disabled={disabled}
-      className="w-[90%] mx-auto transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col"
+      className="w-[90%] mx-auto transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card"
       style={{ fontFamily: "'Bebas Neue', sans-serif" }}
       aria-label={`Pick ${fullTeamName}`}
     >
