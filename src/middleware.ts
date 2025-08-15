@@ -24,7 +24,12 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired - required for Server Components
-  await supabase.auth.getUser()
+  try {
+    await supabase.auth.getUser()
+  } catch (error) {
+    // Ignore auth errors in middleware - they're expected for unauthenticated users
+    console.log('Middleware auth check:', error instanceof Error ? error.message : 'Unknown error')
+  }
 
   return response
 }

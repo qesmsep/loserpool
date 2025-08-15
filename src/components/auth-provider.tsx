@@ -21,9 +21,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.log('Session check error:', error.message)
+        }
+        setUser(session?.user ?? null)
+      } catch (error) {
+        console.log('Auth provider error:', error instanceof Error ? error.message : 'Unknown error')
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getInitialSession()
@@ -31,8 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
+        try {
+          setUser(session?.user ?? null)
+        } catch (error) {
+          console.log('Auth state change error:', error instanceof Error ? error.message : 'Unknown error')
+          setUser(null)
+        } finally {
+          setLoading(false)
+        }
       }
     )
 

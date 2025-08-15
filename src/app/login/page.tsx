@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
@@ -13,8 +13,17 @@ export default function LoginPage() {
   const [retryCount] = useState(0)
   const [cooldown, setCooldown] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const confirmationError = searchParams.get('error')
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+  // Handle confirmation error from URL params
+  useEffect(() => {
+    if (confirmationError === 'confirmation_failed') {
+      setError('Email confirmation failed. Please try signing up again or contact support.')
+    }
+  }, [confirmationError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -113,6 +113,15 @@ export default function DashboardPage() {
     try {
       // Check if user is authenticated
       if (!user) {
+        console.log('No user found, redirecting to login')
+        router.push('/login')
+        return
+      }
+
+      // Verify user session is still valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        console.log('Session invalid, redirecting to login')
         router.push('/login')
         return
       }
