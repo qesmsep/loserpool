@@ -6,21 +6,9 @@ export async function POST(request: Request) {
     const { email } = await request.json()
     const supabase = await createServerSupabaseClient()
     
-    // Generate a confirmation token
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'signup',
-      email: email,
-      options: {
-        redirectTo: 'https://loserpool.vercel.app/api/auth/confirm-email'
-      }
-    })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
-
-    // Create hardcoded confirmation link
-    const confirmationLink = `https://loserpool.vercel.app/api/auth/confirm-email?token=${data.properties.action_link}&email=${encodeURIComponent(email)}`
+    // Create a simple confirmation link without requiring a token
+    // The confirmation endpoint will handle manual confirmation
+    const confirmationLink = `https://loserpool.vercel.app/api/auth/confirm-email?email=${encodeURIComponent(email)}`
     
     const emailBody = `
       Welcome to The Loser Pool!
