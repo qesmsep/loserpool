@@ -33,13 +33,38 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Comprehensive Safari fixes for production builds */
+/* CSS custom properties for Safari compatibility */
+:root {
+  --safari-team-card-width: 90%;
+  --safari-team-card-max-width: 90%;
+  --safari-team-card-min-width: 90%;
+}
 
-/* Target all team card variations */
+/* Use custom properties for Safari team cards */
 .team-card,
 div.team-card,
 .safari-team-card,
-[class*="team-card"] {
+[class*="team-card"],
+div[class*="team-card"],
+*[class*="team-card"] {
+  width: var(--safari-team-card-width) !important;
+  max-width: var(--safari-team-card-max-width) !important;
+  min-width: var(--safari-team-card-min-width) !important;
+}
+
+/* EXTREMELY AGGRESSIVE Safari fixes for production builds */
+
+/* Force Safari team card width - multiple targeting strategies */
+.team-card,
+div.team-card,
+.safari-team-card,
+[class*="team-card"],
+div[class*="team-card"],
+*[class*="team-card"],
+div[style*="width: 90%"],
+div[style*="width: '90%'"],
+div[style*="width:90%"],
+div[style*="width:'90%'"] {
   width: 90% !important;
   max-width: 90% !important;
   min-width: 90% !important;
@@ -51,20 +76,42 @@ div.team-card,
   backface-visibility: hidden !important;
 }
 
-/* Target flex containers */
+/* Force Safari flex display - multiple targeting strategies */
 .flex,
 div.flex,
-[class*="flex"] {
+[class*="flex"],
+div[class*="flex"],
+*[class*="flex"],
+div[style*="display: flex"],
+div[style*="display: -webkit-flex"],
+div[style*="display:flex"],
+div[style*="display:-webkit-flex"] {
   display: -webkit-flex !important;
   display: flex !important;
 }
 
-/* Target grid containers */
+/* Force Safari grid display - multiple targeting strategies */
 .grid,
 div.grid,
-[class*="grid"] {
+[class*="grid"],
+div[class*="grid"],
+*[class*="grid"],
+div[style*="display: grid"],
+div[style*="display: -webkit-grid"],
+div[style*="display:grid"],
+div[style*="display:-webkit-grid"] {
   display: -webkit-grid !important;
   display: grid !important;
+}
+
+/* Universal Safari targeting for any element with team-card in class or style */
+*[class*="team-card"],
+*[style*="team-card"],
+*[class*="safari-team-card"] {
+  width: 90% !important;
+  max-width: 90% !important;
+  min-width: 90% !important;
+  margin: 0 auto !important;
 }
 
 /* Safari-specific team card class - won't be purged */

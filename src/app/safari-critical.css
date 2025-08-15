@@ -1,0 +1,53 @@
+/* Critical Safari CSS - This file MUST be loaded */
+
+/* Force team card width in Safari */
+@supports (-webkit-appearance: none) {
+  .team-card,
+  div.team-card,
+  .safari-team-card,
+  [class*="team-card"],
+  div[class*="team-card"],
+  *[class*="team-card"] {
+    width: 90% !important;
+    max-width: 90% !important;
+    min-width: 90% !important;
+    margin: 0 auto !important;
+    display: block !important;
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    -webkit-backface-visibility: hidden !important;
+    backface-visibility: hidden !important;
+  }
+
+  /* Force flex display in Safari */
+  .flex,
+  div.flex,
+  [class*="flex"],
+  div[class*="flex"],
+  *[class*="flex"] {
+    display: -webkit-flex !important;
+    display: flex !important;
+  }
+
+  /* Force grid display in Safari */
+  .grid,
+  div.grid,
+  [class*="grid"],
+  div[class*="grid"],
+  *[class*="grid"] {
+    display: -webkit-grid !important;
+    display: grid !important;
+  }
+}
+
+/* Additional Safari-specific overrides */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .team-card,
+  div.team-card,
+  .safari-team-card {
+    width: 90% !important;
+    max-width: 90% !important;
+    min-width: 90% !important;
+    margin: 0 auto !important;
+  }
+}

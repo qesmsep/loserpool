@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import './safari-critical.css'
 import AuthProvider from '@/components/auth-provider'
 
 export const metadata: Metadata = {

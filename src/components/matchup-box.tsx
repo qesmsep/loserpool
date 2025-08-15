@@ -228,7 +228,11 @@ function TeamCard({
     WebkitTransform: 'translateZ(0)',
     transform: 'translateZ(0)',
     WebkitBackfaceVisibility: 'hidden',
-    backfaceVisibility: 'hidden'
+    backfaceVisibility: 'hidden',
+    // CSS custom properties for Safari
+    '--safari-width': '90%',
+    '--safari-max-width': '90%',
+    '--safari-min-width': '90%'
   } as React.CSSProperties
 
   const innerGlowStyle = {}
