@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS email_templates (
   name TEXT NOT NULL,
   subject TEXT NOT NULL,
   body TEXT NOT NULL,
-  trigger_type TEXT NOT NULL CHECK (trigger_type IN ('pick_reminder', 'welcome', 'elimination', 'custom')),
+  trigger_type TEXT NOT NULL CHECK (trigger_type IN ('pick_reminder', 'welcome', 'elimination', 'signup_confirmation', 'custom')),
   timing TEXT NOT NULL CHECK (timing IN ('immediately', 'morning_before_first_game', 'day_before', 'custom')),
   custom_timing TEXT,
   is_active BOOLEAN DEFAULT TRUE,

@@ -148,6 +148,28 @@ function SignupForm() {
           }
         }
 
+        // Send custom signup confirmation email
+        try {
+          const response = await fetch('/api/auth/send-signup-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email
+            })
+          })
+
+          if (response.ok) {
+            console.log('✅ Custom signup confirmation email sent')
+          } else {
+            console.warn('⚠️ Failed to send custom signup confirmation email, but user was created successfully')
+          }
+        } catch (emailErr) {
+          console.warn('⚠️ Error sending custom signup confirmation email:', emailErr)
+        }
+
         router.push('/confirm-email')
       }
     } catch (err) {
