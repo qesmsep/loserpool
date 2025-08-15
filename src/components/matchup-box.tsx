@@ -219,6 +219,11 @@ function TeamCard({
     fontFamily: "'Bebas Neue', sans-serif",
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
+    width: '90%', // Exactly 90% as requested
+    maxWidth: '90%',
+    minWidth: '90%',
+    margin: '0 auto',
+    display: 'block'
   } as React.CSSProperties
 
   const innerGlowStyle = {}
@@ -252,11 +257,35 @@ function TeamCard({
 
   if (isPicked && picksCount > 0) {
     return (
-      <button
-        onClick={addPick}
-        disabled={disabled}
-        className="w-[90%] mx-auto transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card"
-        style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+      <div
+        className="transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card"
+        style={{ 
+          fontFamily: "'Bebas Neue', sans-serif",
+          width: '90%',
+          maxWidth: '90%',
+          minWidth: '90%',
+          margin: '0 auto',
+          display: 'block',
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
+          cursor: disabled ? 'not-allowed' : 'pointer'
+        }}
+        onClick={(e) => {
+          // Only trigger addPick if the click wasn't on a control button
+          if (!e.target || !(e.target as Element).closest('button')) {
+            addPick()
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            addPick()
+          }
+        }}
         aria-label={`Edit picks for ${fullTeamName}`}
       >
         <div style={{ ...teamCardStyle, ...innerGlowStyle }}>
@@ -295,7 +324,10 @@ function TeamCard({
               <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-1">
                 {showControls && (
                   <button
-                    onClick={removePick}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removePick()
+                    }}
                     disabled={disabled}
                     className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Remove pick from ${fullTeamName}`}
@@ -316,7 +348,10 @@ function TeamCard({
                 </div>
                 {showControls && (
                   <button
-                    onClick={addPick}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      addPick()
+                    }}
                     disabled={disabled}
                     className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
                     aria-label={`Add pick to ${fullTeamName}`}
@@ -336,16 +371,35 @@ function TeamCard({
           </TeamBackground>
           <div style={vignetteOverlay} />
         </div>
-      </button>
+      </div>
     )
   }
 
   return (
-    <button
+    <div
+      className="transform transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card"
+      style={{ 
+        fontFamily: "'Bebas Neue', sans-serif",
+        width: '90%',
+        maxWidth: '90%',
+        minWidth: '90%',
+        margin: '0 auto',
+        display: 'block',
+        WebkitTransform: 'translateZ(0)',
+        transform: 'translateZ(0)',
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden',
+        cursor: disabled ? 'not-allowed' : 'pointer'
+      }}
       onClick={addPick}
-      disabled={disabled}
-      className="w-[90%] mx-auto transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card"
-      style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          addPick()
+        }
+      }}
       aria-label={`Pick ${fullTeamName}`}
     >
       <div style={teamCardStyle}>
@@ -413,7 +467,7 @@ function TeamCard({
         </TeamBackground>
         <div style={vignetteOverlay} />
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -457,7 +511,12 @@ export default function MatchupBox({
   const canShowControls = showControls || (!picksSaved && userPicks.length > 0)
 
   return (
-    <div className="bg-white/5 border border-white/20 rounded-lg p-2 sm:p-3">
+    <div className="bg-white/5 border border-white/20 rounded-lg p-2 sm:p-3" style={{
+      WebkitTransform: 'translateZ(0)',
+      transform: 'translateZ(0)',
+      WebkitBackfaceVisibility: 'hidden',
+      backfaceVisibility: 'hidden'
+    }}>
       {/* Game Info Header */}
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <div className="flex-1">
@@ -489,9 +548,22 @@ export default function MatchupBox({
       </div>
 
       {/* Team Selection Grid */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 items-start">
+      <div className="flex gap-2 sm:gap-3 items-start" style={{
+        display: '-webkit-flex',
+        gap: '8px',
+        alignItems: 'flex-start',
+        width: '100%',
+        maxWidth: '100%'
+      }}>
         {/* Away Team */}
-        <div className="relative">
+        <div className="flex-1 relative" style={{
+          width: '50%',
+          maxWidth: '50%',
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden'
+        }}>
           <TeamCard
             teamName={matchup.away_team}
             isPicked={awayIsPicked}
@@ -508,7 +580,14 @@ export default function MatchupBox({
         </div>
 
         {/* Home Team */}
-        <div className="relative">
+        <div className="flex-1 relative" style={{
+          width: '50%',
+          maxWidth: '50%',
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden'
+        }}>
           <TeamCard
             teamName={matchup.home_team}
             isPicked={homeIsPicked}

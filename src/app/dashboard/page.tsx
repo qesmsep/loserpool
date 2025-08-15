@@ -113,15 +113,6 @@ export default function DashboardPage() {
     try {
       // Check if user is authenticated
       if (!user) {
-        console.log('No user found, redirecting to login')
-        router.push('/login')
-        return
-      }
-
-      // Verify user session is still valid
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        console.log('Session invalid, redirecting to login')
         router.push('/login')
         return
       }
@@ -537,7 +528,12 @@ export default function DashboardPage() {
         subtitle={`Welcome back, ${profile?.username || profile?.email}`}
       />
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8" style={{
+        WebkitTransform: 'translateZ(0)',
+        transform: 'translateZ(0)',
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden'
+      }}>
         {/* Picks Deadline */}
         {deadline && (
           <div className={`border rounded-lg p-3 sm:p-6 mb-4 sm:mb-8 ${
@@ -816,7 +812,12 @@ export default function DashboardPage() {
             )}
 
             {matchups && matchups.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-6" style={{
+                WebkitTransform: 'translateZ(0)',
+                transform: 'translateZ(0)',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden'
+              }}>
                 {(() => {
                   // Sort matchups chronologically first
                   const sortedMatchups = sortMatchupsChronologically(matchups)
@@ -892,7 +893,12 @@ export default function DashboardPage() {
           </div>
           <div className="p-3 sm:p-6">
             {nextWeekMatchups && nextWeekMatchups.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-6" style={{
+                WebkitTransform: 'translateZ(0)',
+                transform: 'translateZ(0)',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden'
+              }}>
                 {(() => {
                   // Sort matchups chronologically first
                   const sortedMatchups = sortMatchupsChronologically(nextWeekMatchups)

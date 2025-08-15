@@ -1,0 +1,37 @@
+import { NextResponse } from 'next/server'
+import { MatchupUpdateService } from '@/lib/matchup-update-service'
+import { NFLScheduleScraper } from '@/lib/nfl-schedule-scraper'
+
+export async function POST() {
+  try {
+    console.log('Testing updateMatchupsForWeek method...')
+    
+    const updateService = new MatchupUpdateService()
+    const scraper = new NFLScheduleScraper()
+    
+    // Get current week info
+    const currentWeekInfo = await scraper.getCurrentWeekInfo()
+    console.log('Current week info:', currentWeekInfo)
+    
+    // Scrape current week schedule
+    const schedule = await scraper.scrapeWeekSchedule(currentWeekInfo.weekNumber, currentWeekInfo.seasonType)
+    console.log('Scraped schedule:', schedule)
+    
+    // Try to update matchups for this week
+    await updateService.updateMatchupsForWeek(schedule)
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Update completed successfully',
+      week_info: currentWeekInfo,
+      games_count: schedule.games.length
+    })
+  } catch (error) {
+    console.error('Error in test:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, { status: 500 })
+  }
+}
