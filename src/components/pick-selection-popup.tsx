@@ -143,46 +143,77 @@ export default function PickSelectionPopup({
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] sm:max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Select Picks to Allocate
+        <div className="flex items-center justify-between p-3 sm:p-6 border-b">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+            <span className="sm:hidden">Pick Selection</span>
+            <span className="hidden sm:inline">Select Picks to Allocate</span>
           </h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 p-1"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
+
+
         {/* Content */}
-        <div className="p-6 sm:p-8">
+        <div className="p-3 sm:p-8">
           {/* Team Info */}
           <div 
-            className="mb-4 p-4 rounded-lg text-white font-semibold text-center"
+            className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-lg text-white font-semibold text-center ${
+              selectedPickIds.length > 0 ? 'cursor-pointer hover:opacity-90 transition-opacity' : 'cursor-not-allowed opacity-60'
+            }`}
             style={{
               background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)`,
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
             }}
+            onClick={() => {
+              if (selectedPickIds.length > 0 && !loading) {
+                handleAllocate()
+              }
+            }}
           >
-            <p className="text-lg">
-              Allocate to: <strong>{teamName}</strong>
+            <p className="text-base sm:text-lg">
+              {loading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Allocating...</span>
+                </div>
+              ) : selectedPickIds.length > 0 ? (
+                <>
+                  Allocate to: <strong>{teamName}</strong>
+                  <br />
+                  <span className="text-xs sm:text-sm opacity-90">
+                    ({selectedPickIds.length} pick{selectedPickIds.length !== 1 ? 's' : ''} selected)
+                  </span>
+                </>
+              ) : (
+                <>
+                  Allocate to: <strong>{teamName}</strong>
+                  <br />
+                  <span className="text-xs sm:text-sm opacity-90">
+                    (Select picks below)
+                  </span>
+                </>
+              )}
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+              <p className="text-xs sm:text-sm text-red-700">{error}</p>
             </div>
           )}
 
           {/* Success Message */}
           {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
-              <Check className="w-4 h-4 text-green-500" />
-              <p className="text-sm text-green-700">{success}</p>
+            <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+              <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+              <p className="text-xs sm:text-sm text-green-700">{success}</p>
             </div>
           )}
 
@@ -222,9 +253,9 @@ export default function PickSelectionPopup({
               <div className="flex items-center space-x-3 p-3 mb-2 bg-gray-100 rounded-lg border border-gray-200">
                 <div className="w-4"></div> {/* Checkbox spacer */}
                 <div className="flex-1 grid grid-cols-3 gap-4">
-                  <div className="font-semibold text-sm text-gray-700">Pick Name</div>
-                  <div className="font-semibold text-sm text-gray-700">Status</div>
-                  <div className="font-semibold text-sm text-gray-700">Chosen Team</div>
+                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Pick Name</div>
+                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Status</div>
+                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Chosen Team</div>
                 </div>
               </div>
 
@@ -330,7 +361,7 @@ export default function PickSelectionPopup({
           <button
             onClick={handleAllocate}
             disabled={loading || selectedPickIds.length === 0}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="hidden sm:block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="flex items-center space-x-2">
@@ -340,6 +371,17 @@ export default function PickSelectionPopup({
             ) : (
               `Choose ${teamName} for ${selectedPickIds.length} Pick${selectedPickIds.length !== 1 ? 's' : ''}`
             )}
+          </button>
+        </div>
+
+        {/* Mobile Cancel Button - Bottom */}
+        <div className="sm:hidden p-4 border-t bg-gray-50">
+          <button
+            onClick={handleClose}
+            disabled={loading}
+            className="w-full px-4 py-3 text-gray-600 hover:text-gray-800 disabled:opacity-50 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
           </button>
         </div>
       </div>
