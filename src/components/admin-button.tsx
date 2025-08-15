@@ -86,10 +86,6 @@ export default function AdminButton() {
       >
         <Settings className="w-5 h-5 text-red-200" />
       </Link>
-      {/* Debug info */}
-      <div className="fixed bottom-4 right-20 z-50 bg-black/80 text-white p-2 rounded text-xs">
-        Admin: {isAdmin ? 'Yes' : 'No'}
-      </div>
     </div>
   )
 } 
