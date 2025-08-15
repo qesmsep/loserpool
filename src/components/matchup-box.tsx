@@ -223,7 +223,12 @@ function TeamCard({
     maxWidth: '90%',
     minWidth: '90%',
     margin: '0 auto',
-    display: 'block'
+    display: 'block',
+    // Safari-specific properties
+    WebkitTransform: 'translateZ(0)',
+    transform: 'translateZ(0)',
+    WebkitBackfaceVisibility: 'hidden',
+    backfaceVisibility: 'hidden'
   } as React.CSSProperties
 
   const innerGlowStyle = {}
@@ -258,7 +263,7 @@ function TeamCard({
   if (isPicked && picksCount > 0) {
     return (
       <div
-        className="transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card"
+        className="transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card safari-team-card"
         style={{ 
           fontFamily: "'Bebas Neue', sans-serif",
           width: '90%',
@@ -377,7 +382,7 @@ function TeamCard({
 
   return (
     <div
-      className="transform transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card"
+      className="transform transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card safari-team-card"
       style={{ 
         fontFamily: "'Bebas Neue', sans-serif",
         width: '90%',

@@ -33,18 +33,65 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Safari-specific fixes */
+/* Comprehensive Safari fixes for production builds */
+
+/* Target all team card variations */
+.team-card,
+div.team-card,
+.safari-team-card,
+[class*="team-card"] {
+  width: 90% !important;
+  max-width: 90% !important;
+  min-width: 90% !important;
+  margin: 0 auto !important;
+  display: block !important;
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+}
+
+/* Target flex containers */
+.flex,
+div.flex,
+[class*="flex"] {
+  display: -webkit-flex !important;
+  display: flex !important;
+}
+
+/* Target grid containers */
+.grid,
+div.grid,
+[class*="grid"] {
+  display: -webkit-grid !important;
+  display: grid !important;
+}
+
+/* Safari-specific team card class - won't be purged */
+.safari-team-card {
+  width: 90% !important;
+  max-width: 90% !important;
+  min-width: 90% !important;
+  margin: 0 auto !important;
+  display: block !important;
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+}
+
+/* Safari-specific fixes - using more specific selectors to prevent purging */
 @supports (-webkit-appearance: none) {
   /* Fix for Safari flexbox issues */
   .flex {
-    display: -webkit-flex;
-    display: flex;
+    display: -webkit-flex !important;
+    display: flex !important;
   }
   
   /* Fix for Safari grid issues */
   .grid {
-    display: -webkit-grid;
-    display: grid;
+    display: -webkit-grid !important;
+    display: grid !important;
   }
   
   /* Fix for Safari backdrop-blur issues */
@@ -136,24 +183,27 @@ body {
   }
 }
 
-/* Fix for Safari-specific team card layout issues */
+/* Fix for Safari-specific team card layout issues - using more specific selectors */
 @supports (-webkit-appearance: none) {
+  /* Target the specific team card elements */
+  div.team-card,
   .team-card {
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    width: calc(100% - 8px) !important;
-    max-width: calc(100% - 8px) !important;
-    min-width: calc(100% - 8px) !important;
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    -webkit-backface-visibility: hidden !important;
+    backface-visibility: hidden !important;
+    width: 90% !important;
+    max-width: 90% !important;
+    min-width: 90% !important;
     margin: 0 auto !important;
     display: block !important;
   }
   
   /* Fix for Safari button hover states */
+  div.team-card:hover,
   .team-card:hover {
-    -webkit-transform: translateZ(0) scale(1.02);
-    transform: translateZ(0) scale(1.02);
+    -webkit-transform: translateZ(0) scale(1.02) !important;
+    transform: translateZ(0) scale(1.02) !important;
   }
   
   /* Fix for Safari gradient overlays */
@@ -176,9 +226,9 @@ body {
   
   /* Fix for Safari width issues - using calc instead of percentage */
   .w-\[90\%\] {
-    width: calc(100% - 8px) !important;
-    max-width: calc(100% - 8px) !important;
-    min-width: calc(100% - 8px) !important;
+    width: 90% !important;
+    max-width: 90% !important;
+    min-width: 90% !important;
     margin: 0 auto !important;
   }
   
@@ -190,7 +240,22 @@ body {
   
   /* Fix for Safari grid column issues */
   .grid-cols-2 {
-    grid-template-columns: calc(50% - 4px) calc(50% - 4px) !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  /* Additional Safari-specific fixes for the matchup box layout */
+  div[style*="display: -webkit-flex"],
+  div[style*="display: flex"] {
+    display: -webkit-flex !important;
+    display: flex !important;
+  }
+  
+  /* Ensure Safari respects the width constraints */
+  div[style*="width: 90%"],
+  div[style*="width: '90%'"] {
+    width: 90% !important;
+    max-width: 90% !important;
+    min-width: 90% !important;
   }
 }
 
