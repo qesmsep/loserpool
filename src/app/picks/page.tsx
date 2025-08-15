@@ -299,7 +299,7 @@ export default function PicksPage() {
         backText="Back"
       />
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {error && (
           <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6">
             {error}
@@ -307,19 +307,19 @@ export default function PicksPage() {
         )}
 
         {/* Stats Section - Moved above deadline */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-6">
-          <div className="grid grid-cols-3 gap-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-3 gap-3 sm:gap-6">
             <div className="text-center">
-              <p className="text-sm text-blue-200 mb-1">Loser Picks Remaining</p>
-              <p className="text-3xl font-bold text-white">{picksRemaining}</p>
+              <p className="text-xs sm:text-sm text-blue-200 mb-1">Loser Picks Remaining</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{picksRemaining}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-blue-200 mb-1">Current Week</p>
-              <p className="text-3xl font-bold text-white">{currentWeek}</p>
+              <p className="text-xs sm:text-sm text-blue-200 mb-1">Current Week</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{currentWeek}</p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-blue-200 mb-1">Wrong Picks Count</p>
-              <p className="text-3xl font-bold text-green-300">
+              <p className="text-xs sm:text-sm text-blue-200 mb-1">Wrong Picks Count</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-300">
                 {userPicks.reduce((sum, pick) => sum + pick.picks_count, 0)}
               </p>
             </div>
@@ -328,18 +328,18 @@ export default function PicksPage() {
 
         {/* Deadline Warning */}
         {deadline && (
-          <div className={`mb-6 p-4 rounded-lg border ${
+          <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg border ${
             checkDeadlinePassed() 
               ? 'bg-red-500/20 border-red-500/30 text-red-200' 
               : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-200'
           }`}>
             <div className="flex items-center">
               {checkDeadlinePassed() ? (
-                <AlertTriangle className="w-5 h-5 mr-3" />
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0" />
               ) : (
-                <Clock className="w-5 h-5 mr-3" />
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0" />
               )}
-              <span className="font-medium">
+              <span className="font-medium text-sm sm:text-base">
                 {checkDeadlinePassed() 
                   ? 'Picks are locked - deadline has passed' 
                   : `Deadline: ${formatDeadline(deadline)}`
@@ -350,10 +350,10 @@ export default function PicksPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3 mb-6">
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
           <button
             onClick={() => setShowPickNamesManager(!showPickNamesManager)}
-            className="flex items-center justify-center bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base"
+            className="flex items-center justify-center bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base w-full"
           >
             <Tag className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Manage Pick Names</span>
@@ -362,7 +362,7 @@ export default function PicksPage() {
           <button
             onClick={handleSave}
             disabled={saving || checkDeadlinePassed()}
-            className="flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium text-sm sm:text-base"
+            className="flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium text-sm sm:text-base w-full"
           >
             <Save className="w-5 h-5 mr-2" />
             {saving ? 'Saving...' : checkDeadlinePassed() ? 'Locked' : 'Save Picks'}
@@ -403,9 +403,9 @@ export default function PicksPage() {
         )}
 
         {/* Instructions */}
-        <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-white mb-2">How to Pick:</h3>
-          <div className="text-blue-200 space-y-1">
+        <div className="mb-4 sm:mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
+          <div className="text-blue-200 space-y-1 text-sm sm:text-base">
             <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
             <p>• A popup will appear showing your available picks</p>
             <p>• Select one or more picks to allocate to that team</p>
@@ -417,66 +417,67 @@ export default function PicksPage() {
         </div>
 
         {/* Games List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {matchups.map((matchup) => {
             const userPick = getPickForMatchup(matchup.id)
             const isThursdayGame = new Date(matchup.game_time).getDay() === 4
             
             return (
-              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6">
+              <div key={matchup.id} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
                       <StyledTeamName teamName={matchup.away_team} size="lg" />
-                      <span className="text-xl font-semibold text-white">@</span>
+                      <span className="text-lg sm:text-xl font-semibold text-white">@</span>
                       <StyledTeamName teamName={matchup.home_team} size="lg" />
                     </div>
-                    <div className="flex items-center space-x-3 text-sm text-blue-200">
+                    <div className="flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm text-blue-200">
                       <span>{formatGameTime(matchup.game_time)}</span>
                       {isThursdayGame && (
                         <span className="flex items-center text-orange-300">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>Thursday Night Football</span>
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                          <span className="hidden sm:inline">Thursday Night Football</span>
+                          <span className="sm:hidden">TNF</span>
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
                   {/* Away Team */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 sm:space-x-2">
                     <button
                       onClick={() => removePickFromTeam(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || !userPick || userPick.team_picked !== matchup.away_team || userPick.picks_count <= 0}
-                      className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                     
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className={`flex-1 p-2 sm:p-4 rounded-lg border-2 transition-all ${
+                      className={`flex-1 min-w-0 p-2 sm:p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.away_team
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      <div className="text-center">
+                      <div className="text-center min-w-0">
                         <StyledTeamName teamName={matchup.away_team} size="md" className="mb-1 sm:mb-2" />
                         {userPick?.team_picked === matchup.away_team ? (
                           userPick.pick_names ? (
-                            <div className="text-purple-300 text-sm font-medium">
+                            <div className="text-purple-300 text-xs sm:text-sm font-medium truncate">
                               {userPick.pick_names.name}
                             </div>
                           ) : (
-                            <div className="text-red-300 text-sm font-medium">
+                            <div className="text-red-300 text-xs sm:text-sm font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
                             </div>
                           )
                         ) : (
-                          <div className="text-blue-200 text-sm opacity-70">
+                          <div className="text-blue-200 text-xs sm:text-sm opacity-70">
                             Click to pick
                           </div>
                         )}
@@ -486,45 +487,45 @@ export default function PicksPage() {
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.away_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-green-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                   </div>
 
                   {/* Home Team */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 sm:space-x-2">
                     <button
                       onClick={() => removePickFromTeam(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || !userPick || userPick.team_picked !== matchup.home_team || userPick.picks_count <= 0}
-                      className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-red-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      <Minus className="w-4 h-4" />
+                      <Minus className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                     
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className={`flex-1 p-2 sm:p-4 rounded-lg border-2 transition-all ${
+                      className={`flex-1 min-w-0 p-2 sm:p-4 rounded-lg border-2 transition-all ${
                         userPick?.team_picked === matchup.home_team
                           ? 'bg-red-500/20 border-red-500 text-white'
                           : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      <div className="text-center">
+                      <div className="text-center min-w-0">
                         <StyledTeamName teamName={matchup.home_team} size="md" className="mb-1 sm:mb-2" />
                         {userPick?.team_picked === matchup.home_team ? (
                           userPick.pick_names ? (
-                            <div className="text-purple-300 text-sm font-medium">
+                            <div className="text-purple-300 text-xs sm:text-sm font-medium truncate">
                               {userPick.pick_names.name}
                             </div>
                           ) : (
-                            <div className="text-red-300 text-sm font-medium">
+                            <div className="text-red-300 text-xs sm:text-sm font-medium">
                               {userPick.picks_count} pick{userPick.picks_count !== 1 ? 's' : ''}
                             </div>
                           )
                         ) : (
-                          <div className="text-blue-200 text-sm opacity-70">
+                          <div className="text-blue-200 text-xs sm:text-sm opacity-70">
                             Click to pick
                           </div>
                         )}
@@ -534,9 +535,9 @@ export default function PicksPage() {
                     <button
                       onClick={() => handleTeamClick(matchup.id, matchup.home_team)}
                       disabled={checkDeadlinePassed() || picksRemaining <= 0}
-                      className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-green-500 text-white rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </div>
