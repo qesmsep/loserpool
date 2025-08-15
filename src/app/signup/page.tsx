@@ -148,27 +148,9 @@ function SignupForm() {
           }
         }
 
-        // Send custom signup confirmation email
-        try {
-          const response = await fetch('/api/auth/send-signup-email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              email: user.email
-            })
-          })
-
-          if (response.ok) {
-            console.log('✅ Custom signup confirmation email sent')
-          } else {
-            console.warn('⚠️ Failed to send custom signup confirmation email, but user was created successfully')
-          }
-        } catch (emailErr) {
-          console.warn('⚠️ Error sending custom signup confirmation email:', emailErr)
-        }
+        // Note: Supabase automatically sends a confirmation email
+        // Our custom email system is available for additional emails if needed
+        console.log('✅ User created successfully - Supabase will send confirmation email automatically')
 
         router.push('/confirm-email')
       }
