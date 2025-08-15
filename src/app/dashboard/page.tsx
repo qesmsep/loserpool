@@ -193,10 +193,11 @@ export default function DashboardPage() {
           
           setNextWeekDisplay(nextWeekDisplay)
           
+          // Note: Preseason warning removed since games are available
           // If we're in preseason, show a note about game availability
-          if (weekDisplayResult.is_preseason) {
-            setPreseasonNote('Preseason games are not yet available from the data provider. Regular season games will be shown below.')
-          }
+          // if (weekDisplayResult.is_preseason) {
+          //   setPreseasonNote('Preseason games are not yet available from the data provider. Regular season games will be shown below.')
+          // }
         } else {
           // Fallback to database settings
           const { data: settings } = await supabase
@@ -302,13 +303,6 @@ export default function DashboardPage() {
     nextWeekMatchupsData = dbNextWeekMatchupsData || []
   }
   
-  // Get user's picks for current week - simplified approach
-      const { data: picksData } = await supabase
-        .from('picks')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('week', week)
-
       // Calculate picks remaining - simplified approach
       const { data: allUserPicks } = await supabase
         .from('picks')
@@ -323,9 +317,62 @@ export default function DashboardPage() {
 
       setMatchups(matchupsData || [])
       setNextWeekMatchups(nextWeekMatchupsData || [])
-      setUserPicks(picksData || [])
+      
+      // Load user's picks for current week
+      console.log('Debug: Loading picks for user:', user.id)
+      console.log('Debug: Current week:', week)
+      
+      const { data: allUserPicksForWeek, error: picksError } = await supabase
+        .from('picks')
+        .select('*')
+        .eq('user_id', user.id)
+      
+      console.log('Debug: All picks query result:', { allUserPicksForWeek, picksError })
+      
+      // Transform picks to work with the new table structure
+      const userPicksData: Pick[] = allUserPicksForWeek?.map(pick => {
+        // Find which week column has a value for this pick
+        const weekColumns = [
+          'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
+          'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
+          'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
+          'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
+          'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
+          'reg17_team_matchup_id', 'reg18_team_matchup_id',
+          'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
+        ]
+        
+        for (const column of weekColumns) {
+          const value = pick[column as keyof typeof pick]
+          if (value) {
+            // Parse the team_matchup_id format: "matchupId_teamName"
+            const parts = value.split('_')
+            if (parts.length >= 2) {
+              const matchupId = parts[0]
+              const teamName = parts.slice(1).join('_') // In case team name has underscores
+              
+              return {
+                id: pick.id,
+                user_id: pick.user_id,
+                picks_count: pick.picks_count,
+                status: pick.status,
+                pick_name: pick.pick_name,
+                matchup_id: matchupId,
+                team_picked: teamName,
+                created_at: pick.created_at,
+                updated_at: pick.updated_at
+              } as Pick
+            }
+          }
+        }
+        return null
+      }).filter((pick): pick is Pick => pick !== null) || []
+      
+      console.log('Debug: Transformed picks for current week:', userPicksData)
+      
+      setUserPicks(userPicksData || [])
       setDbPicksRemaining(dbPicksRemaining)
-      setPicksSaved((picksData || []).length > 0) // Set saved state based on existing picks
+      setPicksSaved((userPicksData || []).length > 0) // Set saved state based on existing picks
       setIsEditing(false) // Reset edit state when data is loaded
       setLoading(false)
     } catch (error) {

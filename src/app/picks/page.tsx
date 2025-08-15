@@ -36,7 +36,6 @@ interface Pick {
     name: string
     description?: string
   }
-  week: number
   created_at: string
   updated_at: string
 }
@@ -180,7 +179,6 @@ export default function PicksPage() {
         pick_name: null,
         pick_name_id: pickName.id,
         pick_names: { name: pickName.name, description: pickName.description },
-        week: currentWeek,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }

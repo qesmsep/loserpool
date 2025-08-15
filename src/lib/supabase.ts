@@ -125,32 +125,107 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          matchup_id: string
-          team_picked: string
-          picks_count: number
-          status: 'active' | 'eliminated' | 'safe'
+          status: 'pending' | 'active' | 'eliminated' | 'safe'
           created_at: string
           updated_at: string
+          picks_count: number
+          pick_name: string | null
+          notes: string | null
+          pre1_team_matchup_id: string | null
+          pre2_team_matchup_id: string | null
+          pre3_team_matchup_id: string | null
+          reg1_team_matchup_id: string | null
+          reg2_team_matchup_id: string | null
+          reg3_team_matchup_id: string | null
+          reg4_team_matchup_id: string | null
+          reg5_team_matchup_id: string | null
+          reg6_team_matchup_id: string | null
+          reg7_team_matchup_id: string | null
+          reg8_team_matchup_id: string | null
+          reg9_team_matchup_id: string | null
+          reg10_team_matchup_id: string | null
+          reg11_team_matchup_id: string | null
+          reg12_team_matchup_id: string | null
+          reg13_team_matchup_id: string | null
+          reg14_team_matchup_id: string | null
+          reg15_team_matchup_id: string | null
+          reg16_team_matchup_id: string | null
+          reg17_team_matchup_id: string | null
+          reg18_team_matchup_id: string | null
+          post1_team_matchup_id: string | null
+          post2_team_matchup_id: string | null
+          post3_team_matchup_id: string | null
+          post4_team_matchup_id: string | null
         }
         Insert: {
           id?: string
           user_id: string
-          matchup_id: string
-          team_picked: string
-          picks_count: number
-          status?: 'active' | 'eliminated' | 'safe'
+          status?: 'pending' | 'active' | 'eliminated' | 'safe'
           created_at?: string
           updated_at?: string
+          picks_count: number
+          pick_name?: string | null
+          notes?: string | null
+          pre1_team_matchup_id?: string | null
+          pre2_team_matchup_id?: string | null
+          pre3_team_matchup_id?: string | null
+          reg1_team_matchup_id?: string | null
+          reg2_team_matchup_id?: string | null
+          reg3_team_matchup_id?: string | null
+          reg4_team_matchup_id?: string | null
+          reg5_team_matchup_id?: string | null
+          reg6_team_matchup_id?: string | null
+          reg7_team_matchup_id?: string | null
+          reg8_team_matchup_id?: string | null
+          reg9_team_matchup_id?: string | null
+          reg10_team_matchup_id?: string | null
+          reg11_team_matchup_id?: string | null
+          reg12_team_matchup_id?: string | null
+          reg13_team_matchup_id?: string | null
+          reg14_team_matchup_id?: string | null
+          reg15_team_matchup_id?: string | null
+          reg16_team_matchup_id?: string | null
+          reg17_team_matchup_id?: string | null
+          reg18_team_matchup_id?: string | null
+          post1_team_matchup_id?: string | null
+          post2_team_matchup_id?: string | null
+          post3_team_matchup_id?: string | null
+          post4_team_matchup_id?: string | null
         }
         Update: {
           id?: string
           user_id?: string
-          matchup_id?: string
-          team_picked?: string
-          picks_count?: number
-          status?: 'active' | 'eliminated' | 'safe'
+          status?: 'pending' | 'active' | 'eliminated' | 'safe'
           created_at?: string
           updated_at?: string
+          picks_count?: number
+          pick_name?: string | null
+          notes?: string | null
+          pre1_team_matchup_id?: string | null
+          pre2_team_matchup_id?: string | null
+          pre3_team_matchup_id?: string | null
+          reg1_team_matchup_id?: string | null
+          reg2_team_matchup_id?: string | null
+          reg3_team_matchup_id?: string | null
+          reg4_team_matchup_id?: string | null
+          reg5_team_matchup_id?: string | null
+          reg6_team_matchup_id?: string | null
+          reg7_team_matchup_id?: string | null
+          reg8_team_matchup_id?: string | null
+          reg9_team_matchup_id?: string | null
+          reg10_team_matchup_id?: string | null
+          reg11_team_matchup_id?: string | null
+          reg12_team_matchup_id?: string | null
+          reg13_team_matchup_id?: string | null
+          reg14_team_matchup_id?: string | null
+          reg15_team_matchup_id?: string | null
+          reg16_team_matchup_id?: string | null
+          reg17_team_matchup_id?: string | null
+          reg18_team_matchup_id?: string | null
+          post1_team_matchup_id?: string | null
+          post2_team_matchup_id?: string | null
+          post3_team_matchup_id?: string | null
+          post4_team_matchup_id?: string | null
         }
       }
       weekly_results: {

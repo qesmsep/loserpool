@@ -205,6 +205,7 @@ function TeamCard({
   homeTeamName,
   venue
 }: TeamCardProps) {
+
   const fullTeamName = getFullTeamName(teamName)
   const teamStats = getTeamStats(teamName, venue)
   
@@ -328,7 +329,7 @@ function TeamCard({
                 className="font-normal sm:font-medium text-[8px] sm:text-[11px] tracking-wide opacity-80"
                 style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
               >
-                {picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : ''}
+                {pickNames.length > 0 ? pickNames[0] : (picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : '')}
               </div>
 
             </div>
@@ -504,14 +505,6 @@ export default function MatchupBox({
             homeTeamName={matchup.home_team}
             venue={matchup.venue}
           />
-          {/* Pick names below away team */}
-          {awayPickNames.length > 0 && (
-            <div className="mt-2 text-center">
-              <div className="text-xs text-blue-200">
-                {awayPickNames.join(', ')}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Home Team */}
@@ -530,14 +523,6 @@ export default function MatchupBox({
             homeTeamName={matchup.home_team}
             venue={matchup.venue}
           />
-          {/* Pick names below home team */}
-          {homePickNames.length > 0 && (
-            <div className="mt-2 text-center">
-              <div className="text-xs text-blue-200">
-                {homePickNames.join(', ')}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

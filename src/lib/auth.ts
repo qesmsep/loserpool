@@ -7,10 +7,13 @@ export async function getCurrentUser() {
     
     // First check if we have a session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    console.log('Session check:', { hasSession: !!session, sessionError })
+    
+    // If no session, return null silently (this is expected for unauthenticated users)
+    if (!session || sessionError) {
+      return null
+    }
     
     const { data: { user }, error } = await supabase.auth.getUser()
-    console.log('User check:', { hasUser: !!user, error })
     
     if (error) {
       console.error('Auth error:', error.message || error)
@@ -18,14 +21,16 @@ export async function getCurrentUser() {
     }
     
     if (!user) {
-      console.log('No user found')
       return null
     }
     
     console.log('User authenticated:', user.email)
     return user
   } catch (err) {
-    console.error('getCurrentUser error:', err instanceof Error ? err.message : err)
+    // Only log errors that aren't about missing sessions
+    if (err instanceof Error && !err.message.includes('Auth session missing')) {
+      console.error('getCurrentUser error:', err.message)
+    }
     return null
   }
 }

@@ -14,7 +14,6 @@ interface Pick {
   picks_count: number
   status: 'pending' | 'active' | 'eliminated' | 'safe'
   pick_name: string | null
-  week: number
   created_at: string
   updated_at: string
   matchups?: {
@@ -167,8 +166,7 @@ export default function PickNamesPage() {
           team_picked: '',
           picks_count: 1,
           status: 'pending',
-          pick_name: newName.trim(),
-          week: 1
+          pick_name: newName.trim()
         })
 
       if (error) throw error
