@@ -67,7 +67,8 @@ function SignupForm() {
               first_name: firstName,
               last_name: lastName,
               username,
-            }
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           }
         })
 
