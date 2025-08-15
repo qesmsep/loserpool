@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function TestAuthPage() {
+function TestAuthContent() {
   const [status, setStatus] = useState('Loading...')
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
@@ -123,5 +123,13 @@ export default function TestAuthPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TestAuthPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TestAuthContent />
+    </Suspense>
   )
 }

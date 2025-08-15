@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: { code?: string; error?: string; error_code?: string; error_description?: string }
+  searchParams: Promise<{ code?: string; error?: string; error_code?: string; error_description?: string }>
 }) {
+  const params = await searchParams
   let user = null
   let poolStatus = null
   
@@ -33,10 +34,10 @@ export default async function HomePage({
   }
 
   // Handle auth callback from root URL (for old confirmation emails)
-  if (searchParams.code) {
+  if (params.code) {
     try {
       const supabase = await createServerSupabaseClient()
-      const { error } = await supabase.auth.exchangeCodeForSession(searchParams.code)
+      const { error } = await supabase.auth.exchangeCodeForSession(params.code)
       
       if (!error) {
         // Successful confirmation, redirect to dashboard
@@ -54,11 +55,11 @@ export default async function HomePage({
   }
 
   // Handle auth errors from root URL
-  if (searchParams.error) {
+  if (params.error) {
     console.error('Auth error from root URL:', {
-      error: searchParams.error,
-      error_code: searchParams.error_code,
-      error_description: searchParams.error_description
+      error: params.error,
+      error_code: params.error_code,
+      error_description: params.error_description
     })
     redirect('/login?error=confirmation_failed')
   }
