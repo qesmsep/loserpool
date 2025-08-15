@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import './safari-critical.css'
 import AuthProvider from '@/components/auth-provider'
+import AdminButton from '@/components/admin-button'
 
 export const metadata: Metadata = {
   title: 'Loser Pool',
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           {children}
+          <AdminButton />
         </AuthProvider>
       </body>
     </html>
