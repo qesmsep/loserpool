@@ -12,10 +12,10 @@
       "path": "/api/cron/update-game-scores",
       "schedule": "*/5 * * * *"
     },
-            {
-          "path": "/api/cron/auto-advance-week",
-          "schedule": "0 */2 * * *"
-        },
+    {
+      "path": "/api/cron/auto-advance-week",
+      "schedule": "0 */2 * * *"
+    },
     {
       "path": "/api/cron/test",
       "schedule": "0 */6 * * *"
@@ -23,7 +23,6 @@
     {
       "path": "/api/cron/update-schedules",
       "schedule": "0 6,18 * * *"
-    },
-
+    }
   ]
 } 
