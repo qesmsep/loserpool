@@ -1,25 +1,7 @@
-import { sportsDataService } from './sportsdata-service'
+
 import { createServerSupabaseClient } from './supabase-server'
 
-interface SportsDataTeam {
-  TeamID: number
-  Key: string
-  City: string
-  Name: string
-  Conference: string
-  Division: string
-  PrimaryColor: string
-  SecondaryColor: string
-  WikipediaLogoUrl: string
-  StadiumDetails?: {
-    StadiumID: number
-    Name: string
-    City: string
-    State: string
-    Country: string
-    Capacity?: number
-  }
-}
+
 
 interface TeamStats {
   TeamID: number
@@ -196,107 +178,7 @@ export class TeamUpdateService {
     this.supabase = createServerSupabaseClient()
   }
 
-  // Update all team data from SportsData.io
-  async updateAllTeams(season: number = 2024): Promise<{ success: boolean; message: string; teamsUpdated: number }> {
-    try {
-      console.log(`Starting team data update for season ${season}`)
-      
-      // Get teams from SportsData.io
-      const teams = await sportsDataService.getTeams() as unknown as SportsDataTeam[]
-      console.log(`Retrieved ${teams.length} teams from SportsData.io`)
 
-      // Get team stats for the current season
-      const teamStats = await this.getTeamStats(season)
-      console.log(`Retrieved stats for ${teamStats.length} teams`)
-
-      let teamsUpdated = 0
-
-      for (const team of teams) {
-        try {
-          const teamStatsData = teamStats.find(stat => stat.TeamID === team.TeamID)
-          const record = teamStatsData ? `${teamStatsData.Wins}-${teamStatsData.Losses}${teamStatsData.Ties > 0 ? `-${teamStatsData.Ties}` : ''}` : '0-0'
-          
-          const teamData = {
-            team_id: team.TeamID,
-            name: `${team.City} ${team.Name}`,
-            abbreviation: team.Key,
-            city: team.City,
-            mascot: team.Name,
-            conference: team.Conference,
-            division: team.Division,
-            primary_color: team.PrimaryColor,
-            secondary_color: team.SecondaryColor,
-            logo_url: team.WikipediaLogoUrl,
-            stadium_name: team.StadiumDetails?.Name || null,
-            stadium_city: team.StadiumDetails?.City || null,
-            stadium_state: team.StadiumDetails?.State || null,
-            stadium_capacity: team.StadiumDetails?.Capacity || null,
-            current_record: record,
-            wins: teamStatsData?.Wins || 0,
-            losses: teamStatsData?.Losses || 0,
-            ties: teamStatsData?.Ties || 0,
-            season: season,
-            rank: null, // Will be calculated separately if needed
-            last_api_update: new Date().toISOString()
-          }
-
-          // Upsert team data
-          const { error } = await this.supabase
-            .from('teams')
-            .upsert(teamData, { 
-              onConflict: 'team_id,season',
-              ignoreDuplicates: false 
-            })
-
-          if (error) {
-            console.error(`Error updating team ${team.Key}:`, error)
-          } else {
-            teamsUpdated++
-          }
-        } catch (error) {
-          console.error(`Error processing team ${team.Key}:`, error)
-        }
-      }
-
-      console.log(`Successfully updated ${teamsUpdated} teams`)
-      return {
-        success: true,
-        message: `Successfully updated ${teamsUpdated} teams`,
-        teamsUpdated
-      }
-
-    } catch (error) {
-      console.error('Error updating teams:', error)
-      return {
-        success: false,
-        message: `Error updating teams: ${error}`,
-        teamsUpdated: 0
-      }
-    }
-  }
-
-  // Get team stats from SportsData.io
-  private async getTeamStats(season: number): Promise<TeamStats[]> {
-    try {
-      const url = `https://api.sportsdata.io/v3/nfl/stats/json/TeamSeasonStats/${season}?key=${process.env.SPORTSDATA_API_KEY || '3a12d524ec444d6f8efad7e833461d17'}`
-      
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`SportsData.io API error: ${response.status} ${response.statusText}`)
-      }
-
-      const stats = await response.json()
-      return stats || []
-    } catch (error) {
-      console.error('Error fetching team stats:', error)
-      return []
-    }
-  }
 
   // Get team data from database
   async getTeamData(teamName: string, season: number = 2024): Promise<any> {

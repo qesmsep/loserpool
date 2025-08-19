@@ -104,6 +104,14 @@ export async function POST(request: Request) {
       if (existingPick && existingPick.length > 0) {
         const pick = existingPick[0]
         
+        // Check if the pick has been eliminated - eliminated picks cannot be reallocated
+        if (pick.status === 'eliminated') {
+          return NextResponse.json(
+            { error: `Pick "${pickName}" has been eliminated and cannot be reallocated` },
+            { status: 400 }
+          )
+        }
+        
         // Update the pick status to pending (for both new allocations and reallocations)
         const { error: updateError } = await supabase
           .from('picks')

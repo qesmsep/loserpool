@@ -1,85 +1,69 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { sportsDataService } from '@/lib/sportsdata-service'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('Testing SportsData.io integration...')
-
-    // Test 1: Connection test
-    console.log('Testing connection...')
+    
+    // Test 1: Check API key
+    const apiKey = process.env.SPORTSDATA_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'SPORTSDATA_API_KEY not found in environment variables'
+      }, { status: 500 })
+    }
+    
+    console.log('API key found:', apiKey.substring(0, 10) + '...')
+    
+    // Test 2: Test connection
     const connectionTest = await sportsDataService.testConnection()
-    console.log('Connection test result:', connectionTest)
-
     if (!connectionTest) {
       return NextResponse.json({
         success: false,
-        error: 'Connection test failed',
-        timestamp: new Date().toISOString()
-      })
+        error: 'SportsData.io connection test failed'
+      }, { status: 500 })
     }
-
-    // Test 2: Get current week
-    console.log('Getting current week...')
+    
+    console.log('Connection test passed')
+    
+    // Test 3: Get current week
     const currentWeek = await sportsDataService.getCurrentWeek(2024)
     console.log('Current week:', currentWeek)
-
-    // Test 3: Get current week games
-    console.log('Getting current week games...')
-    const currentWeekGames = await sportsDataService.getCurrentWeekGames(2024)
-    console.log(`Found ${currentWeekGames.length} games for current week`)
-
-    // Test 4: Get next week games
-    console.log('Getting next week games...')
-    const nextWeekGames = await sportsDataService.getNextWeekGames(2024)
-    console.log(`Found ${nextWeekGames.length} games for next week`)
-
-    // Test 5: Get teams
-    console.log('Getting teams...')
-    const teams = await sportsDataService.getTeams()
-    console.log(`Found ${teams.length} teams`)
-
-    // Test 6: Convert a game to our format
-    console.log('Converting sample game...')
-    const sampleGame = currentWeekGames[0]
-    let convertedGame = null
     
-    if (sampleGame) {
-      console.log('Sample game:', JSON.stringify(sampleGame, null, 2))
-      convertedGame = sportsDataService.convertGameToMatchup(sampleGame)
-    }
-
+    // Test 4: Get current week games
+    const games = await sportsDataService.getGames(2024, currentWeek)
+    console.log(`Found ${games.length} games for week ${currentWeek}`)
+    
+    // Test 5: Show sample game data
+    const sampleGame = games[0]
+    const sampleData = sampleGame ? {
+      awayTeam: sampleGame.AwayTeam,
+      homeTeam: sampleGame.HomeTeam,
+      status: sampleGame.Status,
+      awayScore: sampleGame.AwayScore,
+      homeScore: sampleGame.HomeScore,
+      dateTime: sampleGame.DateTime
+    } : null
+    
     return NextResponse.json({
       success: true,
-      tests: {
-        connection: connectionTest,
+      message: 'SportsData.io integration test successful',
+      data: {
+        apiKeyConfigured: true,
+        connectionTest: true,
         currentWeek,
-        currentWeekGamesCount: currentWeekGames.length,
-        nextWeekGamesCount: nextWeekGames.length,
-        teamsCount: teams.length,
-        sampleGame: sampleGame ? {
-          original: {
-            GameKey: sampleGame.GameKey,
-            AwayTeam: sampleGame.AwayTeam,
-            HomeTeam: sampleGame.HomeTeam,
-            DateTime: sampleGame.DateTime,
-            Status: sampleGame.Status,
-            Week: sampleGame.Week
-          },
-          converted: convertedGame
-        } : null
-      },
-      timestamp: new Date().toISOString()
+        gamesCount: games.length,
+        sampleGame: sampleData
+      }
     })
-
+    
   } catch (error) {
     console.error('SportsData.io test failed:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      error: 'SportsData.io test failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }

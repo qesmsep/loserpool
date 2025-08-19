@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Minus, MapPin, Clock } from 'lucide-react'
+import { Plus, Minus, MapPin, Clock, Cloud, Sun, CloudRain, CloudSnow } from 'lucide-react'
 import TeamBackground from './team-background'
 import { getTeamColors } from '@/lib/team-logos'
 
@@ -56,6 +56,20 @@ function getFullTeamName(teamName: string): string {
   
   // Convert abbreviation to full name
   return TEAM_ABBREVIATIONS[teamName] || teamName
+}
+
+// Function to get weather icon based on forecast
+function getWeatherIcon(forecast: string) {
+  const lowerForecast = forecast.toLowerCase()
+  if (lowerForecast.includes('rain') || lowerForecast.includes('shower')) {
+    return <CloudRain className="w-3 h-3 inline" />
+  } else if (lowerForecast.includes('snow')) {
+    return <CloudSnow className="w-3 h-3 inline" />
+  } else if (lowerForecast.includes('cloud') || lowerForecast.includes('overcast')) {
+    return <Cloud className="w-3 h-3 inline" />
+  } else {
+    return <Sun className="w-3 h-3 inline" />
+  }
 }
 
 // Function to get team stats (placeholder for now - will be replaced with database lookup)
@@ -156,6 +170,18 @@ interface MatchupBoxProps {
     home_team: string
     game_time: string
     venue?: string
+    away_score?: number | null
+    home_score?: number | null
+    status?: string
+    winner?: string
+    weather_forecast?: string
+    temperature?: number
+    wind_speed?: number
+    away_spread?: number
+    home_spread?: number
+    over_under?: number
+    quarter_info?: string
+    broadcast_info?: string
   }
   userPick?: {
     team_picked: string
@@ -189,6 +215,8 @@ interface TeamCardProps {
   isHomeTeam?: boolean
   homeTeamName: string
   venue?: string
+  score?: number | null
+  spread?: number
 }
 
 function TeamCard({
@@ -203,7 +231,9 @@ function TeamCard({
   showControls,
   isHomeTeam = false,
   homeTeamName,
-  venue
+  venue,
+  score,
+  spread
 }: TeamCardProps) {
 
   const fullTeamName = getFullTeamName(teamName)
@@ -330,51 +360,61 @@ function TeamCard({
             <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
 
               
-              <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-1">
-                {showControls && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removePick()
-                    }}
-                    disabled={disabled}
-                    className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
-                    aria-label={`Remove pick from ${fullTeamName}`}
+              <div className="flex items-center justify-between w-full mb-1">
+                {/* Left side - Team name and controls */}
+                <div className="flex items-center space-x-2">
+                  {showControls && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removePick()
+                      }}
+                      disabled={disabled}
+                      className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
+                      aria-label={`Remove pick from ${fullTeamName}`}
+                    >
+                      <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    </button>
+                  )}
+                  <div
+                    className="font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
+                    style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
                   >
-                    <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                  </button>
-                )}
-                <div
-                  className="font-normal sm:font-medium text-[11px] sm:text-[24px] leading-tight tracking-wide min-h-[2.5rem] sm:min-h-0 flex flex-col items-center justify-center"
-                  style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-                >
-                  <div className="text-[12px] sm:text-[24px] leading-none">
-                    {fullTeamName.split(' ').slice(0, -1).join(' ')}
-                  </div>
-                  <div className="text-[12px] sm:text-[24px] leading-none">
-                    {fullTeamName.split(' ').slice(-1)[0]}
+                    {fullTeamName}
                   </div>
                 </div>
-                {showControls && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      addPick()
-                    }}
-                    disabled={disabled}
-                    className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
-                    aria-label={`Add pick to ${fullTeamName}`}
-                  >
-                    <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                  </button>
-                )}
+                
+                {/* Right side - Score or Spread */}
+                <div className="flex items-center space-x-2">
+                  <div className="text-right">
+                    {score !== null && score !== undefined ? (
+                      <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                        {score}
+                      </div>
+                    ) : spread !== null && spread !== undefined ? (
+                      <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                        {spread > 0 ? `+${spread}` : spread}
+                      </div>
+                    ) : null}
+                  </div>
+                  {showControls && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        addPick()
+                      }}
+                      disabled={disabled}
+                      className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
+                      aria-label={`Add pick to ${fullTeamName}`}
+                    >
+                      <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div
-                className="font-normal sm:font-medium text-[8px] sm:text-[11px] tracking-wide opacity-80"
-                style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-              >
-                {pickNames.length > 0 ? pickNames[0] : (picksCount > 0 ? `${picksCount} loser pick${picksCount !== 1 ? 's' : ''}` : '')}
-              </div>
+              
+
+
 
             </div>
           </TeamBackground>
@@ -443,36 +483,30 @@ function TeamCard({
         >
 
           
-          <div
-            className="mb-1 relative z-20 font-normal sm:font-medium text-[11px] sm:text-[24px] leading-tight tracking-wide min-h-[2.5rem] sm:min-h-0 flex flex-col items-center justify-center"
-            style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-          >
-            <div className="text-[12px] sm:text-[24px] leading-none">
-              {fullTeamName.split(' ').slice(0, -1).join(' ')}
-            </div>
-            <div className="text-[12px] sm:text-[24px] leading-none">
-              {fullTeamName.split(' ').slice(-1)[0]}
-            </div>
-          </div>
-          {pickNames.length > 0 && (
+          <div className="flex items-center justify-between w-full mb-1 relative z-20">
+            {/* Left side - Team name */}
             <div
-              className="text-[8px] sm:text-[11px] tracking-wide opacity-70 relative z-20"
+              className="font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
               style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
             >
-              <div className="space-y-0.5">
-                {pickNames.slice(0, 2).map((name, index) => (
-                  <div key={index} className="text-[7px] sm:text-[10px] opacity-90">
-                    {name}
-                  </div>
-                ))}
-                {pickNames.length > 2 && (
-                  <div className="text-[7px] sm:text-[10px] opacity-70">
-                    +{pickNames.length - 2} more
-                  </div>
-                )}
-              </div>
+              {fullTeamName}
             </div>
-          )}
+            
+            {/* Right side - Score or Spread */}
+            <div className="text-right">
+              {score !== null && score !== undefined ? (
+                <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                  {score}
+                </div>
+              ) : spread !== null && spread !== undefined ? (
+                <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                  {spread > 0 ? `+${spread}` : spread}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          
+
         </TeamBackground>
         <div style={vignetteOverlay} />
       </div>
@@ -526,34 +560,36 @@ export default function MatchupBox({
       WebkitBackfaceVisibility: 'hidden',
       backfaceVisibility: 'hidden'
     }}>
-      {/* Game Info Header */}
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <div className="flex-1">
-          <div className="flex flex-col space-y-1">
-            {/* Game Time */}
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <Clock className="w-3 h-3 text-blue-200" />
-              <span className="text-xs sm:text-sm text-blue-200">
-                {formatGameTime(matchup.game_time)}
-              </span>
-              {isThursdayGame && (
-                <span className="text-xs text-orange-300 bg-orange-500/20 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
-                  TNF
-                </span>
-              )}
-            </div>
-            
-            {/* Venue Info */}
-            {matchup.venue && (
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <MapPin className="w-3 h-3 text-blue-200" />
-                <span className="text-xs text-blue-200">
-                  {matchup.venue}
-                </span>
-              </div>
-            )}
-          </div>
+
+      {/* Centered Game Info Header */}
+      <div className="text-center mb-3 sm:mb-4">
+        {/* Game Time and Location */}
+        <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
+          <Clock className="w-3 h-3 text-blue-200" />
+          <span className="text-xs sm:text-sm text-blue-200">
+            {formatGameTime(matchup.game_time)}
+            {matchup.venue && ` at ${matchup.venue}`}
+            {matchup.broadcast_info && ` on ${matchup.broadcast_info}`}
+          </span>
+          {isThursdayGame && (
+            <span className="text-xs text-orange-300 bg-orange-500/20 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
+              TNF
+            </span>
+          )}
         </div>
+        
+        {/* Weather Info */}
+        {matchup.weather_forecast && (
+          <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
+            <span className="text-xs text-blue-200">
+              {getWeatherIcon(matchup.weather_forecast)} {matchup.weather_forecast}
+              {matchup.temperature && ` ${matchup.temperature}°F`}
+              {matchup.wind_speed && ` ${matchup.wind_speed} mph`}
+            </span>
+          </div>
+        )}
+        
+
       </div>
 
       {/* Team Selection Grid */}
@@ -585,7 +621,34 @@ export default function MatchupBox({
             showControls={canShowControls}
             homeTeamName={matchup.home_team}
             venue={matchup.venue}
+            score={matchup.away_score}
+            spread={matchup.away_spread}
           />
+        </div>
+
+        {/* VS/AT Separator */}
+        <div className="flex flex-col items-center justify-center px-1 sm:px-2" style={{
+          minWidth: '40px',
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden'
+        }}>
+          <div className="text-center">
+            <div className="text-xs sm:text-sm font-bold text-white/80 mb-1">
+              {matchup.status === 'scheduled' ? 'VS' : 'AT'}
+            </div>
+            {/* Game Status */}
+            {matchup.status && (
+              <div className="text-xs text-white/60">
+                {matchup.quarter_info ? matchup.quarter_info :
+                 matchup.status === 'scheduled' ? 'UPCOMING' :
+                 matchup.status === 'live' ? 'LIVE' :
+                 matchup.status === 'final' ? 'FINAL' :
+                 matchup.status.toUpperCase()}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Home Team */}
@@ -610,6 +673,8 @@ export default function MatchupBox({
             isHomeTeam={true}
             homeTeamName={matchup.home_team}
             venue={matchup.venue}
+            score={matchup.home_score}
+            spread={matchup.home_spread}
           />
         </div>
       </div>

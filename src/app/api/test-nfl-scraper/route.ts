@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { nflScraperService } from '@/lib/nfl-scraper'
+import { nflScraper } from '@/lib/nfl-scraper'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('Testing NFL.com scraper...')
-    
-    const schedule = await nflScraperService.getCurrentWeekSchedule()
+
+    // Try to scrape 2025 Preseason Week 2
+    const games = await nflScraper.scrapePreseasonWeek(2025, 2)
     
     return NextResponse.json({
       success: true,
-      current_week: schedule.current_week,
-      games_count: schedule.games.length,
-      games: schedule.games,
-      last_updated: schedule.last_updated
+      total_games: games.length,
+      games: games,
+      message: 'NFL.com scraping completed'
     })
+
   } catch (error) {
-    console.error('NFL scraper test failed:', error)
-    
+    console.error('Error testing NFL.com scraper:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      current_week: 'Unknown',
-      games_count: 0,
-      games: []
+      message: 'NFL.com scraping failed'
     }, { status: 500 })
   }
 }

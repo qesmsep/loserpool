@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Trophy, Calendar, Save, Tag, ShoppingCart } from 'lucide-react'
+import { Trophy, Calendar, Save, Tag, ShoppingCart, Edit, X } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically } from '@/lib/timezone'
 import { DateTime } from 'luxon'
@@ -13,6 +13,179 @@ import { useAuth } from '@/components/auth-provider'
 import { getCurrentWeekDisplay, isPreseason } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
 import PickSelectionPopup from '@/components/pick-selection-popup'
+import OnboardingPopup from '@/components/onboarding-popup'
+import { getTeamColors } from '@/lib/team-logos'
+
+// Team abbreviation to full name mapping
+const TEAM_ABBREVIATIONS: Record<string, string> = {
+  'GB': 'Green Bay Packers',
+  'CHI': 'Chicago Bears',
+  'DAL': 'Dallas Cowboys',
+  'NYG': 'New York Giants',
+  'PHI': 'Philadelphia Eagles',
+  'WAS': 'Washington Commanders',
+  'DET': 'Detroit Lions',
+  'KC': 'Kansas City Chiefs',
+  'CAR': 'Carolina Panthers',
+  'ATL': 'Atlanta Falcons',
+  'HOU': 'Houston Texans',
+  'BAL': 'Baltimore Ravens',
+  'CIN': 'Cincinnati Bengals',
+  'CLE': 'Cleveland Browns',
+  'JAX': 'Jacksonville Jaguars',
+  'IND': 'Indianapolis Colts',
+  'TB': 'Tampa Bay Buccaneers',
+  'MIN': 'Minnesota Vikings',
+  'TEN': 'Tennessee Titans',
+  'NO': 'New Orleans Saints',
+  'SF': 'San Francisco 49ers',
+  'PIT': 'Pittsburgh Steelers',
+  'ARI': 'Arizona Cardinals',
+  'LV': 'Las Vegas Raiders',
+  'DEN': 'Denver Broncos',
+  'MIA': 'Miami Dolphins',
+  'LAC': 'Los Angeles Chargers',
+  'LAR': 'Los Angeles Rams',
+  'SEA': 'Seattle Seahawks',
+  'BUF': 'Buffalo Bills',
+  'NYJ': 'New York Jets',
+  'NE': 'New England Patriots'
+}
+
+// Function to get full team name
+function getFullTeamName(teamName: string): string {
+  // If it's already a full name, return as-is
+  if (teamName.includes(' ')) {
+    return teamName
+  }
+  
+  // Convert abbreviation to full name
+  return TEAM_ABBREVIATIONS[teamName] || teamName
+}
+
+// Helper function to get the team that caused elimination for eliminated picks
+function getEliminatedTeamName(pick: Pick): string | null {
+  const weekColumns = [
+    'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
+    'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
+    'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
+    'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
+    'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
+    'reg17_team_matchup_id', 'reg18_team_matchup_id',
+    'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
+  ]
+  
+  for (const column of weekColumns) {
+    const value = (pick as any)[column]
+    if (value) {
+      const parts = value.split('_')
+      if (parts.length >= 2) {
+        return parts.slice(1).join('_')
+      }
+    }
+  }
+  return null
+}
+
+// Function to calculate dynamic pick status based on game results
+function calculatePickStatus(pick: Pick, matchups: Matchup[]): {
+  status: string
+  statusText: string
+  statusColor: string
+} {
+  // If pick is eliminated, show as eliminated regardless of allocation
+  if (pick.status === 'eliminated') {
+    return {
+      status: 'eliminated',
+      statusText: 'Eliminated',
+      statusColor: 'text-red-300'
+    }
+  }
+  
+  // If no team picked yet, return pending
+  if (!pick.team_picked || !pick.matchup_id) {
+    return {
+      status: 'pending',
+      statusText: 'PENDING',
+      statusColor: 'text-gray-300'
+    }
+  }
+
+  // Find the corresponding matchup
+  const matchup = matchups.find(m => m.id === pick.matchup_id)
+  if (!matchup) {
+    return {
+      status: 'pending',
+      statusText: 'Pending',
+      statusColor: 'text-yellow-300'
+    }
+  }
+
+  // Game hasn't finished yet
+  if (matchup.status !== 'final') {
+    if (matchup.status === 'live') {
+      return {
+        status: 'live',
+        statusText: 'Live',
+        statusColor: 'text-blue-300'
+      }
+    }
+    return {
+      status: 'pending',
+      statusText: 'Pending',
+      statusColor: 'text-yellow-300'
+    }
+  }
+
+  // Game is final - determine if pick was correct or incorrect
+  const awayScore = matchup.away_score || 0
+  const homeScore = matchup.home_score || 0
+  
+  // Determine winner
+  let winner: 'away' | 'home' | 'tie'
+  if (awayScore > homeScore) {
+    winner = 'away'
+  } else if (homeScore > awayScore) {
+    winner = 'home'
+  } else {
+    winner = 'tie'
+  }
+
+  // Determine if user's pick was correct
+  // User picks the team they think will LOSE
+  // So if their picked team lost, they were CORRECT
+  // If their picked team won or tied, they were INCORRECT (eliminated)
+  
+  const userPickedTeam = pick.team_picked
+  const userPickedAway = userPickedTeam === matchup.away_team
+  const userPickedHome = userPickedTeam === matchup.home_team
+  
+  if (winner === 'tie') {
+    // Ties eliminate everyone
+    return {
+      status: 'incorrect',
+      statusText: 'Incorrect',
+      statusColor: 'text-red-300'
+    }
+  } else if (
+    (userPickedAway && winner === 'home') || // User picked away team, home team won
+    (userPickedHome && winner === 'away')    // User picked home team, away team won
+  ) {
+    // User's pick lost - they were CORRECT (they survive)
+    return {
+      status: 'correct',
+      statusText: 'Correct',
+      statusColor: 'text-green-300'
+    }
+  } else {
+    // User's pick won or tied - they were INCORRECT (eliminated)
+    return {
+      status: 'incorrect',
+      statusText: 'Incorrect',
+      statusColor: 'text-red-300'
+    }
+  }
+}
 
 interface Matchup {
   id: string
@@ -23,6 +196,16 @@ interface Matchup {
   away_score: number | null
   home_score: number | null
   status: 'scheduled' | 'live' | 'final'
+  venue?: string
+  weather_forecast?: string
+  temperature?: number
+  wind_speed?: number
+  away_spread?: number
+  home_spread?: number
+  over_under?: number
+  quarter_info?: string
+  broadcast_info?: string
+  winner?: string
 }
 
 interface ApiMatchup {
@@ -34,14 +217,26 @@ interface ApiMatchup {
   away_score: number | null
   home_score: number | null
   status: string
+  venue?: string
+  weather_forecast?: string
+  temperature?: number
+  wind_speed?: number
+  away_spread?: number
+  home_spread?: number
+  over_under?: number
+  quarter_info?: string
+  broadcast_info?: string
+  winner?: string
 }
 
 interface Pick {
   id: string
   user_id: string
   picks_count: number
-  status: 'pending' | 'active' | 'lost' | 'safe'
+  status: 'pending' | 'active' | 'lost' | 'safe' | 'eliminated'
   pick_name?: string
+  matchup_id?: string
+  team_picked?: string
   // Week columns will be added dynamically
   [key: string]: unknown
 }
@@ -60,7 +255,6 @@ export default function DashboardPage() {
 
   const [currentWeek, setCurrentWeek] = useState(1)
   const [currentWeekDisplay, setCurrentWeekDisplay] = useState('Week 1')
-  const [nextWeekDisplay, setNextWeekDisplay] = useState('Week 2')
   const [deadline, setDeadline] = useState<string | null>(null)
   const [countdown, setCountdown] = useState<{
     days: number
@@ -70,13 +264,13 @@ export default function DashboardPage() {
     isExpired: boolean
   }>({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: false })
   const [matchups, setMatchups] = useState<Matchup[]>([])
-  const [nextWeekMatchups, setNextWeekMatchups] = useState<Matchup[]>([])
   const [userPicks, setUserPicks] = useState<Pick[]>([])
   const [picksRemaining, setPicksRemaining] = useState(0)
   const [dbPicksRemaining, setDbPicksRemaining] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [picksSaved, setPicksSaved] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
  
@@ -84,12 +278,18 @@ export default function DashboardPage() {
   const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
   const [preseasonNote, setPreseasonNote] = useState<string>('')
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [editingPickId, setEditingPickId] = useState<string | null>(null)
+  const [editingPickName, setEditingPickName] = useState('')
 
 
   const router = useRouter()
 
   // Check if the season has started
   const hasSeasonStarted = currentWeek > 0 && !isPreseason()
+  
+  // Check if user should see onboarding (first login, less than 10 picks, or before regular season)
+  const shouldShowOnboarding = picksRemaining < 10 || !hasSeasonStarted
 
   // Countdown timer effect
   useEffect(() => {
@@ -179,19 +379,7 @@ export default function DashboardPage() {
           setCurrentWeek(week)
           setCurrentWeekDisplay(weekDisplayResult.week_display)
           
-          // Calculate next week display
-          const nextWeek = weekDisplayResult.current_week + 1
-          let nextWeekDisplay: string
-          
-          if (nextWeek <= 3) {
-            nextWeekDisplay = `Preseason Week ${nextWeek}`
-          } else if (nextWeek <= 21) {
-            nextWeekDisplay = `Week ${nextWeek - 3}`
-          } else {
-            nextWeekDisplay = `Postseason Week ${nextWeek - 21}`
-          }
-          
-          setNextWeekDisplay(nextWeekDisplay)
+
           
           // Note: Preseason warning removed since games are available
           // If we're in preseason, show a note about game availability
@@ -212,7 +400,6 @@ export default function DashboardPage() {
           // Get current week display
           const weekDisplay = getCurrentWeekDisplay()
           setCurrentWeekDisplay(weekDisplay)
-          setNextWeekDisplay('Loading...')
         }
       } catch (error) {
         console.error('Error fetching week display:', error)
@@ -229,12 +416,10 @@ export default function DashboardPage() {
         // Get current week display
         const weekDisplay = getCurrentWeekDisplay()
         setCurrentWeekDisplay(weekDisplay)
-        setNextWeekDisplay('Loading...')
       }
 
   // Get current week matchups from database via API
   let matchupsData: Matchup[] = []
-  let nextWeekMatchupsData: Matchup[] = []
   
   try {
     // Fetch current week matchups
@@ -252,34 +437,21 @@ export default function DashboardPage() {
         game_time: matchup.game_time,
         away_score: matchup.away_score,
         home_score: matchup.home_score,
-        status: matchup.status as 'scheduled' | 'live' | 'final'
+        status: matchup.status as 'scheduled' | 'live' | 'final',
+        venue: matchup.venue,
+        weather_forecast: matchup.weather_forecast,
+        temperature: matchup.temperature,
+        wind_speed: matchup.wind_speed,
+        away_spread: matchup.away_spread,
+        home_spread: matchup.home_spread,
+        over_under: matchup.over_under,
+        quarter_info: matchup.quarter_info,
+        broadcast_info: matchup.broadcast_info,
+        winner: matchup.winner
       }))
     } else {
       // Fallback if API fails
       console.error('Failed to get current week matchups:', currentWeekResult.error)
-    }
-    
-    // Fetch next week matchups
-    const nextWeekResponse = await fetch('/api/matchups?week=next')
-    const nextWeekResult = await nextWeekResponse.json()
-    
-    if (nextWeekResult.success) {
-      setNextWeekDisplay(nextWeekResult.week_display)
-      
-      nextWeekMatchupsData = nextWeekResult.matchups.map((matchup: ApiMatchup) => ({
-        id: matchup.id,
-        week: matchup.week,
-        away_team: matchup.away_team,
-        home_team: matchup.home_team,
-        game_time: matchup.game_time,
-        away_score: matchup.away_score,
-        home_score: matchup.home_score,
-        status: matchup.status as 'scheduled' | 'live' | 'final'
-      }))
-    } else {
-      // Fallback if API fails
-      console.error('Failed to get next week matchups:', nextWeekResult.error)
-      setNextWeekDisplay('Next Week')
     }
   } catch (error) {
     console.error('Error loading matchup data:', error)
@@ -290,17 +462,8 @@ export default function DashboardPage() {
       .eq('week', week)
       .order('get_season_order(season)', { ascending: true })
       .order('game_time', { ascending: true })
-
-    // Get next week games for preview
-    const { data: dbNextWeekMatchupsData } = await supabase
-      .from('matchups')
-      .select('*')
-      .eq('week', week + 1)
-      .order('get_season_order(season)', { ascending: true })
-      .order('game_time', { ascending: true })
       
     matchupsData = dbMatchupsData || []
-    nextWeekMatchupsData = dbNextWeekMatchupsData || []
   }
   
       // Calculate picks remaining - simplified approach
@@ -316,7 +479,6 @@ export default function DashboardPage() {
       setDeadline(calculatedDeadline)
 
       setMatchups(matchupsData || [])
-      setNextWeekMatchups(nextWeekMatchupsData || [])
       
       // Load user's picks for current week
       console.log('Debug: Loading picks for user:', user.id)
@@ -329,44 +491,46 @@ export default function DashboardPage() {
       
       console.log('Debug: All picks query result:', { allUserPicksForWeek, picksError })
       
-      // Transform picks to work with the new table structure
+      // Transform picks to work with the new table structure - show ALL picks with proper status
       const userPicksData: Pick[] = allUserPicksForWeek?.map(pick => {
-        // Find which week column has a value for this pick
-        const weekColumns = [
-          'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
-          'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
-          'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
-          'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
-          'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
-          'reg17_team_matchup_id', 'reg18_team_matchup_id',
-          'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
-        ]
+        // Get the current week column name
+        let currentWeekColumn = ''
+        if (week <= 3) {
+          currentWeekColumn = `pre${week}_team_matchup_id`
+        } else if (week <= 21) {
+          currentWeekColumn = `reg${week - 3}_team_matchup_id`
+        } else {
+          currentWeekColumn = `post${week - 21}_team_matchup_id`
+        }
         
-        for (const column of weekColumns) {
-          const value = pick[column as keyof typeof pick]
-          if (value) {
-            // Parse the team_matchup_id format: "matchupId_teamName"
-            const parts = value.split('_')
-            if (parts.length >= 2) {
-              const matchupId = parts[0]
-              const teamName = parts.slice(1).join('_') // In case team name has underscores
-              
-              return {
-                id: pick.id,
-                user_id: pick.user_id,
-                picks_count: pick.picks_count,
-                status: pick.status,
-                pick_name: pick.pick_name,
-                matchup_id: matchupId,
-                team_picked: teamName,
-                created_at: pick.created_at,
-                updated_at: pick.updated_at
-              } as Pick
-            }
+        // Check if this pick is allocated to the current week
+        const currentWeekValue = pick[currentWeekColumn as keyof typeof pick]
+        
+        let teamName = null
+        let matchupId = null
+        
+        if (currentWeekValue) {
+          // Parse the team_matchup_id format: "matchupId_teamName"
+          const parts = currentWeekValue.split('_')
+          if (parts.length >= 2) {
+            matchupId = parts[0]
+            teamName = parts.slice(1).join('_') // In case team name has underscores
           }
         }
-        return null
-      }).filter((pick): pick is Pick => pick !== null) || []
+        
+        // Return ALL picks - the status will determine how they're displayed
+        return {
+          id: pick.id,
+          user_id: pick.user_id,
+          picks_count: pick.picks_count,
+          status: pick.status,
+          pick_name: pick.pick_name,
+          matchup_id: matchupId,
+          team_picked: teamName,
+          created_at: pick.created_at,
+          updated_at: pick.updated_at
+        } as Pick
+      }) || []
       
       console.log('Debug: Transformed picks for current week:', userPicksData)
       
@@ -408,6 +572,43 @@ export default function DashboardPage() {
       }
     }
     return undefined
+  }
+
+  const startEditingPick = (pick: Pick) => {
+    setEditingPickId(pick.id)
+    setEditingPickName(pick.pick_name || '')
+  }
+
+  const savePickName = async () => {
+    if (!editingPickName.trim()) {
+      setError('Pick name is required')
+      return
+    }
+
+    setError('')
+    try {
+      const { error } = await supabase
+        .from('picks')
+        .update({ pick_name: editingPickName.trim() })
+        .eq('id', editingPickId!)
+
+      if (error) throw error
+
+      setEditingPickId(null)
+      setEditingPickName('')
+      setSuccess('Pick name updated successfully')
+      loadData() // Refresh the data
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (error) {
+      console.error('Error updating pick name:', error)
+      setError('Failed to update pick name')
+    }
+  }
+
+  const cancelEditPick = () => {
+    setEditingPickId(null)
+    setEditingPickName('')
+    setError('')
   }
 
   const handleTeamClick = (matchupId: string, teamName: string) => {
@@ -623,26 +824,44 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Mobile-Optimized 2x2 Grid for Top Cards */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-6 mb-4 sm:mb-8">
-          {hasSeasonStarted ? (
+        {/* Buy Picks Banner - Full Width */}
+        {shouldShowOnboarding && (
+          <div className="bg-gradient-to-r from-green-600/20 to-blue-600/20 border border-green-500/30 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-green-300" />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-white mb-1">Ready to Join the Loser Pool?</h2>
+                  <p className="text-sm sm:text-base text-green-100">
+                    {picksRemaining < 10 
+                      ? `You have ${picksRemaining} picks. Get more to increase your chances!` 
+                      : 'Get started with the most exciting NFL survivor pool around!'
+                    }
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>Buy Picks & Learn More</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile-Optimized Grid for Navigation Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
+          {hasSeasonStarted && (
             <Link
               href="/leaderboard"
               className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
             >
               <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Leaderboard</h3>
               <p className="text-xs sm:text-base text-blue-100">See who&apos;s still in the running</p>
-            </Link>
-          ) : (
-            <Link
-              href="/purchase"
-              className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
-            >
-              <div className="flex items-center mb-1 sm:mb-2">
-                <ShoppingCart className="w-3 h-3 sm:w-5 sm:h-5 text-green-300 mr-1 sm:mr-2" />
-                <h3 className="text-sm sm:text-lg font-semibold text-white">Buy Picks</h3>
-              </div>
-              <p className="text-xs sm:text-base text-blue-100">Purchase picks before the season starts</p>
             </Link>
           )}
 
@@ -652,17 +871,6 @@ export default function DashboardPage() {
           >
             <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2">Results</h3>
             <p className="text-xs sm:text-base text-blue-100">Check last week&apos;s results</p>
-          </Link>
-
-          <Link
-            href="/pick-names"
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-3 sm:p-6 hover:bg-white/20 transition-all"
-          >
-            <div className="flex items-center mb-1 sm:mb-2">
-              <Tag className="w-3 h-3 sm:w-5 sm:h-5 text-purple-300 mr-1 sm:mr-2" />
-              <h3 className="text-sm sm:text-lg font-semibold text-white">Pick Names</h3>
-            </div>
-            <p className="text-xs sm:text-base text-blue-100">Manage your named picks</p>
           </Link>
 
           <Link
@@ -706,52 +914,295 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Cards - Mobile Optimized */}
-        <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center">
-              <div className="p-1 sm:p-2 bg-green-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
-                <Trophy className="w-3 h-3 sm:w-6 sm:h-6 text-green-200" />
-              </div>
-              <div className="text-center sm:text-left sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-green-100">Loser Picks</p>
-                <p className="text-sm sm:text-2xl font-bold text-white">{picksRemaining}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center">
-              <div className="p-1 sm:p-2 bg-orange-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
-                <Calendar className="w-3 h-3 sm:w-6 sm:h-6 text-orange-200" />
-              </div>
-              <div className="text-center sm:text-left sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-orange-100">Current Week</p>
-                <p className="text-sm sm:text-2xl font-bold text-white">{currentWeekDisplay}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-2 sm:p-6 sm:col-span-2 lg:col-span-1">
-            <div className="flex flex-col sm:flex-row sm:items-center">
-              <div className="p-1 sm:p-2 bg-red-500/20 rounded-lg self-center sm:self-auto mb-1 sm:mb-0">
-                <Trophy className="w-3 h-3 sm:w-6 sm:h-6 text-red-200" />
-              </div>
-              <div className="text-center sm:text-left sm:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-red-100">Wrong Picks</p>
-                <p className="text-sm sm:text-2xl font-bold text-white">{userPicks.filter(pick => pick.status === 'lost').length}</p>
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="bg-green-500/20 border border-green-500/30 text-green-200 px-4 py-3 rounded-lg mb-4">
+            {success}
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* Current Week's Picks Table */}
+        {userPicks.length > 0 && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-4 sm:mb-6">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
+              <h2 className="text-base sm:text-xl font-semibold text-white">Your Current Week Picks</h2>
+              <p className="text-xs sm:text-base text-blue-100">{currentWeekDisplay} - {userPicks.length} pick{userPicks.length !== 1 ? 's' : ''} allocated</p>
+            </div>
+            <div className="p-3 sm:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(() => {
+                  // Sort all picks alphabetically by pick_name, with proper number handling
+                  const sortedPicks = userPicks.sort((a, b) => {
+                    const nameA = (a.pick_name || 'TBD').toLowerCase()
+                    const nameB = (b.pick_name || 'TBD').toLowerCase()
+                    
+                    // Use localeCompare with numeric option for proper number sorting
+                    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' })
+                  })
+                  
+                  // Split picks into two columns
+                  const midPoint = Math.ceil(sortedPicks.length / 2)
+                  const leftColumn = sortedPicks.slice(0, midPoint)
+                  const rightColumn = sortedPicks.slice(midPoint)
+                  
+                  return (
+                    <>
+                      {/* Left Column */}
+                      <div className="space-y-3">
+                        {leftColumn.map((pick) => {
+                          const teamName = (pick as any).team_picked || null
+                          
+                          // Calculate dynamic status based on game results
+                          const pickStatus = calculatePickStatus(pick, matchups)
+                          
+                          // Get team colors if team is selected
+                          const teamColors = teamName ? getTeamColors(teamName) : null
+                          
+                          // Format team display name
+                          let teamDisplayName = 'NOT PICKED YET'
+                          
+                          if (pick.status === 'eliminated') {
+                            // For eliminated picks, show the team that caused elimination
+                            const eliminatedTeam = getEliminatedTeamName(pick)
+                            if (eliminatedTeam) {
+                              teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                            }
+                          } else if (teamName) {
+                            teamDisplayName = `${getFullTeamName(teamName)} to LOSE`
+                          }
+                          
+                          return (
+                            <div 
+                              key={pick.id} 
+                              className="group border border-white/10 rounded-lg p-2 hover:opacity-90 transition-all relative overflow-hidden"
+                              style={{
+                                background: teamColors 
+                                  ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
+                                  : 'rgba(255, 255, 255, 0.05)',
+                                borderColor: teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
+                              }}
+                            >
+                              {/* Team color accent line */}
+                              {teamColors && (
+                                <div 
+                                  className="absolute top-0 left-0 right-0 h-1"
+                                  style={{ backgroundColor: teamColors.primary }}
+                                />
+                              )}
+                              
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center w-full">
+                                  {/* Pick name section - fixed width */}
+                                  <div className="w-24 flex-shrink-0 flex items-center space-x-2">
+                                    {editingPickId === pick.id ? (
+                                      <input
+                                        type="text"
+                                        value={editingPickName}
+                                        onChange={(e) => setEditingPickName(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') savePickName()
+                                          if (e.key === 'Escape') cancelEditPick()
+                                        }}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div className="text-sm font-medium text-white truncate">
+                                        {pick.pick_name || 'TBD'}
+                                      </div>
+                                    )}
+                                    {editingPickId === pick.id ? (
+                                      <div className="flex space-x-1">
+                                        <button
+                                          onClick={savePickName}
+                                          className="p-1 text-green-300 hover:text-green-200 transition-colors"
+                                          title="Save"
+                                        >
+                                          <Save className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={cancelEditPick}
+                                          className="p-1 text-gray-300 hover:text-gray-200 transition-colors"
+                                          title="Cancel"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => startEditingPick(pick)}
+                                        className="p-1 text-blue-300 hover:text-blue-200 transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Edit pick name"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Team name section - centered in remaining space */}
+                                  <div className="flex-1 flex items-center justify-center px-2">
+                                    <div 
+                                      className="text-sm font-medium truncate text-center"
+                                      style={{ 
+                                        color: teamColors ? teamColors.text : '#93c5fd' // blue-200 fallback
+                                      }}
+                                    >
+                                      {teamDisplayName}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Status badge - compact width */}
+                                <div className="w-16 flex-shrink-0 flex justify-end">
+                                  <span className={`text-xs px-2 py-1 rounded-full ${pickStatus.statusColor} bg-white/10`}>
+                                    {pickStatus.statusText}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      
+                      {/* Right Column */}
+                      <div className="space-y-3">
+                        {rightColumn.map((pick) => {
+                          const teamName = (pick as any).team_picked || null
+                          
+                          // Calculate dynamic status based on game results
+                          const pickStatus = calculatePickStatus(pick, matchups)
+                          
+                          // Get team colors if team is selected
+                          const teamColors = teamName ? getTeamColors(teamName) : null
+                          
+                          // Format team display name
+                          let teamDisplayName = 'NOT PICKED YET'
+                          
+                          if (pick.status === 'eliminated') {
+                            // For eliminated picks, show the team that caused elimination
+                            const eliminatedTeam = getEliminatedTeamName(pick)
+                            if (eliminatedTeam) {
+                              teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                            }
+                          } else if (teamName) {
+                            teamDisplayName = `${getFullTeamName(teamName)} to LOSE`
+                          }
+                          
+                          return (
+                            <div 
+                              key={pick.id} 
+                              className="group border border-white/10 rounded-lg p-2 hover:opacity-90 transition-all relative overflow-hidden"
+                              style={{
+                                background: teamColors 
+                                  ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
+                                  : 'rgba(255, 255, 255, 0.05)',
+                                borderColor: teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
+                              }}
+                            >
+                              {/* Team color accent line */}
+                              {teamColors && (
+                                <div 
+                                  className="absolute top-0 left-0 right-0 h-1"
+                                  style={{ backgroundColor: teamColors.primary }}
+                                />
+                              )}
+                              
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center w-full">
+                                  {/* Pick name section - fixed width */}
+                                  <div className="w-24 flex-shrink-0 flex items-center space-x-2">
+                                    {editingPickId === pick.id ? (
+                                      <input
+                                        type="text"
+                                        value={editingPickName}
+                                        onChange={(e) => setEditingPickName(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') savePickName()
+                                          if (e.key === 'Escape') cancelEditPick()
+                                        }}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <div className="text-sm font-medium text-white truncate">
+                                        {pick.pick_name || 'TBD'}
+                                      </div>
+                                    )}
+                                    {editingPickId === pick.id ? (
+                                      <div className="flex space-x-1">
+                                        <button
+                                          onClick={savePickName}
+                                          className="p-1 text-green-300 hover:text-green-200 transition-colors"
+                                          title="Save"
+                                        >
+                                          <Save className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={cancelEditPick}
+                                          className="p-1 text-gray-300 hover:text-gray-200 transition-colors"
+                                          title="Cancel"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => startEditingPick(pick)}
+                                        className="p-1 text-blue-300 hover:text-blue-200 transition-colors opacity-0 group-hover:opacity-100"
+                                        title="Edit pick name"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Team name section - centered in remaining space */}
+                                  <div className="flex-1 flex items-center justify-center px-2">
+                                    <div 
+                                      className="text-sm font-medium truncate text-center"
+                                      style={{ 
+                                        color: teamColors ? teamColors.text : '#93c5fd' // blue-200 fallback
+                                      }}
+                                    >
+                                      {teamDisplayName}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Status badge - compact width */}
+                                <div className="w-16 flex-shrink-0 flex justify-end">
+                                  <span className={`text-xs px-2 py-1 rounded-full ${pickStatus.statusColor} bg-white/10`}>
+                                    {pickStatus.statusText}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Current Week Matchups with Picking */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
               <div>
-                <h2 className="text-base sm:text-xl font-semibold text-white">Current Week Games</h2>
-                <p className="text-xs sm:text-base text-blue-100">{currentWeekDisplay} - {matchups?.length || 0} games scheduled</p>
+                <h2 className="text-base sm:text-xl font-semibold text-white">{currentWeekDisplay}</h2>
+                <p className="text-xs sm:text-base text-blue-100">{matchups?.length || 0} games scheduled</p>
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 {!isEditing ? (
@@ -842,8 +1293,8 @@ export default function DashboardPage() {
                     .map(day => (
                       <div key={day} className="space-y-3">
                         <div className="border-b border-white/20 pb-2">
-                          <h3 className="text-lg font-semibold text-white">
-                            {day} ({groupedMatchups[day].length} game{groupedMatchups[day].length !== 1 ? 's' : ''})
+                          <h3 className="text-lg font-semibold text-white text-center">
+                            {day}
                           </h3>
                         </div>
                         <div className="space-y-2 sm:space-y-4">
@@ -880,83 +1331,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* Next Week Matchups (Read Only) */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mt-4 sm:mt-6">
-          <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-              <div>
-                <h2 className="text-base sm:text-xl font-semibold text-white">Next Week&apos;s Games</h2>
-                <p className="text-xs sm:text-base text-blue-100">Week {currentWeek + 1} - {nextWeekMatchups?.length || 0} games scheduled</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-3 sm:p-6">
-            {nextWeekMatchups && nextWeekMatchups.length > 0 ? (
-              <div className="space-y-6" style={{
-                WebkitTransform: 'translateZ(0)',
-                transform: 'translateZ(0)',
-                WebkitBackfaceVisibility: 'hidden',
-                backfaceVisibility: 'hidden'
-              }}>
-                {(() => {
-                  // Sort matchups chronologically first
-                  const sortedMatchups = sortMatchupsChronologically(nextWeekMatchups)
-                  const groupedMatchups = groupMatchupsByDay(sortedMatchups)
-                  
-                  // Get chronological day order based on actual game times
-                  const chronologicalDayOrder = Object.keys(groupedMatchups).sort((dayA, dayB) => {
-                    const gamesA = groupedMatchups[dayA]
-                    const gamesB = groupedMatchups[dayB]
-                    
-                    if (gamesA.length === 0 || gamesB.length === 0) return 0
-                    
-                    // Compare the earliest game time of each day
-                    const earliestA = DateTime.fromISO(gamesA[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
-                    const earliestB = DateTime.fromISO(gamesB[0].game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
-                    
-                    return earliestA.toMillis() - earliestB.toMillis()
-                  })
-                  
-                  return chronologicalDayOrder
-                    .filter(day => groupedMatchups[day] && groupedMatchups[day].length > 0)
-                    .map(day => (
-                      <div key={day} className="space-y-3">
-                        <div className="border-b border-white/20 pb-2">
-                          <h3 className="text-lg font-semibold text-white">
-                            {day} ({groupedMatchups[day].length} game{groupedMatchups[day].length !== 1 ? 's' : ''})
-                          </h3>
-                        </div>
-                        <div className="space-y-2 sm:space-y-4">
-                          {groupedMatchups[day].map((matchup) => (
-                            <MatchupBox
-                              key={matchup.id}
-                              matchup={matchup}
-                              userPick={undefined}
-                              showControls={false}
-                              picksSaved={true}
-                              userPicks={[]}
-                              picksRemaining={0}
-                              checkDeadlinePassed={() => true}
-                              addPickToTeam={() => {}}
-                              removePickFromTeam={() => {}}
-                              formatGameTime={formatGameTime}
-                              getPicksForMatchup={() => []}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                })()}
-              </div>
-            ) : (
-              <div className="text-center py-6 sm:py-8">
-                <p className="text-red-200 mb-2 text-sm sm:text-base">⚠️ Unable to load next week&apos;s schedule</p>
-                <p className="text-blue-200 text-xs sm:text-sm">Please try again later or contact support</p>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Pick Selection Popup */}
@@ -973,6 +1347,12 @@ export default function DashboardPage() {
           onPicksAllocated={handlePicksAllocated}
         />
       )}
+
+      {/* Onboarding Popup */}
+      <OnboardingPopup
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
     </div>
   )
 } 

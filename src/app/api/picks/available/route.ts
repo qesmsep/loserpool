@@ -43,7 +43,8 @@ export async function GET() {
         status
       `)
       .eq('user_id', user.id)
-      .not('pick_name', 'is', null) as { data: PickData[] | null }
+      .not('pick_name', 'is', null)
+      .neq('status', 'eliminated') as { data: PickData[] | null }
 
     // Get all matchups for the current week to map team_matchup_id to team names
     const { data: matchupsData } = await supabase

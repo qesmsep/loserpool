@@ -9,18 +9,37 @@ import { Edit, Save, X, Tag, Plus } from 'lucide-react'
 interface Pick {
   id: string
   user_id: string
-  matchup_id: string | null
-  team_picked: string
   picks_count: number
-  status: 'pending' | 'active' | 'eliminated' | 'safe'
+  status: 'pending' | 'active' | 'lost' | 'safe'
   pick_name: string | null
   created_at: string
   updated_at: string
-  matchups?: {
-    away_team: string
-    home_team: string
-    week: number
-  }
+  // Week-specific team_matchup_id columns
+  pre1_team_matchup_id?: string
+  pre2_team_matchup_id?: string
+  pre3_team_matchup_id?: string
+  reg1_team_matchup_id?: string
+  reg2_team_matchup_id?: string
+  reg3_team_matchup_id?: string
+  reg4_team_matchup_id?: string
+  reg5_team_matchup_id?: string
+  reg6_team_matchup_id?: string
+  reg7_team_matchup_id?: string
+  reg8_team_matchup_id?: string
+  reg9_team_matchup_id?: string
+  reg10_team_matchup_id?: string
+  reg11_team_matchup_id?: string
+  reg12_team_matchup_id?: string
+  reg13_team_matchup_id?: string
+  reg14_team_matchup_id?: string
+  reg15_team_matchup_id?: string
+  reg16_team_matchup_id?: string
+  reg17_team_matchup_id?: string
+  reg18_team_matchup_id?: string
+  post1_team_matchup_id?: string
+  post2_team_matchup_id?: string
+  post3_team_matchup_id?: string
+  post4_team_matchup_id?: string
 }
 
 export default function PickNamesPage() {
@@ -33,6 +52,32 @@ export default function PickNamesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newName, setNewName] = useState('')
   const router = useRouter()
+
+  // Helper function to get team info from the new schema
+  const getTeamInfo = (pick: Pick) => {
+    const weekColumns = [
+      'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
+      'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
+      'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
+      'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
+      'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
+      'reg17_team_matchup_id', 'reg18_team_matchup_id',
+      'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
+    ]
+    
+    for (const column of weekColumns) {
+      const value = pick[column as keyof Pick]
+      if (value) {
+        // Parse the team_matchup_id format: "matchupId_teamName"
+        const parts = value.split('_')
+        if (parts.length >= 2) {
+          const teamName = parts.slice(1).join('_') // In case team name has underscores
+          return { teamName, weekColumn: column }
+        }
+      }
+    }
+    return null
+  }
 
   const checkAuth = useCallback(async () => {
     try {
@@ -75,17 +120,10 @@ export default function PickNamesPage() {
         throw simpleError
       }
       
-      // Now try the full query
+      // Now try the full query - updated for new schema
       const { data: picksData, error } = await supabase
         .from('picks')
-        .select(`
-          *,
-          matchups (
-            away_team,
-            home_team,
-            week
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
 
@@ -162,8 +200,6 @@ export default function PickNamesPage() {
         .from('picks')
         .insert({
           user_id: user.id,
-          matchup_id: null,
-          team_picked: '',
           picks_count: 1,
           status: 'pending',
           pick_name: newName.trim()
@@ -343,8 +379,10 @@ export default function PickNamesPage() {
                             ? 'bg-green-500/20 text-green-200'
                             : pick.status === 'active'
                             ? 'bg-blue-500/20 text-blue-200'
-                            : pick.status === 'eliminated'
+                            : pick.status === 'lost'
                             ? 'bg-red-500/20 text-red-200'
+                            : pick.status === 'safe'
+                            ? 'bg-purple-500/20 text-purple-200'
                             : 'bg-gray-500/20 text-gray-200'
                         }`}>
                           {pick.status.charAt(0).toUpperCase() + pick.status.slice(1)}
@@ -353,14 +391,23 @@ export default function PickNamesPage() {
                       <td className="py-3 px-4">
                         {pick.status === 'pending' ? (
                           <span className="text-sm text-gray-400">Not used yet</span>
-                        ) : pick.matchups ? (
-                          <span className="text-sm text-blue-200">
-                            Week {pick.matchups.week} - {pick.team_picked}
-                          </span>
                         ) : (
-                          <span className="text-sm text-blue-200">
-                            {pick.team_picked}
-                          </span>
+                          (() => {
+                            const teamInfo = getTeamInfo(pick)
+                            if (teamInfo) {
+                              const weekDisplay = teamInfo.weekColumn.startsWith('pre') 
+                                ? `Preseason ${teamInfo.weekColumn.slice(3, 4)}`
+                                : teamInfo.weekColumn.startsWith('reg')
+                                ? `Week ${parseInt(teamInfo.weekColumn.slice(3))}`
+                                : `Postseason ${teamInfo.weekColumn.slice(4, 5)}`
+                              return (
+                                <span className="text-sm text-blue-200">
+                                  {weekDisplay} - {teamInfo.teamName}
+                                </span>
+                              )
+                            }
+                            return <span className="text-sm text-gray-400">Unknown usage</span>
+                          })()
                         )}
                       </td>
                       <td className="py-3 px-4">
