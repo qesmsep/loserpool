@@ -165,8 +165,8 @@ export class MatchupDataService {
         
         // Final fallback to Puppeteer scraping
         try {
-          const { nflScraperService } = await import('@/lib/nfl-scraper')
-          return await nflScraperService.getCurrentWeekSchedule()
+          const { nflScraper } = await import('@/lib/nfl-scraper')
+          return await nflScraper.getGamesFromAPI(2025, 3)
         } catch (scraperError) {
           console.error('Puppeteer scraping also failed:', scraperError)
           throw new Error(`Failed to fetch NFL schedule: Preseason error - ${preseasonError instanceof Error ? preseasonError.message : 'Unknown'}, ChatGPT error - ${chatgptError instanceof Error ? chatgptError.message : 'Unknown'}, Scraper error - ${scraperError instanceof Error ? scraperError.message : 'Unknown'}`)
@@ -193,8 +193,8 @@ export class MatchupDataService {
         
         // Final fallback to Puppeteer scraping
         try {
-          const { nflScraperService } = await import('@/lib/nfl-scraper')
-          return await nflScraperService.getNextWeekSchedule()
+          const { nflScraper } = await import('@/lib/nfl-scraper')
+          return await nflScraper.getGamesFromAPI(2025, 4)
         } catch (scraperError) {
           console.error('Puppeteer scraping also failed for next week:', scraperError)
           throw new Error(`Failed to fetch next week NFL schedule: Preseason error - ${preseasonError instanceof Error ? preseasonError.message : 'Unknown'}, ChatGPT error - ${chatgptError instanceof Error ? chatgptError.message : 'Unknown'}, Scraper error - ${scraperError instanceof Error ? scraperError.message : 'Unknown'}`)
@@ -599,15 +599,9 @@ export class MatchupDataService {
         processed++
         
         try {
-          // Convert game to our format (works for both ChatGPT and Puppeteer data)
-          let gameData: any
-          try {
-            const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
-            gameData = chatgptNFLService.convertToMatchupFormat(game)
-          } catch {
-            const { nflScraperService } = await import('@/lib/nfl-scraper')
-            gameData = nflScraperService.convertToMatchupFormat(game)
-          }
+          // Convert game to our format
+          const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
+          const gameData: any = chatgptNFLService.convertToMatchupFormat(game)
 
           // Find matching matchup in database
           const existingMatchup = existingMatchups?.find((m: any) => // eslint-disable-line @typescript-eslint/no-explicit-any

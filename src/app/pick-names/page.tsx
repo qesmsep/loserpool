@@ -67,7 +67,7 @@ export default function PickNamesPage() {
     
     for (const column of weekColumns) {
       const value = pick[column as keyof Pick]
-      if (value) {
+      if (value && typeof value === 'string') {
         // Parse the team_matchup_id format: "matchupId_teamName"
         const parts = value.split('_')
         if (parts.length >= 2) {

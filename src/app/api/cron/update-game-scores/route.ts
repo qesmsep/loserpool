@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServiceRoleClient()
     
-    // Use 2025 season for SportsData.io
+    // Use 2025 season
     const currentYear = '2025'
     console.log(`Using season year: ${currentYear}`)
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     const uniqueWeeks = [...new Set(allWeeks?.map(m => m.week) || [])]
     console.log(`Database has games for weeks: ${uniqueWeeks.join(', ')}`)
-    console.log(`SportsData.io current week: ${currentWeek}`)
+    console.log(`ESPN API current week: ${currentWeek}`)
     console.log(`Database matchups for week ${currentWeek}: ${matchups?.length || 0}`)
 
     if (!matchups || matchups.length === 0) {
@@ -102,9 +102,9 @@ export async function POST(request: NextRequest) {
       
       let message = 'No matchups found in database for current week'
       if (earliestWeek > currentWeek) {
-        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (future), SportsData.io has week ${currentWeek} (current 2024 season)`
+        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (future), ESPN API has week ${currentWeek} (current 2024 season)`
       } else if (latestWeek < currentWeek) {
-        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (past), SportsData.io has week ${currentWeek} (current 2024 season)`
+        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (past), ESPN API has week ${currentWeek} (current 2024 season)`
       }
       
       return NextResponse.json({ 
