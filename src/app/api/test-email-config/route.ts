@@ -4,7 +4,7 @@ export async function GET() {
   try {
     const emailConfig = {
       provider: process.env.EMAIL_PROVIDER || 'console',
-      fromEmail: process.env.FROM_EMAIL || 'noreply@loserpool.com',
+      fromEmail: process.env.FROM_EMAIL || 'noreply@resend.dev',
       hasApiKey: !!(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY),
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
