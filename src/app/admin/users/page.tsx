@@ -508,7 +508,7 @@ export default function AdminUsersPage() {
                     <option value="eliminated">Eliminated (No Picks)</option>
                   </select>
                   <p className="text-xs text-blue-200 mt-1">
-                    Pending users haven&apos;t bought picks yet. Testers pay $0, active users pay normal price
+                    Registered users haven&apos;t bought picks yet. Testers pay $0, active users pay normal price
                   </p>
                 </div>
               </div>

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
     }
     
     console.log('Existing user data:', existingUser)
+    console.log('About to update with data:', updateData)
     
     // Update the user using service role client
     const { data, error } = await supabaseAdmin
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
       .update(updateData)
       .eq('id', userId)
       .select()
+    
+    console.log('Update result - data:', data, 'error:', error)
     
     if (error) {
       console.error('Error updating user:', error)
