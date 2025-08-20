@@ -1,8 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { calculatePicksDeadline } from './timezone'
-import { Resend } from 'resend'
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+import { sendEmail } from './email-service'
 
 interface PurchaseNotificationData {
   userEmail: string
@@ -585,15 +583,6 @@ export async function sendAdminSignupNotification(signupData: SignupNotification
   }
 }
 
-interface EmailData {
-  to: string
-  subject: string
-  body?: string
-  htmlBody?: string
-  adminName?: string
-  userName?: string
-}
-
 interface SignupNotificationData {
   userEmail: string
   username: string
@@ -601,47 +590,4 @@ interface SignupNotificationData {
   lastName: string
   signupTime: string
   signupId: string
-}
-
-async function sendEmail({ to, subject, body, htmlBody, adminName, userName }: EmailData) {
-  try {
-    console.log(`🔄 Attempting to send email to: ${to}`)
-    console.log(`📧 Subject: ${subject}`)
-    console.log(`🔑 Resend API key configured: ${!!resend}`)
-    
-    // Check if Resend is configured
-    if (!resend) {
-      console.log(`❌ Resend not configured - would send email to: ${to}`)
-      console.log(`📝 Subject: ${subject}`)
-      console.log(`📄 HTML Content preview:`, htmlBody?.substring(0, 200) + '...')
-      return { id: 'mock-email-id' }
-    }
-
-    // Prepare email content
-    const html = htmlBody || body?.replace(/\n/g, '<br>') || ''
-    const text = body || htmlBody?.replace(/<[^>]*>/g, '') || ''
-
-    console.log(`🚀 Sending email via Resend to: ${to}`)
-    
-    // Use Resend to send the email
-    const { data, error } = await resend.emails.send({
-      from: 'The Loser Pool <onboarding@resend.dev>',
-      to: [to],
-      subject,
-      html,
-      text
-    })
-
-    if (error) {
-      console.error('❌ Resend email error:', error)
-      throw error
-    }
-
-    console.log(`✅ Email sent successfully to ${to}`)
-    console.log(`📨 Resend response:`, data)
-    return data
-  } catch (error) {
-    console.error('💥 Error sending email:', error)
-    throw error
-  }
 } 
