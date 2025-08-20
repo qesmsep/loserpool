@@ -141,22 +141,16 @@ async function sendViaResend(emailData: EmailData): Promise<EmailResult> {
   }
 
   console.log('📧 Attempting to send via Resend...')
-
-  // Check if Resend package is available
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let Resend: any
-  try {
-    // Use eval to avoid TypeScript module resolution
-    const resendModule = await eval('import("resend")')
-    Resend = resendModule.Resend
-  } catch {
-    console.log('📧 Resend package not available - falling back to console mode')
-    return await sendViaConsole(emailData)
-  }
+  console.log('🔑 API Key configured:', !!EMAIL_CONFIG.apiKey)
+  console.log('📧 From email:', emailData.from || EMAIL_CONFIG.fromEmail)
 
   try {
+    // Import Resend directly
+    const { Resend } = await import('resend')
     const resend = new Resend(EMAIL_CONFIG.apiKey)
     const recipients = Array.isArray(emailData.to) ? emailData.to : [emailData.to]
+    
+    console.log('📧 Sending to recipients:', recipients)
     
     const { data, error } = await resend.emails.send({
       from: emailData.from || EMAIL_CONFIG.fromEmail,
@@ -167,6 +161,7 @@ async function sendViaResend(emailData: EmailData): Promise<EmailResult> {
     })
 
     if (error) {
+      console.error('❌ Resend API error:', error)
       throw error
     }
 
