@@ -380,7 +380,7 @@ function TeamCard({
                     </button>
                   )}
                   <div
-                    className="font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
+                    className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
                     style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
                   >
                     {fullTeamName}
@@ -597,17 +597,17 @@ export default function MatchupBox({
       </div>
 
       {/* Team Selection Grid */}
-      <div className="flex gap-2 sm:gap-3 items-start" style={{
+      <div className="flex gap-0 sm:gap-3 items-start" style={{
         display: '-webkit-flex',
-        gap: '8px',
+        gap: '2px',
         alignItems: 'flex-start',
         width: '100%',
         maxWidth: '100%'
       }}>
         {/* Away Team */}
         <div className="flex-1 relative" style={{
-          width: '50%',
-          maxWidth: '50%',
+          width: '49.5%',
+          maxWidth: '49.5%',
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
           WebkitBackfaceVisibility: 'hidden',
@@ -632,22 +632,21 @@ export default function MatchupBox({
         </div>
 
         {/* VS/AT Separator */}
-        <div className="flex flex-col items-center justify-center px-1 sm:px-2" style={{
-          minWidth: '40px',
+        <div className="flex flex-col items-center justify-center px-0 sm:px-2" style={{
+          minWidth: '16px',
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
           WebkitBackfaceVisibility: 'hidden',
           backfaceVisibility: 'hidden'
         }}>
           <div className="text-center">
-            <div className="text-xs sm:text-sm font-bold text-white/80 mb-1">
+            <div className="text-xs font-bold text-white/80 mb-0" style={{ fontSize: '10px' }}>
               {matchup.status === 'scheduled' ? 'VS' : 'AT'}
             </div>
             {/* Game Status */}
-            {matchup.status && (
-              <div className="text-xs text-white/60">
+            {matchup.status && matchup.status !== 'scheduled' && (
+              <div className="text-xs text-white/60" style={{ fontSize: '9px' }}>
                 {matchup.quarter_info ? matchup.quarter_info :
-                 matchup.status === 'scheduled' ? 'UPCOMING' :
                  matchup.status === 'live' ? 'LIVE' :
                  matchup.status === 'final' ? 'FINAL' :
                  matchup.status.toUpperCase()}
@@ -658,8 +657,8 @@ export default function MatchupBox({
 
         {/* Home Team */}
         <div className="flex-1 relative" style={{
-          width: '50%',
-          maxWidth: '50%',
+          width: '49.5%',
+          maxWidth: '49.5%',
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
           WebkitBackfaceVisibility: 'hidden',
