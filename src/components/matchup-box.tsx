@@ -252,9 +252,9 @@ function TeamCard({
     fontFamily: "'Bebas Neue', sans-serif",
     letterSpacing: '0.15em',
     textTransform: 'uppercase',
-    width: '90%', // Exactly 90% as requested
-    maxWidth: '90%',
-    minWidth: '90%',
+    width: '95%', // Increased for mobile
+    maxWidth: '95%',
+    minWidth: '95%',
     margin: '0 auto',
     display: 'block',
     // Safari-specific properties
@@ -263,9 +263,9 @@ function TeamCard({
     WebkitBackfaceVisibility: 'hidden',
     backfaceVisibility: 'hidden',
     // CSS custom properties for Safari
-    '--safari-width': '90%',
-    '--safari-max-width': '90%',
-    '--safari-min-width': '90%'
+    '--safari-width': '95%',
+    '--safari-max-width': '95%',
+    '--safari-min-width': '95%'
   } as React.CSSProperties
 
   const innerGlowStyle = {}
@@ -303,9 +303,9 @@ function TeamCard({
         className="transform transition-all duration-300 relative h-full flex flex-col hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed team-card safari-team-card"
         style={{ 
           fontFamily: "'Bebas Neue', sans-serif",
-          width: '90%',
-          maxWidth: '90%',
-          minWidth: '90%',
+          width: '95%',
+          maxWidth: '95%',
+          minWidth: '95%',
           margin: '0 auto',
           display: 'block',
           WebkitTransform: 'translateZ(0)',
@@ -432,9 +432,9 @@ function TeamCard({
       className="transform transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed h-full flex flex-col team-card safari-team-card"
       style={{ 
         fontFamily: "'Bebas Neue', sans-serif",
-        width: '90%',
-        maxWidth: '90%',
-        minWidth: '90%',
+        width: '95%',
+        maxWidth: '95%',
+        minWidth: '95%',
         margin: '0 auto',
         display: 'block',
         WebkitTransform: 'translateZ(0)',
@@ -489,7 +489,7 @@ function TeamCard({
           <div className="flex items-center justify-between w-full mb-1 relative z-20">
             {/* Left side - Team name */}
             <div
-              className="font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
+              className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
               style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
             >
               {fullTeamName}
@@ -637,7 +637,9 @@ export default function MatchupBox({
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
           WebkitBackfaceVisibility: 'hidden',
-          backfaceVisibility: 'hidden'
+          backfaceVisibility: 'hidden',
+          alignSelf: 'center',
+          height: '100%'
         }}>
           <div className="text-center">
             <div className="text-xs font-bold text-white/80 mb-0" style={{ fontSize: '10px' }}>
