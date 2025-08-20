@@ -319,7 +319,7 @@ async function updatePickStatuses(matchupId: string, winner: string) {
     const { data: allPicks, error: fetchError } = await supabase
       .from('picks')
       .select('*')
-      .eq('status', 'pending') // Only get pending picks that need status updates
+      .eq('status', 'active') // Only get active picks that need status updates
 
     if (fetchError) {
       console.error(`Error fetching picks for matchup ${matchupId}:`, fetchError)
@@ -327,7 +327,7 @@ async function updatePickStatuses(matchupId: string, winner: string) {
     }
 
     if (!allPicks || allPicks.length === 0) {
-      console.log(`No pending picks found`)
+      console.log(`No active picks found`)
       return
     }
 

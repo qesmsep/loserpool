@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { isUserTester } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,13 +22,20 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient()
 
+    // Check if user is a tester to determine price
+    const userIsTester = await isUserTester(userId)
+    const amountPerPick = userIsTester ? 0 : 2100 // $0 for testers, $21 for others (in cents)
+    const totalAmount = picksCount * amountPerPick
+
+    console.log('User tester status:', { userId, userIsTester, amountPerPick, totalAmount })
+
     // Add purchase record
     const { data: purchaseData, error: purchaseError } = await supabase
       .from('purchases')
       .insert({
         user_id: userId,
         picks_count: picksCount,
-        amount_paid: picksCount * 2100, // $21 per pick in cents
+        amount_paid: totalAmount,
         status: 'completed'
       })
       .select()
@@ -80,11 +88,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: picksError.message }, { status: 400 })
     }
 
-    console.log('Picks added successfully:', { purchase: purchaseData[0], picks: picksData })
+    const priceMessage = userIsTester ? 'free' : `$${(totalAmount / 100).toFixed(2)}`
+    console.log('Picks added successfully:', { purchase: purchaseData[0], picks: picksData, priceMessage })
     return NextResponse.json({ 
-      message: `${picksCount} picks added successfully`,
+      message: `${picksCount} picks added successfully for ${priceMessage}`,
       purchase: purchaseData[0],
-      picks: picksData
+      picks: picksData,
+      userIsTester,
+      totalAmount
     })
   } catch (error) {
     console.error('Add picks error:', error)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getPoolStatus } from '@/lib/pool-status'
+import { isUserTester } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,10 +52,13 @@ export async function POST(request: NextRequest) {
     const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
     const userPicksPurchased = userPurchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
-    // Double-check that price is actually $0
-    if (pickPrice !== 0) {
+    // Check if user is a tester
+    const userIsTester = await isUserTester(user.id)
+
+    // Only allow free purchases if user is a tester OR if global price is $0
+    if (!userIsTester && pickPrice !== 0) {
       return NextResponse.json({ 
-        error: 'Free purchases are only allowed when pick price is set to $0' 
+        error: 'Free purchases are only allowed for testers or when pick price is set to $0' 
       }, { status: 400 })
     }
 

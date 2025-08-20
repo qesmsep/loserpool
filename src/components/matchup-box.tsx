@@ -364,55 +364,25 @@ function TeamCard({
 
               
               <div className="flex items-center justify-between w-full mb-1">
-                {/* Left side - Team name and controls */}
-                <div className="flex items-center space-x-2">
-                  {showControls && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removePick()
-                      }}
-                      disabled={disabled}
-                      className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
-                      aria-label={`Remove pick from ${fullTeamName}`}
-                    >
-                      <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    </button>
-                  )}
-                  <div
-                    className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
-                    style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-                  >
-                    {fullTeamName}
-                  </div>
+                {/* Left side - Team name */}
+                <div
+                  className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide text-left"
+                  style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                >
+                  {fullTeamName}
                 </div>
                 
                 {/* Right side - Score or Spread */}
-                <div className="flex items-center space-x-2">
-                  <div className="text-right">
-                    {score !== null && score !== undefined ? (
-                      <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                        {score}
-                      </div>
-                    ) : spread !== null && spread !== undefined ? (
-                      <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-                        {spread > 0 ? `+${spread}` : spread}
-                      </div>
-                    ) : null}
-                  </div>
-                  {showControls && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        addPick()
-                      }}
-                      disabled={disabled}
-                      className="bg-white/20 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm hover:bg-white/30 disabled:opacity-50 border border-white/30"
-                      aria-label={`Add pick to ${fullTeamName}`}
-                    >
-                      <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                    </button>
-                  )}
+                <div className="text-right">
+                  {score !== null && score !== undefined ? (
+                    <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                      {score}
+                    </div>
+                  ) : spread !== null && spread !== undefined ? (
+                    <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                      {spread > 0 ? `+${spread}` : spread}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               
@@ -489,7 +459,7 @@ function TeamCard({
           <div className="flex items-center justify-between w-full mb-1 relative z-20">
             {/* Left side - Team name */}
             <div
-              className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide"
+              className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide text-left"
               style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
             >
               {fullTeamName}

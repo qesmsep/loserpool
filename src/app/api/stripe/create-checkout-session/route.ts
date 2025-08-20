@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getPoolStatus } from '@/lib/pool-status'
+import { isUserTester } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Creating checkout session for user:', user.email, 'picks_count:', picks_count)
+
+    // Check if user is a tester
+    const userIsTester = await isUserTester(user.id)
+    if (userIsTester) {
+      return NextResponse.json({ 
+        error: 'Testers should use free purchase endpoint instead of Stripe checkout' 
+      }, { status: 400 })
+    }
 
     // Check pool lock status
     const poolStatus = await getPoolStatus()

@@ -5,6 +5,52 @@ import { X, Check, AlertCircle } from 'lucide-react'
 import { getTeamColors } from '@/lib/team-logos'
 import TeamBackground from '@/components/team-background'
 
+// Team abbreviation to full name mapping
+const TEAM_ABBREVIATIONS: Record<string, string> = {
+  'GB': 'Green Bay Packers',
+  'CHI': 'Chicago Bears',
+  'DAL': 'Dallas Cowboys',
+  'NYG': 'New York Giants',
+  'PHI': 'Philadelphia Eagles',
+  'WAS': 'Washington Commanders',
+  'DET': 'Detroit Lions',
+  'KC': 'Kansas City Chiefs',
+  'CAR': 'Carolina Panthers',
+  'ATL': 'Atlanta Falcons',
+  'HOU': 'Houston Texans',
+  'BAL': 'Baltimore Ravens',
+  'CIN': 'Cincinnati Bengals',
+  'CLE': 'Cleveland Browns',
+  'JAX': 'Jacksonville Jaguars',
+  'IND': 'Indianapolis Colts',
+  'TB': 'Tampa Bay Buccaneers',
+  'MIN': 'Minnesota Vikings',
+  'TEN': 'Tennessee Titans',
+  'NO': 'New Orleans Saints',
+  'SF': 'San Francisco 49ers',
+  'PIT': 'Pittsburgh Steelers',
+  'ARI': 'Arizona Cardinals',
+  'LV': 'Las Vegas Raiders',
+  'DEN': 'Denver Broncos',
+  'MIA': 'Miami Dolphins',
+  'LAC': 'Los Angeles Chargers',
+  'LAR': 'Los Angeles Rams',
+  'SEA': 'Seattle Seahawks',
+  'BUF': 'Buffalo Bills',
+  'NYJ': 'New York Jets',
+  'NE': 'New England Patriots'
+}
+
+// Function to get full team name
+const getFullTeamName = (teamName: string): string => {
+  // If it's already a full name, return it
+  if (TEAM_ABBREVIATIONS[teamName]) {
+    return TEAM_ABBREVIATIONS[teamName]
+  }
+  // If it's not in abbreviations, assume it's already a full name
+  return teamName
+}
+
 interface PickName {
   id: string
   name: string
@@ -137,11 +183,12 @@ export default function PickSelectionPopup({
 
   if (!isOpen) return null
 
-  const teamColors = getTeamColors(teamName)
+  const fullTeamName = getFullTeamName(teamName)
+  const teamColors = getTeamColors(fullTeamName)
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] sm:max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-6 border-b">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">
@@ -162,20 +209,71 @@ export default function PickSelectionPopup({
         <div className="p-3 sm:p-8">
           {/* Team Info */}
           <div 
-            className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-lg text-white font-semibold text-center ${
-              selectedPickIds.length > 0 ? 'cursor-pointer hover:opacity-90 transition-opacity' : 'cursor-not-allowed opacity-60'
+            className={`mb-3 sm:mb-4 p-3 sm:p-4 rounded-lg text-white font-semibold text-center relative overflow-hidden touch-manipulation ${
+              selectedPickIds.length > 0 ? 'cursor-pointer hover:opacity-90 transition-opacity active:opacity-75' : 'cursor-not-allowed'
             }`}
             style={{
-              background: `linear-gradient(135deg, ${teamColors.primary} 0%, ${teamColors.secondary} 100%)`,
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+              borderRadius: '8px',
+              boxShadow: '0 0 8px rgba(0,0,0,0.5)',
+              position: 'relative',
+              overflow: 'hidden',
+              color: 'white',
+              fontFamily: "'Bebas Neue', sans-serif",
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              border: selectedPickIds.length > 0 ? '3px solid #22c55e' : 'none',
+              WebkitTransform: 'translateZ(0)',
+              transform: 'translateZ(0)',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden'
             }}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              console.log('Team button clicked!', { selectedPickIds: selectedPickIds.length, loading })
               if (selectedPickIds.length > 0 && !loading) {
+                console.log('Calling handleAllocate...')
+                handleAllocate()
+              } else {
+                console.log('Button not clickable:', { selectedPickIds: selectedPickIds.length, loading })
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (selectedPickIds.length > 0 && !loading && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
                 handleAllocate()
               }
             }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              console.log('Touch start on team button!')
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              console.log('Touch end on team button!')
+              if (selectedPickIds.length > 0 && !loading) {
+                console.log('Touch calling handleAllocate...')
+                handleAllocate()
+              }
+            }}
+            aria-label={`Pick ${fullTeamName} to lose for ${selectedPickIds.length} pick${selectedPickIds.length !== 1 ? 's' : ''}`}
           >
-            <div className="text-base sm:text-lg">
+            <TeamBackground
+              teamName={fullTeamName}
+              size="lg"
+              className="w-full bg-transparent border-none shadow-none relative z-10"
+              gradientDepth={false}
+              borderGlow={false}
+              watermarkLogo
+              embossLogo={false}
+              duotoneLogo={false}
+              croppedLogo
+            >
+              <div className="text-center relative z-20 select-none" style={{ color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -183,22 +281,28 @@ export default function PickSelectionPopup({
                 </div>
               ) : selectedPickIds.length > 0 ? (
                 <>
-                  Allocate to: <strong>{teamName}</strong>
-                  <br />
-                  <span className="text-xs sm:text-sm opacity-90">
+                  <div className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide" style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                    PICK {fullTeamName}
+                  </div>
+                  <div className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide" style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                    TO LOSE
+                  </div>
+                  <div className="text-xs sm:text-sm opacity-90" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
                     ({selectedPickIds.length} pick{selectedPickIds.length !== 1 ? 's' : ''} selected)
-                  </span>
+                  </div>
                 </>
               ) : (
                 <>
-                  Allocate to: <strong>{teamName}</strong>
-                  <br />
-                  <span className="text-xs sm:text-sm opacity-90">
-                    (Select picks below)
-                  </span>
+                  <div className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide" style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                    PICK {fullTeamName}
+                  </div>
+                  <div className="font-normal sm:font-bold text-[12px] sm:text-[16px] leading-tight tracking-wide" style={{ fontFamily: "'Inter', sans-serif", color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                    TO LOSE
+                  </div>
                 </>
               )}
-            </div>
+              </div>
+            </TeamBackground>
           </div>
 
           {/* Error Message */}
@@ -228,24 +332,12 @@ export default function PickSelectionPopup({
           {/* Available Picks */}
           {!loading && availablePicks.length > 0 && (
             <>
-              {/* Selection Controls */}
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm text-gray-600">
-                  {selectedPickIds.length} of {availablePicks.filter(pick => pick.status !== 'lost').length} available selected
-                </span>
-                <div className="space-x-2">
-                  <button
-                    onClick={handleSelectAll}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    Select All Available
-                  </button>
-                  <button
-                    onClick={handleSelectNone}
-                    className="text-xs text-gray-600 hover:text-gray-800"
-                  >
-                    Select None
-                  </button>
+              {/* Selection Instructions */}
+              <div className="mb-4">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 font-medium">
+                    Choose your pick below to select this team to lose
+                  </p>
                 </div>
               </div>
 
@@ -260,7 +352,7 @@ export default function PickSelectionPopup({
               </div>
 
               {/* Picks List */}
-              <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-80 sm:max-h-96 overflow-y-auto">
                 {availablePicks.map((pick) => {
                   const isLost = pick.status === 'lost'
                   const isSelectable = pick.status !== 'lost'
@@ -349,29 +441,9 @@ export default function PickSelectionPopup({
           )}
         </div>
 
-        {/* Footer */}
+                {/* Footer */}
         <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
-          <button
-            onClick={handleClose}
-            disabled={loading}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAllocate}
-            disabled={loading || selectedPickIds.length === 0}
-            className="hidden sm:block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Allocating...</span>
-              </div>
-            ) : (
-              `Choose ${teamName} for ${selectedPickIds.length} Pick${selectedPickIds.length !== 1 ? 's' : ''}`
-            )}
-          </button>
+          {/* Desktop allocate button removed - team button is now the primary action */}
         </div>
 
         {/* Mobile Cancel Button - Bottom */}

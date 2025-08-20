@@ -133,8 +133,8 @@ function calculatePickStatus(pick: Pick, matchups: Matchup[]): {
       }
     }
     return {
-      status: 'pending',
-      statusText: 'Pending',
+      status: 'active',
+      statusText: 'Active',
       statusColor: 'text-yellow-300'
     }
   }
@@ -930,12 +930,12 @@ export default function DashboardPage() {
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 sm:p-4">
             <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">How to Pick:</h3>
             <div className="text-xs sm:text-base text-blue-200 space-y-1">
-              <p>• Click on the team you think will <strong>LOSE</strong> the game</p>
-              <p>• Each click adds 1 pick to that team</p>
-              <p>• Use the + and - buttons to adjust your pick allocation</p>
-              <p>• If your pick wins, you&apos;re eliminated</p>
-              <p>• If your pick loses, you survive to next week</p>
-              <p>• Last person standing wins!</p>
+              <p>• Click on a team matchup card to open the pick selection popup</p>
+              <p>• Select which pick you want to allocate to that team</p>
+              <p>• Click "PICK TEAM TO LOSE" to confirm your selection</p>
+              <p>• To change your pick, click on the team and choose that pick to update</p>
+              <p>• If your picked team wins, you&apos;re eliminated</p>
+              <p>• If your picked team loses, your pick moves on to next week</p>
             </div>
           </div>
           
@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
                                         type="text"
                                         value={editingPickName}
                                         onChange={(e) => setEditingPickName(e.target.value)}
-                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-[12px] sm:text-[16px] focus:outline-none focus:border-blue-400"
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') savePickName()
                                           if (e.key === 'Escape') cancelEditPick()
@@ -1058,7 +1058,11 @@ export default function DashboardPage() {
                                         autoFocus
                                       />
                                     ) : (
-                                      <div className="text-sm font-medium text-white truncate">
+                                      <div 
+                                        className="text-[12px] sm:text-[16px] font-medium text-white truncate underline cursor-pointer hover:text-blue-200 transition-colors"
+                                        onClick={() => startEditingPick(pick)}
+                                        title="Click to edit pick name"
+                                      >
                                         {pick.pick_name || 'TBD'}
                                       </div>
                                     )}
@@ -1091,11 +1095,14 @@ export default function DashboardPage() {
                                   </div>
                                   
                                   {/* Team name section - centered in remaining space */}
-                                  <div className="flex-1 flex items-center justify-center px-2">
+                                  <div className="flex-1 flex items-center justify-center px-1 sm:px-2 min-w-0">
                                     <div 
-                                      className="text-sm font-medium truncate text-center"
+                                      className="text-[12px] sm:text-[16px] font-medium text-center w-full absolute left-1/2 transform -translate-x-1/2"
                                       style={{ 
-                                        color: teamColors ? teamColors.text : '#93c5fd' // blue-200 fallback
+                                        color: teamColors ? teamColors.text : '#93c5fd', // blue-200 fallback
+                                        textAlign: 'center',
+                                        width: 'auto',
+                                        maxWidth: '60%'
                                       }}
                                     >
                                       {teamDisplayName}
@@ -1167,7 +1174,7 @@ export default function DashboardPage() {
                                         type="text"
                                         value={editingPickName}
                                         onChange={(e) => setEditingPickName(e.target.value)}
-                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-400"
+                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-[12px] sm:text-[16px] focus:outline-none focus:border-blue-400"
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') savePickName()
                                           if (e.key === 'Escape') cancelEditPick()
@@ -1175,7 +1182,11 @@ export default function DashboardPage() {
                                         autoFocus
                                       />
                                     ) : (
-                                      <div className="text-sm font-medium text-white truncate">
+                                      <div 
+                                        className="text-[12px] sm:text-[16px] font-medium text-white truncate underline cursor-pointer hover:text-blue-200 transition-colors"
+                                        onClick={() => startEditingPick(pick)}
+                                        title="Click to edit pick name"
+                                      >
                                         {pick.pick_name || 'TBD'}
                                       </div>
                                     )}
@@ -1208,11 +1219,14 @@ export default function DashboardPage() {
                                   </div>
                                   
                                   {/* Team name section - centered in remaining space */}
-                                  <div className="flex-1 flex items-center justify-center px-2">
+                                  <div className="flex-1 flex items-center justify-center px-1 sm:px-2 min-w-0">
                                     <div 
-                                      className="text-sm font-medium truncate text-center"
+                                      className="text-[12px] sm:text-[16px] font-medium text-center w-full absolute left-1/2 transform -translate-x-1/2"
                                       style={{ 
-                                        color: teamColors ? teamColors.text : '#93c5fd' // blue-200 fallback
+                                        color: teamColors ? teamColors.text : '#93c5fd', // blue-200 fallback
+                                        textAlign: 'center',
+                                        width: 'auto',
+                                        maxWidth: '60%'
                                       }}
                                     >
                                       {teamDisplayName}
@@ -1290,15 +1304,7 @@ export default function DashboardPage() {
                     </button>
                   </>
                 )}
-                {picksSaved && !isEditing && !checkDeadlinePassed() && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    disabled={saving}
-                    className="flex items-center justify-center bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm"
-                  >
-                    Edit Picks
-                  </button>
-                )}
+
               </div>
             </div>
           </div>

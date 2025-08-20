@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
 import { checkPoolLock } from '@/lib/pool-status-client'
+import { isUserTester } from '@/lib/user-types-client'
 
 interface PurchaseSettings {
   pickPrice: number
@@ -25,6 +26,8 @@ export default function PurchasePage() {
     totalPicksPurchased: 0
   })
   const [userPicksPurchased, setUserPicksPurchased] = useState(0)
+  const [userIsTester, setUserIsTester] = useState(false)
+  const [userLoading, setUserLoading] = useState(true)
   const router = useRouter()
 
   const checkUser = useCallback(async () => {
@@ -33,6 +36,16 @@ export default function PurchasePage() {
       router.push('/login')
       return
     }
+
+    // Check if user is a tester
+    try {
+      const testerStatus = await isUserTester(user.id)
+      setUserIsTester(testerStatus)
+    } catch (error) {
+      console.error('Error checking tester status:', error)
+      setUserIsTester(false)
+    }
+    setUserLoading(false)
   }, [router])
 
   const loadSettings = useCallback(async () => {
@@ -114,8 +127,19 @@ export default function PurchasePage() {
         return
       }
 
-      // If price is $0, bypass Stripe and create free purchase
-      if (settings.pickPrice === 0) {
+      // Get current user to check tester status
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('User not authenticated')
+        setLoading(false)
+        return
+      }
+
+      // Check if user is a tester
+      const userIsTester = await isUserTester(user.id)
+
+      // If user is a tester or price is $0, create free purchase
+      if (userIsTester || settings.pickPrice === 0) {
         const response = await fetch('/api/purchases/free', {
           method: 'POST',
           headers: {
@@ -135,7 +159,10 @@ export default function PurchasePage() {
         }
 
         // Redirect to dashboard with success message
-        router.push('/dashboard?success=true&message=Free picks added successfully!')
+        const message = userIsTester 
+          ? 'Free picks added successfully for tester!'
+          : 'Free picks added successfully!'
+        router.push(`/dashboard?success=true&message=${encodeURIComponent(message)}`)
         return
       }
 
@@ -178,14 +205,19 @@ export default function PurchasePage() {
     }
   }
 
-  const totalPrice = picksCount * settings.pickPrice
   const userRemaining = settings.entriesPerUser - userPicksPurchased
   const poolRemaining = settings.maxTotalEntries - settings.totalPicksPurchased
   const maxPicksAllowed = Math.min(userRemaining, poolRemaining)
 
+  // Calculate the actual price for this user (testers get $0)
+  const actualPickPrice = userIsTester ? 0 : settings.pickPrice
+  const totalPrice = picksCount * actualPickPrice
+
   // Debug logging
   console.log('Purchase page debug:', {
     pickPrice: settings.pickPrice,
+    actualPickPrice,
+    userIsTester,
     entriesPerUser: settings.entriesPerUser,
     maxTotalEntries: settings.maxTotalEntries,
     totalPicksPurchased: settings.totalPicksPurchased,
@@ -195,6 +227,18 @@ export default function PurchasePage() {
     maxPicksAllowed,
     picksCount
   })
+
+  if (userLoading) {
+    return (
+      <div className="app-bg">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-8 text-center">
+            <div className="text-white">Loading...</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-bg">
@@ -226,9 +270,15 @@ export default function PurchasePage() {
               <ShoppingCart className="w-8 h-8 text-blue-200" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Buy Your Picks</h2>
-            <p className="text-blue-100">
-              Each pick costs ${settings.pickPrice}. More picks = more chances to survive!
-            </p>
+            {userIsTester ? (
+              <p className="text-blue-100">
+                As a tester, you get picks for free! More picks = more chances to survive!
+              </p>
+            ) : (
+              <p className="text-blue-100">
+                Each pick costs ${settings.pickPrice}. More picks = more chances to survive!
+              </p>
+            )}
           </div>
 
           {error && (
@@ -278,7 +328,9 @@ export default function PurchasePage() {
             <div className="bg-white/10 rounded-lg p-4 border border-white/20">
               <div className="flex justify-between items-center">
                 <span className="text-blue-200">Price per pick:</span>
-                <span className="font-medium text-white">${settings.pickPrice.toFixed(2)}</span>
+                <span className="font-medium text-white">
+                  {userIsTester ? 'FREE' : `$${settings.pickPrice.toFixed(2)}`}
+                </span>
               </div>
               <div className="flex justify-between items-center mt-2">
                 <span className="text-blue-200">Quantity:</span>
@@ -287,7 +339,9 @@ export default function PurchasePage() {
               <div className="border-t border-white/20 mt-2 pt-2">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-white">Total:</span>
-                  <span className="text-2xl font-bold text-blue-300">${totalPrice.toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-blue-300">
+                    {userIsTester ? 'FREE' : `$${totalPrice.toFixed(2)}`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -300,20 +354,19 @@ export default function PurchasePage() {
               <CreditCard className="w-5 h-5 mr-2" />
               {loading ? 'Processing...' : 
                userRemaining === 0 ? 'Maximum Picks Reached' :
-               settings.pickPrice === 0 ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` : 
+               userIsTester ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` :
+               actualPickPrice === 0 ? `Add ${picksCount} Free Pick${picksCount > 1 ? 's' : ''}` : 
                `Pay $${totalPrice.toFixed(2)}`}
             </button>
           </div>
 
           <div className="mt-8 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-white mb-2">Important Notes:</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">How it works:</h3>
             <ul className="text-blue-200 space-y-1 text-sm">
-              <li>• Picks can only be purchased before the season starts</li>
-              <li>• Each pick costs ${settings.pickPrice} (configured by admin)</li>
-              <li>• Maximum {settings.entriesPerUser} picks per user</li>
-              <li>• Pool capacity: {settings.maxTotalEntries} total picks</li>
-              <li>• Picks are used to make selections each week</li>
-              <li>• Unused picks are given the default pick</li>
+              <li>• Pick teams you think will LOSE each week</li>
+              <li>• If your pick wins, you're eliminated</li>
+              <li>• If your pick loses, you survive to next week</li>
+              <li>• Last person standing wins the pool!</li>
             </ul>
           </div>
         </div>

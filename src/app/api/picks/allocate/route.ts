@@ -124,11 +124,11 @@ export async function POST(request: Request) {
           )
         }
         
-        // Update the pick status to pending (for both new allocations and reallocations)
-        const { error: updateError } = await supabase
-          .from('picks')
-          .update({
-            status: 'pending'
+              // Update the pick status to active (for both new allocations and reallocations)
+      const { error: updateError } = await supabase
+        .from('picks')
+        .update({
+          status: 'active'
           })
           .eq('id', pick.id)
 
