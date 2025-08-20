@@ -1,5 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { calculatePicksDeadline } from './timezone'
+import { Resend } from 'resend'
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 interface PurchaseNotificationData {
   userEmail: string
@@ -54,25 +57,82 @@ export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotifi
       `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || purchaseData.username :
       purchaseData.username
 
-    const subject = `New Pick Purchase - ${userName}`
-    const body = `
-New pick purchase completed:
+    const subject = `🎉 New Pick Purchase - ${userName}`
+    
+    const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+      <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #1e40af; font-size: 28px; margin: 0 0 8px 0;">💰 New Pick Purchase!</h1>
+          <p style="color: #6b7280; font-size: 16px; margin: 0;">A user has just purchased picks in The Loser Pool</p>
+        </div>
 
-User: ${userName} (${purchaseData.userEmail})
-Picks Purchased: ${purchaseData.picksCount}
-Amount: $${(purchaseData.amount / 100).toFixed(2)}
-Purchase ID: ${purchaseData.purchaseId}
-Date: ${new Date().toLocaleString()}
+        <!-- Purchase Details -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 20px;">📊 Purchase Summary</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">User</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${userName}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Email</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${purchaseData.userEmail}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Picks Purchased</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${purchaseData.picksCount}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Amount</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">$${(purchaseData.amount / 100).toFixed(2)}</p>
+            </div>
+          </div>
+          <div style="background-color: rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 6px;">
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Purchase ID: ${purchaseData.purchaseId}</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Date: ${new Date().toLocaleString()}</p>
+          </div>
+        </div>
 
-Pool total picks purchased: [Check admin dashboard for updated totals]
-    `.trim()
+        <!-- Quick Actions -->
+        <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #0369a1; margin: 0 0 16px 0;">⚡ Quick Actions</h3>
+          <div style="text-align: center;">
+            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
+              👥 View User Profile
+            </a>
+            <a href="https://loserpool.vercel.app/admin/purchases" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+              📈 View Purchase History
+            </a>
+          </div>
+        </div>
+
+        <!-- Pool Stats -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #166534; margin: 0 0 16px 0;">📊 Pool Impact</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6; color: #166534;">
+            <li>User now has ${purchaseData.picksCount} additional picks to allocate</li>
+            <li>Total pool revenue increased by $${(purchaseData.amount / 100).toFixed(2)}</li>
+            <li>User can start making picks immediately</li>
+          </ul>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+          <p style="color: #1e40af; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">The Loser Pool Admin</p>
+          <p style="color: #6b7280; margin: 0;">This is an automated notification from The Loser Pool system.</p>
+        </div>
+      </div>
+    </div>
+    `
 
     // Send email to each admin
     for (const admin of admins) {
       await sendEmail({
         to: admin.email,
         subject,
-        body,
+        htmlBody,
         adminName: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Admin'
       })
     }
@@ -246,42 +306,186 @@ ${body}
   // })
 }
 
+export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotificationData) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    
+    // Get user details
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('first_name, last_name, username')
+      .eq('email', purchaseData.userEmail)
+      .single()
+
+    if (userError) {
+      console.error('Error fetching user details:', userError)
+      return
+    }
+
+    const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || purchaseData.username
+
+    const subject = `🎉 Your Pick Purchase is Complete!`
+    
+    const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+      <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #1e40af; font-size: 28px; margin: 0 0 8px 0;">🎉 Purchase Complete!</h1>
+          <p style="color: #6b7280; font-size: 16px; margin: 0;">Your picks have been added to your account</p>
+        </div>
+
+        <!-- Success Message -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 20px;">✅ Payment Processed Successfully</h2>
+          <p style="margin: 0; font-size: 16px; line-height: 1.6;">
+            Hi ${userName}, your payment has been processed and ${purchaseData.picksCount} picks have been added to your account!
+          </p>
+        </div>
+
+        <!-- Purchase Details -->
+        <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #0369a1; margin: 0 0 16px 0;">📊 Purchase Summary</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; color: #6b7280;">Picks Purchased</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1e40af;">${purchaseData.picksCount}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; color: #6b7280;">Amount Paid</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1e40af;">$${(purchaseData.amount / 100).toFixed(2)}</p>
+            </div>
+          </div>
+          <div style="background-color: #e0f2fe; padding: 12px; border-radius: 6px;">
+            <p style="margin: 0; font-size: 14px; color: #0369a1;">
+              <strong>Purchase ID:</strong> ${purchaseData.purchaseId}<br>
+              <strong>Date:</strong> ${new Date().toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #166534; margin: 0 0 16px 0;">🚀 What's Next?</h3>
+          <ol style="margin: 0; padding-left: 20px; line-height: 1.6; color: #166534;">
+            <li><strong>Go to your dashboard</strong> to see your new picks</li>
+            <li><strong>Allocate your picks</strong> to specific weeks</li>
+            <li><strong>Make your selections</strong> for the upcoming games</li>
+            <li><strong>Watch the games</strong> and hope your picks lose!</li>
+          </ol>
+        </div>
+
+        <!-- Dashboard Button -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="https://loserpool.vercel.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+            🏠 Go to Your Dashboard
+          </a>
+        </div>
+
+        <!-- Important Reminders -->
+        <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <h3 style="color: #92400e; margin: 0 0 12px 0;">⏰ Important Reminders</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6; color: #92400e;">
+            <li>Picks lock on Thursday nights before games</li>
+            <li>You're picking teams to <strong>LOSE</strong>, not win!</li>
+            <li>Check your dashboard regularly for updates</li>
+          </ul>
+        </div>
+
+        <!-- Pool Highlights -->
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #dc2626; margin: 0 0 16px 0;">🏆 Pool Highlights</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6; color: #dc2626;">
+            <li>Weekly elimination format</li>
+            <li>Real-time leaderboards</li>
+            <li>Mobile-friendly interface</li>
+            <li>Fair and transparent rules</li>
+            <li>Exciting prizes for winners</li>
+          </ul>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+          <p style="color: #1e40af; font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">Welcome to The Loser Pool!</p>
+          <p style="color: #6b7280; margin: 0 0 16px 0;">Good luck, and remember - you're picking teams to LOSE!</p>
+          
+          <div style="margin-top: 24px;">
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">Best regards,<br>The Loser Pool Team</p>
+          </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            Questions? Reply to this email or contact us at support@loserpool.com<br>
+            Follow us on social media for updates and announcements!
+          </p>
+        </div>
+      </div>
+    </div>
+    `
+
+    await sendEmail({
+      to: purchaseData.userEmail,
+      subject,
+      htmlBody,
+      userName
+    })
+
+    console.log(`Purchase confirmation sent to user: ${purchaseData.userEmail}`)
+  } catch (error) {
+    console.error('Error sending user purchase confirmation:', error)
+  }
+}
+
 interface EmailData {
   to: string
   subject: string
-  body: string
-  adminName: string
+  body?: string
+  htmlBody?: string
+  adminName?: string
+  userName?: string
 }
 
-async function sendEmail({ to, subject, body, adminName }: EmailData) {
-  // For now, we'll use console.log to simulate email sending
-  // In production, you would integrate with a service like SendGrid, Resend, or Supabase's email service
-  
-  console.log(`
-=== EMAIL TO ADMIN: ${adminName} ===
-To: ${to}
-Subject: ${subject}
-Body:
-${body}
-=====================================
-  `)
+async function sendEmail({ to, subject, body, htmlBody, adminName, userName }: EmailData) {
+  try {
+    console.log(`🔄 Attempting to send email to: ${to}`)
+    console.log(`📧 Subject: ${subject}`)
+    console.log(`🔑 Resend API key configured: ${!!resend}`)
+    
+    // Check if Resend is configured
+    if (!resend) {
+      console.log(`❌ Resend not configured - would send email to: ${to}`)
+      console.log(`📝 Subject: ${subject}`)
+      console.log(`📄 HTML Content preview:`, htmlBody?.substring(0, 200) + '...')
+      return { id: 'mock-email-id' }
+    }
 
-  // TODO: Implement actual email sending
-  // Example with Supabase email service:
-  // const { error } = await supabase.auth.admin.sendRawEmail({
-  //   to: [to],
-  //   subject,
-  //   html: body.replace(/\n/g, '<br>'),
-  //   text: body
-  // })
-  
-  // Example with external service like Resend:
-  // const resend = new Resend(process.env.RESEND_API_KEY)
-  // await resend.emails.send({
-  //   from: 'noreply@yourdomain.com',
-  //   to: [to],
-  //   subject,
-  //   html: body.replace(/\n/g, '<br>'),
-  //   text: body
-  // })
+    // Prepare email content
+    const html = htmlBody || body?.replace(/\n/g, '<br>') || ''
+    const text = body || htmlBody?.replace(/<[^>]*>/g, '') || ''
+
+    console.log(`🚀 Sending email via Resend to: ${to}`)
+    
+    // Use Resend to send the email
+    const { data, error } = await resend.emails.send({
+      from: 'The Loser Pool <onboarding@resend.dev>',
+      to: [to],
+      subject,
+      html,
+      text
+    })
+
+    if (error) {
+      console.error('❌ Resend email error:', error)
+      throw error
+    }
+
+    console.log(`✅ Email sent successfully to ${to}`)
+    console.log(`📨 Resend response:`, data)
+    return data
+  } catch (error) {
+    console.error('💥 Error sending email:', error)
+    throw error
+  }
 } 

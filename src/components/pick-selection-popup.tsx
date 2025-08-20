@@ -343,7 +343,7 @@ export default function PickSelectionPopup({
             <div className="text-center py-8">
               <p className="text-gray-500">No picks found</p>
               <p className="text-sm text-gray-400 mt-1">
-                You don't have any picks to allocate
+                You don&apos;t have any picks to allocate
               </p>
             </div>
           )}

@@ -185,7 +185,7 @@ export default function PickHistoryTable({ pickId }: PickHistoryTableProps) {
           Pick History: {pickHistory.pick_name}
         </h3>
         <p className="text-sm text-gray-600">
-          Track this pick's journey through all seasons
+          Track this pick&apos;s journey through all seasons
         </p>
       </div>
 

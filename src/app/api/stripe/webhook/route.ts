@@ -3,7 +3,7 @@ import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
-import { sendAdminPurchaseNotification } from '@/lib/email'
+import { sendAdminPurchaseNotification, sendUserPurchaseConfirmation } from '@/lib/email'
 import { PickNamesServiceServer } from '@/lib/pick-names-service-server'
 
 export async function POST(request: NextRequest) {
@@ -67,6 +67,19 @@ export async function POST(request: NextRequest) {
         if (purchaseError) {
           console.error('Error fetching purchase details for notification:', purchaseError)
         } else if (purchase) {
+          // Update user type to 'active' when purchase is completed
+          const { error: userUpdateError } = await supabase
+            .from('users')
+            .update({ user_type: 'active' })
+            .eq('id', purchase.user_id)
+            .eq('user_type', 'registered')
+
+          if (userUpdateError) {
+            console.error('Error updating user type to active:', userUpdateError)
+          } else {
+            console.log('User type updated to active for user:', purchase.user_id)
+          }
+
           // Get user details
           const { data: user, error: userError } = await supabase
             .from('users')
@@ -86,60 +99,23 @@ export async function POST(request: NextRequest) {
               purchaseId: purchase.id
             })
 
-            // Get existing picks to determine the next sequential number
-            const { data: existingPicks } = await supabase
-              .from('picks')
-              .select('pick_name')
-              .eq('user_id', purchase.user_id)
-              .not('pick_name', 'is', null)
-
-            // Find the highest existing pick number
-            let nextPickNumber = 1
-            if (existingPicks && existingPicks.length > 0) {
-              const pickNumbers = existingPicks
-                .map(pick => {
-                  const match = pick.pick_name?.match(/^Pick (\d+)$/)
-                  return match ? parseInt(match[1]) : 0
-                })
-                .filter(num => num > 0)
-              
-              if (pickNumbers.length > 0) {
-                nextPickNumber = Math.max(...pickNumbers) + 1
-              }
-            }
-
-            // Create default pick records in the picks table with sequential names
-            try {
-              const pickRecords = []
-              
-              for (let i = 0; i < purchase.picks_count; i++) {
-                pickRecords.push({
-                  user_id: purchase.user_id,
-                  picks_count: 1,
-                  status: 'pending' as const,
-                  pick_name: `Pick ${nextPickNumber + i}` // Sequential naming starting from next available number
-                })
-              }
-
-              const { error: picksError } = await supabase
-                .from('picks')
-                .insert(pickRecords)
-
-              if (picksError) {
-                console.error('Error creating pick records:', picksError)
-              } else {
-                console.log(`Created ${pickRecords.length} default pick records for user ${purchase.user_id}`)
-              }
-            } catch (pickCreationError) {
-              console.error('Error creating default pick records:', pickCreationError)
-            }
+            // Send user confirmation email
+            await sendUserPurchaseConfirmation({
+              userEmail: user.email,
+              username: user.username || 'Unknown',
+              picksCount: purchase.picks_count,
+              amount: purchase.amount_paid,
+              purchaseId: purchase.id
+            })
           }
         }
+
+        return NextResponse.json({ received: true })
+
       } catch (error) {
-        console.error('Error processing webhook:', error)
-        return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+        console.error('Error processing checkout.session.completed:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
       }
-      break
 
     case 'checkout.session.expired':
       const expiredSession = event.data.object as Stripe.Checkout.Session
@@ -152,16 +128,20 @@ export async function POST(request: NextRequest) {
           .eq('stripe_session_id', expiredSession.id)
 
         if (error) {
-          console.error('Error updating expired purchase:', error)
+          console.error('Error updating expired purchase status:', error)
+        } else {
+          console.log('Purchase marked as failed:', expiredSession.id)
         }
+
+        return NextResponse.json({ received: true })
+
       } catch (error) {
-        console.error('Error processing expired session:', error)
+        console.error('Error processing checkout.session.expired:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
       }
-      break
 
     default:
       console.log(`Unhandled event type: ${event.type}`)
+      return NextResponse.json({ received: true })
   }
-
-  return NextResponse.json({ received: true })
 } 

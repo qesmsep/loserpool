@@ -1,254 +1,99 @@
-// Utility functions for week display that can be used in client components
+/**
+ * Converts a user's default week to the corresponding database column name
+ * This centralizes the logic for mapping weeks to database columns
+ * 
+ * @param userDefaultWeek - The user's default week number
+ * @returns The database column name for that week
+ */
+export function getWeekColumnName(userDefaultWeek: number): string {
+  // Define the mapping of default weeks to database columns
+  // This can be easily modified if the schema changes
+  const weekToColumnMap: Record<number, string> = {
+    1: 'reg1_team_matchup_id',    // Regular Season Week 1
+    2: 'reg2_team_matchup_id',    // Regular Season Week 2  
+    3: 'pre3_team_matchup_id',    // Preseason Week 3 (for testers)
+    4: 'reg4_team_matchup_id',    // Regular Season Week 4
+    5: 'reg5_team_matchup_id',    // Regular Season Week 5
+    // ... add more as needed
+  }
 
-// Get current NFL week display string (includes preseason)
-export function getCurrentWeekDisplay(): string {
-  try {
-    const now = new Date()
-    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start (from database setting)
-    const regularSeasonStart = new Date('2025-09-04T00:00:00') // NFL 2025 regular season start (approximate)
-    
-    // If before regular season start, it's preseason
-    if (now < regularSeasonStart) {
-      // NFL preseason weeks are typically:
-      // Week 1: Aug 7-13 (first week)
-      // Week 2: Aug 14-20 (second week)
-      // Week 3: Aug 21-27 (third week)
-      // Week 4: Aug 28-Sep 3 (fourth week)
-      
-      const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
-      
-      // Calculate preseason week based on NFL schedule
-      let preseasonWeek = 1
-      if (daysSinceStart >= 7) { // Aug 14+ is Week 2
-        preseasonWeek = 2
-      } else if (daysSinceStart >= 14) { // Aug 21+ is Week 3
-        preseasonWeek = 3
-      } else if (daysSinceStart >= 21) { // Aug 28+ is Week 4
-        preseasonWeek = 4
-      }
-      
-      return `Preseason Week ${preseasonWeek}`
-    }
-    
-    // Regular season
-    const regularSeasonWeeksSinceStart = Math.floor((now.getTime() - regularSeasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
-    const regularSeasonWeek = Math.max(1, Math.min(18, regularSeasonWeeksSinceStart + 1))
-    return `Week ${regularSeasonWeek}`
-  } catch (error) {
-    console.error('Error calculating current week display:', error)
-    return 'Week 1' // Fallback
+  // Check if we have a direct mapping
+  if (weekToColumnMap[userDefaultWeek]) {
+    return weekToColumnMap[userDefaultWeek]
+  }
+
+  // Fallback logic for weeks not explicitly mapped
+  if (userDefaultWeek <= 0) {
+    // Preseason weeks (negative or zero)
+    return `pre${Math.abs(userDefaultWeek) + 1}_team_matchup_id`
+  } else if (userDefaultWeek <= 18) {
+    // Regular season weeks
+    return `reg${userDefaultWeek}_team_matchup_id`
+  } else {
+    // Postseason weeks
+    return `post${userDefaultWeek - 18}_team_matchup_id`
   }
 }
 
-// Get current NFL week number
-export function getCurrentWeekNumber(): number {
-  try {
-    const now = new Date()
-    const preseasonStart = new Date('2025-08-07T00:00:00') // NFL 2025 preseason start (from database setting)
-    const regularSeasonStart = new Date('2025-09-04T00:00:00') // NFL 2025 regular season start
-    
-    // If in preseason, calculate preseason week
-    if (now < regularSeasonStart) {
-      // NFL preseason weeks are typically:
-      // Week 1: Aug 7-13 (first week)
-      // Week 2: Aug 14-20 (second week)
-      // Week 3: Aug 21-27 (third week)
-      // Week 4: Aug 28-Sep 3 (fourth week)
-      
-      const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
-      
-      // Calculate preseason week based on NFL schedule
-      let preseasonWeek = 1
-      if (daysSinceStart >= 7) { // Aug 14+ is Week 2
-        preseasonWeek = 2
-      } else if (daysSinceStart >= 14) { // Aug 21+ is Week 3
-        preseasonWeek = 3
-      } else if (daysSinceStart >= 21) { // Aug 28+ is Week 4
-        preseasonWeek = 4
-      }
-      
-      return preseasonWeek
-    }
-    
-    // Regular season
-    const regularSeasonWeeksSinceStart = Math.floor((now.getTime() - regularSeasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
-    const regularSeasonWeek = Math.max(1, Math.min(18, regularSeasonWeeksSinceStart + 1))
-    return regularSeasonWeek
-  } catch (error) {
-    console.error('Error calculating current week:', error)
-    return 1 // Fallback to week 1
+/**
+ * Gets the display name for a week based on the user's default week
+ * 
+ * @param userDefaultWeek - The user's default week number
+ * @returns A human-readable week display name
+ */
+export function getWeekDisplayName(userDefaultWeek: number): string {
+  if (userDefaultWeek <= 0) {
+    return `Pre Season : Week ${Math.abs(userDefaultWeek) + 1}`
+  } else if (userDefaultWeek <= 18) {
+    return `Regular Season : Week ${userDefaultWeek}`
+  } else {
+    return `Post Season : Week ${userDefaultWeek - 18}`
   }
 }
 
-// Check if currently in preseason
-export function isPreseason(): boolean {
-  const now = new Date()
-  const regularSeasonStart = new Date('2025-09-04T00:00:00')
-  return now < regularSeasonStart
-}
-
-// Helper function to format week display
-export function formatWeekDisplay(week: number, isPreseason: boolean = false): string {
-  if (isPreseason) {
-    return `Preseason Week ${week}`
-  }
-  return week === 0 ? 'Week Zero' : `Week ${week}`
-}
-
-// Get the day name for a given date
-export function getDayName(date: Date): string {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  return days[date.getDay()]
-}
-
-// Get the day name abbreviated
-export function getDayNameShort(date: Date): string {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[date.getDay()]
-}
-
-// Check if a date is a Thursday (typical TNF day)
-export function isThursday(date: Date): boolean {
-  return date.getDay() === 4 // 4 = Thursday
-}
-
-// Check if a date is a Friday
-export function isFriday(date: Date): boolean {
-  return date.getDay() === 5 // 5 = Friday
-}
-
-// Check if a date is a Saturday
-export function isSaturday(date: Date): boolean {
-  return date.getDay() === 6 // 6 = Saturday
-}
-
-// Check if a date is a Sunday
-export function isSunday(date: Date): boolean {
-  return date.getDay() === 0 // 0 = Sunday
-}
-
-// Check if a date is a Monday
-export function isMonday(date: Date): boolean {
-  return date.getDay() === 1 // 1 = Monday
-}
-
-// Check if a date is a Tuesday
-export function isTuesday(date: Date): boolean {
-  return date.getDay() === 2 // 2 = Tuesday
-}
-
-// Check if a date is a Wednesday
-export function isWednesday(date: Date): boolean {
-  return date.getDay() === 3 // 3 = Wednesday
-}
-
-// Get the start of the week based on the first game of that week
-// This handles special cases where weeks might start on different days
-export function getWeekStartDate(gameDate: Date): Date {
-  const dayOfWeek = gameDate.getDay()
-  
-  // If it's already Thursday or earlier, that's the start of the week
-  if (dayOfWeek <= 4) { // Sunday (0) through Thursday (4)
-    return new Date(gameDate.getTime())
-  }
-  
-  // If it's Friday, Saturday, or Monday, find the previous Thursday
-  // This handles special cases like Friday games, Saturday games, or Monday games
-  const daysToSubtract = dayOfWeek === 5 ? 1 : // Friday -> Thursday
-                        dayOfWeek === 6 ? 2 : // Saturday -> Thursday
-                        3 // Monday -> Thursday (previous Thursday)
-  
-  const weekStart = new Date(gameDate.getTime())
-  weekStart.setDate(weekStart.getDate() - daysToSubtract)
-  return weekStart
-}
-
-// Determine if a game is the first game of the week
-export function isFirstGameOfWeek(gameDate: Date, allGameDates: Date[]): boolean {
-  const weekStart = getWeekStartDate(gameDate)
-  
-  // Check if this game is the earliest game in the same week
-  return allGameDates.every(otherDate => {
-    const otherWeekStart = getWeekStartDate(otherDate)
-    return otherDate.getTime() >= gameDate.getTime() || 
-           Math.abs(weekStart.getTime() - otherWeekStart.getTime()) > 7 * 24 * 60 * 60 * 1000
-  })
-}
-
-// Get the current week based on actual game schedules
-// This is more accurate than date-based calculation
+/**
+ * Determines the current week based on game dates
+ * 
+ * @param gameDates - Array of game dates
+ * @returns The current week number
+ */
 export function getCurrentWeekFromGames(gameDates: Date[]): number {
-  if (gameDates.length === 0) {
-    return getCurrentWeekNumber() // Fallback to date-based calculation
+  if (!gameDates || gameDates.length === 0) {
+    return 1
   }
-  
+
   const now = new Date()
-  const sortedDates = gameDates.sort((a, b) => a.getTime() - b.getTime())
+  const regularSeasonStart = new Date('2025-09-04T00:00:00') // NFL 2025 regular season start
   
-  // Find the current week by looking at game dates
-  let currentWeek = 1
-  let lastWeekStart: Date | null = null
-  
-  for (const gameDate of sortedDates) {
-    const weekStart = getWeekStartDate(gameDate)
+  // If before regular season start, it's preseason
+  if (now < regularSeasonStart) {
+    const preseasonStart = new Date('2025-08-07T00:00:00')
+    const daysSinceStart = Math.floor((now.getTime() - preseasonStart.getTime()) / (24 * 60 * 60 * 1000))
     
-    // If this is a new week
-    if (!lastWeekStart || Math.abs(weekStart.getTime() - lastWeekStart.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-      currentWeek++
-      lastWeekStart = weekStart
-    }
-    
-    // If we've found a game that's in the future, we're in the previous week
-    if (gameDate > now) {
-      return Math.max(1, currentWeek - 1)
+    // Calculate preseason week based on NFL schedule
+    if (daysSinceStart >= 20) { // Aug 27+ is Week 4
+      return 4
+    } else if (daysSinceStart >= 13) { // Aug 20+ is Week 3
+      return 3
+    } else if (daysSinceStart >= 6) { // Aug 13+ is Week 2
+      return 2
+    } else {
+      return 1
     }
   }
   
-  return currentWeek
-}
-
-// Get week start date for a specific week number
-export function getWeekStartDateByWeekNumber(weekNumber: number, gameDates: Date[]): Date | null {
-  if (gameDates.length === 0) return null
+  // For regular season, find the week based on game dates
+  const sortedGameDates = gameDates.sort((a, b) => a.getTime() - b.getTime())
   
-  const sortedDates = gameDates.sort((a, b) => a.getTime() - b.getTime())
-  let currentWeek = 1
-  let lastWeekStart: Date | null = null
+  // Find the first game that hasn't happened yet
+  const currentGameIndex = sortedGameDates.findIndex(gameDate => gameDate > now)
   
-  for (const gameDate of sortedDates) {
-    const weekStart = getWeekStartDate(gameDate)
-    
-    // If this is a new week
-    if (!lastWeekStart || Math.abs(weekStart.getTime() - lastWeekStart.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-      if (currentWeek === weekNumber) {
-        return weekStart
-      }
-      currentWeek++
-      lastWeekStart = weekStart
-    }
+  if (currentGameIndex === -1) {
+    // All games have passed, we're in the last week
+    return Math.min(18, Math.ceil(sortedGameDates.length / 16)) // Assuming ~16 games per week
   }
   
-  return null
-}
-
-// Format a game date with day information
-export function formatGameDateWithDay(gameDate: Date): string {
-  const dayName = getDayNameShort(gameDate)
-  const dateStr = gameDate.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-  return `${dayName} ${dateStr}`
-}
-
-// Check if a game is a Thursday Night Football game
-export function isThursdayNightFootball(gameDate: Date): boolean {
-  return isThursday(gameDate) && gameDate.getHours() >= 19 // 7 PM or later
-}
-
-// Check if a game is a special game (not Sunday)
-export function isSpecialGame(gameDate: Date): boolean {
-  return !isSunday(gameDate)
+  // Calculate week based on game index
+  const week = Math.ceil((currentGameIndex + 1) / 16) // Assuming ~16 games per week
+  return Math.max(1, Math.min(18, week))
 }

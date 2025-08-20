@@ -34,6 +34,7 @@ export default async function AdminSettingsPage() {
   const maxTotalEntries = parseInt(settingsMap.max_total_entries || '2100')
   const entriesPerUser = parseInt(settingsMap.entries_per_user || '10')
   const entriesRemaining = maxTotalEntries - totalPicksPurchased
+  const pickPrice = parseFloat(settingsMap.pick_price || '1.00')
 
   return (
     <div className="min-h-screen app-bg">
@@ -114,9 +115,17 @@ export default async function AdminSettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Entry Limits */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Entry Limits</h2>
-              <p className="text-blue-100">Configure pool capacity and user limits</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Entry Limits</h2>
+                <p className="text-blue-100">Configure pool capacity and user limits</p>
+              </div>
+              <Link
+                href="/admin/settings/limits"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Edit Limits →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -141,23 +150,22 @@ export default async function AdminSettingsPage() {
                   <div className="text-lg font-semibold text-white">{entriesPerUser}</div>
                 </div>
               </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/admin/settings/limits"
-                  className="text-blue-200 hover:text-white transition-colors text-sm"
-                >
-                  Edit Limits →
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Pool Rules */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Pool Rules</h2>
-              <p className="text-blue-100">Configure game rules and settings</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Pool Rules</h2>
+                <p className="text-blue-100">Configure game rules and settings</p>
+              </div>
+              <Link
+                href="/admin/settings/rules"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Edit Rules →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
                              <div className="flex justify-between items-center">
@@ -166,7 +174,7 @@ export default async function AdminSettingsPage() {
                    <div className="text-sm text-blue-200">Cost per pick in dollars</div>
                  </div>
                  <div className="text-right">
-                   <div className="text-lg font-semibold text-white">$21.00</div>
+                   <div className="text-lg font-semibold text-white">${pickPrice.toFixed(2)}</div>
                  </div>
                </div>
               
@@ -179,23 +187,22 @@ export default async function AdminSettingsPage() {
                   <div className="text-lg font-semibold text-white">Thursday Night</div>
                 </div>
               </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/admin/settings/rules"
-                  className="text-blue-200 hover:text-white transition-colors text-sm"
-                >
-                  Edit Rules →
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Pool Lock Controls */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Pool Lock</h2>
-              <p className="text-blue-100">Control pool registration and purchases</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Pool Lock</h2>
+                <p className="text-blue-100">Control pool registration and purchases</p>
+              </div>
+              <Link
+                href="/admin/settings/pool-lock"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Manage Pool Lock →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -235,23 +242,22 @@ export default async function AdminSettingsPage() {
                   </div>
                 </div>
               )}
-
-              <div className="pt-4 space-y-2">
-                <Link
-                  href="/admin/settings/pool-lock"
-                  className="text-blue-200 hover:text-white transition-colors text-sm block"
-                >
-                  Manage Pool Lock →
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Season Settings */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Season Settings</h2>
-              <p className="text-blue-100">Configure season dates and schedule</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Season Settings</h2>
+                <p className="text-blue-100">Configure season dates and schedule</p>
+              </div>
+              <Link
+                href="/admin/settings/season"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Edit Season →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -273,23 +279,22 @@ export default async function AdminSettingsPage() {
                   <div className="text-lg font-semibold text-white">Before Week 1</div>
                 </div>
               </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/admin/settings/season"
-                  className="text-blue-200 hover:text-white transition-colors text-sm"
-                >
-                  Edit Season →
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Communications */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Communications</h2>
-              <p className="text-blue-100">Manage email templates and automated messages</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Communications</h2>
+                <p className="text-blue-100">Manage email templates and automated messages</p>
+              </div>
+              <Link
+                href="/admin/settings/communications"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Manage Communications →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -327,23 +332,22 @@ export default async function AdminSettingsPage() {
                   </span>
                 </div>
               </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/admin/settings/communications"
-                  className="text-blue-200 hover:text-white transition-colors text-sm"
-                >
-                  Manage Communications →
-                </Link>
-              </div>
             </div>
           </div>
 
           {/* Automated Updates */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-            <div className="px-6 py-4 border-b border-white/20">
-              <h2 className="text-xl font-semibold text-white">Automated Updates</h2>
-              <p className="text-blue-100">Monitor matchup data collection and API integrations</p>
+            <div className="px-6 py-4 border-b border-white/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Automated Updates</h2>
+                <p className="text-blue-100">Monitor matchup data collection and API integrations</p>
+              </div>
+              <Link
+                href="/admin/data-management"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-sm font-medium"
+              >
+                Manage Data Updates →
+              </Link>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -380,15 +384,6 @@ export default async function AdminSettingsPage() {
                     Active
                   </span>
                 </div>
-              </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/admin/data-management"
-                  className="text-blue-200 hover:text-white transition-colors text-sm"
-                >
-                  Manage Data Updates →
-                </Link>
               </div>
             </div>
           </div>

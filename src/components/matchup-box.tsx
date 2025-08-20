@@ -196,6 +196,7 @@ interface MatchupBoxProps {
   removePickFromTeam: (matchupId: string, teamName: string) => void
   formatGameTime: (gameTime: string) => string
   getPicksForMatchup?: (matchupId: string) => any[]
+  isPickingAllowed?: boolean
 }
 
 interface TeamCardProps {
@@ -217,6 +218,7 @@ interface TeamCardProps {
   venue?: string
   score?: number | null
   spread?: number
+  isPickingAllowed?: boolean
 }
 
 function TeamCard({
@@ -233,7 +235,8 @@ function TeamCard({
   homeTeamName,
   venue,
   score,
-  spread
+  spread,
+  isPickingAllowed = true
 }: TeamCardProps) {
 
   const fullTeamName = getFullTeamName(teamName)
@@ -309,18 +312,18 @@ function TeamCard({
           transform: 'translateZ(0)',
           WebkitBackfaceVisibility: 'hidden',
           backfaceVisibility: 'hidden',
-          cursor: disabled ? 'not-allowed' : 'pointer'
+          cursor: disabled || !isPickingAllowed ? 'not-allowed' : 'pointer'
         }}
         onClick={(e) => {
-          // Only trigger addPick if the click wasn't on a control button
-          if (!e.target || !(e.target as Element).closest('button')) {
+          // Only trigger addPick if picking is allowed and the click wasn't on a control button
+          if (isPickingAllowed && (!e.target || !(e.target as Element).closest('button'))) {
             addPick()
           }
         }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (isPickingAllowed && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault()
             addPick()
           }
@@ -438,17 +441,17 @@ function TeamCard({
         transform: 'translateZ(0)',
         WebkitBackfaceVisibility: 'hidden',
         backfaceVisibility: 'hidden',
-        cursor: disabled ? 'not-allowed' : 'pointer'
+        cursor: disabled || !isPickingAllowed ? 'not-allowed' : 'pointer'
       }}
-      onClick={addPick}
+      onClick={isPickingAllowed ? addPick : undefined}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          addPick()
-        }
-      }}
+              onKeyDown={(e) => {
+          if (isPickingAllowed && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault()
+            addPick()
+          }
+        }}
       aria-label={`Pick ${fullTeamName}`}
     >
       <div style={teamCardStyle}>
@@ -527,7 +530,8 @@ export default function MatchupBox({
   addPickToTeam,
   removePickFromTeam,
   formatGameTime,
-  getPicksForMatchup
+  getPicksForMatchup,
+  isPickingAllowed = true
 }: MatchupBoxProps) {
   const isThursdayGame = new Date(matchup.game_time).getDay() === 4
 
@@ -623,6 +627,7 @@ export default function MatchupBox({
             venue={matchup.venue}
             score={matchup.away_score}
             spread={matchup.away_spread}
+            isPickingAllowed={isPickingAllowed}
           />
         </div>
 
@@ -675,6 +680,7 @@ export default function MatchupBox({
             venue={matchup.venue}
             score={matchup.home_score}
             spread={matchup.home_spread}
+            isPickingAllowed={isPickingAllowed}
           />
         </div>
       </div>

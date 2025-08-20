@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/auth'
+import { getWeekColumnName } from '@/lib/week-utils'
 
 export async function POST(request: Request) {
   try {
@@ -51,21 +52,39 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if deadline has passed
-    const { data: settings } = await supabase
-      .from('global_settings')
-      .select('key, value')
-      .in('key', ['current_week'])
+    // Get user's default week
+    const { data: userData } = await supabase
+      .from('users')
+      .select('user_type, is_admin, default_week')
+      .eq('id', user.id)
+      .single()
 
-    const weekSetting = settings?.find(s => s.key === 'current_week')
-    const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
-
-    if (matchup.week !== currentWeek) {
-      return NextResponse.json(
-        { error: 'Can only allocate picks for current week' },
-        { status: 400 }
-      )
+    let userDefaultWeek: number
+    if (userData?.default_week) {
+      userDefaultWeek = userData.default_week
+    } else {
+      userDefaultWeek = 1
+      if (userData?.is_admin || userData?.user_type === 'tester') {
+        userDefaultWeek = 3
+      }
     }
+
+    console.log('Debug - Allocate API:', {
+      userId: user.id,
+      userType: userData?.user_type,
+      userDefaultWeek,
+      matchupWeek: matchup.week,
+      matchupId: matchupId,
+      teamName
+    })
+
+    // For now, allow allocation regardless of matchup week
+    // The week column will be determined by the user's default week
+    console.log('Debug - Allowing allocation:', { 
+      matchupWeek: matchup.week, 
+      userDefaultWeek,
+      matchupId: matchupId
+    })
 
     // Check if the game has already started (picks are locked)
     const { data: matchupData } = await supabase
@@ -81,15 +100,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get current week column - determine the correct prefix based on current week
-    let weekColumn: string
-    if (currentWeek <= 3) {
-      weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 20) {
-      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
-    } else {
-      weekColumn = `post${currentWeek - 20}_team_matchup_id`
-    }
+    // Get current week column using centralized logic
+    const weekColumn = getWeekColumnName(userDefaultWeek)
 
     // Allocate or reallocate picks to the current week
     for (const pickName of pickNames) {

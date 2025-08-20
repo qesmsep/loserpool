@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const adminUser = await requireAdmin()
     console.log('Admin check passed:', adminUser?.email)
     
-    const { email, username, first_name, last_name, phone, is_admin, temporaryPassword } = await request.json()
+    const { email, username, first_name, last_name, phone, is_admin, user_type, temporaryPassword } = await request.json()
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
             last_name: last_name || null,
             phone: phone || null,
             is_admin: is_admin || false,
+            user_type: user_type || 'pending',
             needs_password_change: true // Add this flag
           })
           .eq('id', authData.user.id)
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
         last_name: last_name || null,
         phone: phone || null,
         is_admin: is_admin || false,
+        user_type: user_type || 'pending',
         needs_password_change: true
       })
       .select()

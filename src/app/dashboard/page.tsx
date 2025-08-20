@@ -6,11 +6,13 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Trophy, Calendar, Save, Tag, ShoppingCart, Edit, X } from 'lucide-react'
 import Header from '@/components/header'
-import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically } from '@/lib/timezone'
+import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically, getWeekDateRange } from '@/lib/timezone'
 import { DateTime } from 'luxon'
 import { useAuth } from '@/components/auth-provider'
 
-import { getCurrentWeekDisplay, isPreseason } from '@/lib/week-utils'
+
+import { isUserTester } from '@/lib/user-types-client'
+import { getWeekColumnName } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
 import PickSelectionPopup from '@/components/pick-selection-popup'
 import OnboardingPopup from '@/components/onboarding-popup'
@@ -206,6 +208,7 @@ interface Matchup {
   quarter_info?: string
   broadcast_info?: string
   winner?: string
+  season?: string
 }
 
 interface ApiMatchup {
@@ -227,6 +230,7 @@ interface ApiMatchup {
   quarter_info?: string
   broadcast_info?: string
   winner?: string
+  season?: string
 }
 
 interface Pick {
@@ -285,8 +289,10 @@ export default function DashboardPage() {
 
   const router = useRouter()
 
-  // Check if the season has started
-  const hasSeasonStarted = currentWeek > 0 && !isPreseason()
+  // Check if the season has started (based on database current week)
+  const hasSeasonStarted = currentWeek > 0
+  
+
   
   // Check if user should see onboarding (first login, less than 10 picks, or before regular season)
   const shouldShowOnboarding = picksRemaining < 10 || !hasSeasonStarted
@@ -352,6 +358,17 @@ export default function DashboardPage() {
 
       setProfile(profileData)
 
+      // Get user's default week
+      let userDefaultWeek: number
+      if (profileData?.default_week) {
+        userDefaultWeek = profileData.default_week
+      } else {
+        userDefaultWeek = 1
+        if (profileData?.is_admin || profileData?.user_type === 'tester') {
+          userDefaultWeek = 3
+        }
+      }
+
   // Check if user needs to change password
       if (profileData?.needs_password_change) {
         router.push('/change-password')
@@ -397,8 +414,8 @@ export default function DashboardPage() {
           week = weekSetting ? parseInt(weekSetting.value) : 1
           setCurrentWeek(week)
           
-          // Get current week display
-          const weekDisplay = getCurrentWeekDisplay()
+          // Format week display based on database value
+          const weekDisplay = week <= 0 ? `Preseason Week ${Math.abs(week) + 1}` : `Week ${week}`
           setCurrentWeekDisplay(weekDisplay)
         }
       } catch (error) {
@@ -413,8 +430,8 @@ export default function DashboardPage() {
         week = weekSetting ? parseInt(weekSetting.value) : 1
         setCurrentWeek(week)
         
-        // Get current week display
-        const weekDisplay = getCurrentWeekDisplay()
+        // Format week display based on database value
+        const weekDisplay = week <= 0 ? `Preseason Week ${Math.abs(week) + 1}` : `Week ${week}`
         setCurrentWeekDisplay(weekDisplay)
       }
 
@@ -447,7 +464,8 @@ export default function DashboardPage() {
         over_under: matchup.over_under,
         quarter_info: matchup.quarter_info,
         broadcast_info: matchup.broadcast_info,
-        winner: matchup.winner
+        winner: matchup.winner,
+        season: matchup.season
       }))
     } else {
       // Fallback if API fails
@@ -456,11 +474,30 @@ export default function DashboardPage() {
   } catch (error) {
     console.error('Error loading matchup data:', error)
     // Fallback to database - get current week games only
+    // Determine the season type based on user type and week
+    const isTester = await isUserTester(user.id)
+    let seasonFilter = ''
+    
+    if (isTester) {
+      // Testers see preseason games
+      if (week === 0) seasonFilter = 'PRE0'
+      else if (week === 1) seasonFilter = 'PRE1'
+      else if (week === 2) seasonFilter = 'PRE2'
+      else if (week === 3) seasonFilter = 'PRE3'
+      else seasonFilter = 'REG1' // fallback
+    } else {
+      // Non-testers see regular season games
+      if (week === 1) seasonFilter = 'REG1'
+      else if (week === 2) seasonFilter = 'REG2'
+      else if (week === 3) seasonFilter = 'REG3'
+      else seasonFilter = 'REG1' // fallback
+    }
+    
     const { data: dbMatchupsData } = await supabase
       .from('matchups')
       .select('*')
       .eq('week', week)
-      .order('get_season_order(season)', { ascending: true })
+      .eq('season', seasonFilter)
       .order('game_time', { ascending: true })
       
     matchupsData = dbMatchupsData || []
@@ -480,9 +517,9 @@ export default function DashboardPage() {
 
       setMatchups(matchupsData || [])
       
-      // Load user's picks for current week
+      // Load user's picks for their default week
       console.log('Debug: Loading picks for user:', user.id)
-      console.log('Debug: Current week:', week)
+      console.log('Debug: User default week:', userDefaultWeek)
       
       const { data: allUserPicksForWeek, error: picksError } = await supabase
         .from('picks')
@@ -491,32 +528,36 @@ export default function DashboardPage() {
       
       console.log('Debug: All picks query result:', { allUserPicksForWeek, picksError })
       
-      // Transform picks to work with the new table structure - show ALL picks with proper status
+      // Transform picks to work with the new table structure - show picks for user's default week
       const userPicksData: Pick[] = allUserPicksForWeek?.map(pick => {
-        // Get the current week column name
-        let currentWeekColumn = ''
-        if (week <= 3) {
-          currentWeekColumn = `pre${week}_team_matchup_id`
-        } else if (week <= 21) {
-          currentWeekColumn = `reg${week - 3}_team_matchup_id`
-        } else {
-          currentWeekColumn = `post${week - 21}_team_matchup_id`
-        }
+        // Get the user's default week column name using centralized logic
+        const userDefaultWeekColumn = getWeekColumnName(userDefaultWeek)
         
-        // Check if this pick is allocated to the current week
-        const currentWeekValue = pick[currentWeekColumn as keyof typeof pick]
+        // Check if this pick is allocated to the user's default week
+        const userDefaultWeekValue = pick[userDefaultWeekColumn as keyof typeof pick]
+        
+        console.log(`Debug: Processing pick ${pick.pick_name}:`, {
+          userDefaultWeekColumn,
+          userDefaultWeekValue,
+          pick_id: pick.id
+        })
         
         let teamName = null
         let matchupId = null
         
-        if (currentWeekValue) {
+        if (userDefaultWeekValue) {
           // Parse the team_matchup_id format: "matchupId_teamName"
-          const parts = currentWeekValue.split('_')
+          const parts = userDefaultWeekValue.split('_')
           if (parts.length >= 2) {
             matchupId = parts[0]
             teamName = parts.slice(1).join('_') // In case team name has underscores
           }
         }
+        
+        console.log(`Debug: Parsed values for pick ${pick.pick_name}:`, {
+          teamName,
+          matchupId
+        })
         
         // Return ALL picks - the status will determine how they're displayed
         return {
@@ -853,7 +894,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Mobile-Optimized Grid for Navigation Cards */}
+        {/* Mobile-Optimized Grid for Navigation Cards - HIDDEN */}
+        {/* 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
           {hasSeasonStarted && (
             <Link
@@ -881,6 +923,7 @@ export default function DashboardPage() {
             <p className="text-xs sm:text-base text-blue-100">See total picks for each team</p>
           </Link>
         </div>
+        */}
 
         {/* How to Pick and Rules - Mobile Optimized */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 mb-3 sm:mb-6">
@@ -933,7 +976,7 @@ export default function DashboardPage() {
         {userPicks.length > 0 && (
           <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-4 sm:mb-6">
             <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-white/20">
-              <h2 className="text-base sm:text-xl font-semibold text-white">Your Current Week Picks</h2>
+              <h2 className="text-base sm:text-xl font-semibold text-white">Your Current Picks</h2>
               <p className="text-xs sm:text-base text-blue-100">{currentWeekDisplay} - {userPicks.length} pick{userPicks.length !== 1 ? 's' : ''} allocated</p>
             </div>
             <div className="p-3 sm:p-6">
@@ -1202,7 +1245,17 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
               <div>
                 <h2 className="text-base sm:text-xl font-semibold text-white">{currentWeekDisplay}</h2>
-                <p className="text-xs sm:text-base text-blue-100">{matchups?.length || 0} games scheduled</p>
+                {matchups && matchups.length > 0 && (() => {
+                  const weekDateRange = getWeekDateRange(matchups)
+                  return (
+                    <p className="text-xs sm:text-base text-blue-100">
+                      Week of {weekDateRange.weekStartFormatted} - {weekDateRange.weekEndFormatted} • {matchups.length} games scheduled
+                    </p>
+                  )
+                })()}
+                {(!matchups || matchups.length === 0) && (
+                  <p className="text-xs sm:text-base text-blue-100">{matchups?.length || 0} games scheduled</p>
+                )}
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                 {!isEditing ? (
@@ -1262,6 +1315,8 @@ export default function DashboardPage() {
               </div>
             )}
 
+
+
             {matchups && matchups.length > 0 ? (
               <div className="space-y-6" style={{
                 WebkitTransform: 'translateZ(0)',
@@ -1306,7 +1361,7 @@ export default function DashboardPage() {
                                 key={matchup.id}
                                 matchup={matchup}
                                 userPick={userPick}
-                                showControls={false}
+                                showControls={true}
                                 picksSaved={picksSaved}
                                 userPicks={userPicks}
                                 picksRemaining={picksRemaining}
@@ -1315,6 +1370,7 @@ export default function DashboardPage() {
                                 removePickFromTeam={removePickFromTeam}
                                 formatGameTime={formatGameTime}
                                 getPicksForMatchup={getPicksForMatchup}
+                                isPickingAllowed={true}
                               />
                             )
                           })}

@@ -23,10 +23,6 @@ export default function AdminButton() {
         if (user) {
           console.log('Checking admin status for user:', user.email)
           
-          // Temporarily check if user email contains admin for debugging
-          const isAdminByEmail = !!(user.email?.includes('admin') || user.email?.includes('qesmsep'))
-          console.log('Admin check by email:', isAdminByEmail)
-          
           try {
             const { data: profile, error: profileError } = await supabase
               .from('users')
@@ -36,16 +32,14 @@ export default function AdminButton() {
             
             if (profileError) {
               console.error('Error getting profile:', profileError)
-              // Fall back to email check for debugging
-              setIsAdmin(isAdminByEmail)
+              setIsAdmin(false)
             } else {
               console.log('Admin status from DB:', profile?.is_admin)
-              setIsAdmin(profile?.is_admin || isAdminByEmail)
+              setIsAdmin(!!profile?.is_admin)
             }
           } catch (dbError) {
             console.error('Database error:', dbError)
-            // Fall back to email check for debugging
-            setIsAdmin(isAdminByEmail)
+            setIsAdmin(false)
           }
         } else {
           console.log('No user found')
@@ -62,7 +56,7 @@ export default function AdminButton() {
     checkAdminStatus()
   }, [])
 
-  // Temporarily show button for debugging
+  // Show loading spinner while checking admin status
   if (isLoading) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -73,6 +67,7 @@ export default function AdminButton() {
     )
   }
 
+  // Don't render anything if user is not an admin
   if (!isAdmin) {
     return null
   }

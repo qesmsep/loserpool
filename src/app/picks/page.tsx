@@ -11,6 +11,7 @@ import StyledTeamName from '@/components/styled-team-name'
 import { PickNameWithUsage } from '@/lib/pick-names-service'
 import { useAuth } from '@/components/auth-provider'
 import PickSelectionPopup from '@/components/pick-selection-popup'
+import { isUserTester, getUserTypeDisplay, getUserDefaultWeek } from '@/lib/user-types-client'
 
 interface Matchup {
   id: string
@@ -55,6 +56,8 @@ export default function PicksPage() {
   const [showPickPopup, setShowPickPopup] = useState(false)
   const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
+  const [isTester, setIsTester] = useState(false)
+  const [seasonFilter, setSeasonFilter] = useState<string>('')
 
   const router = useRouter()
 
@@ -66,16 +69,9 @@ export default function PicksPage() {
         return
       }
 
-      // Get current week from global settings
-      const { data: settings } = await supabase
-        .from('global_settings')
-        .select('key, value')
-        .in('key', ['current_week'])
-
-      const weekSetting = settings?.find(s => s.key === 'current_week')
-      const week = weekSetting ? parseInt(weekSetting.value) : 1
-      
-      setCurrentWeek(week)
+      // Get user's default week based on their type
+      const userDefaultWeek = await getUserDefaultWeek(user.id)
+      setCurrentWeek(userDefaultWeek)
 
       // Get user's total picks purchased
       const { data: purchases } = await supabase
@@ -86,12 +82,36 @@ export default function PicksPage() {
 
       const totalPicksPurchased = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
-      // Get current week matchups ordered by season and game time
+      // Check if user is a tester
+      const userIsTester = await isUserTester(user.id)
+      setIsTester(userIsTester)
+      
+      // Determine the season type based on user type and week
+      let seasonFilter = ''
+      
+      if (userIsTester) {
+        // Testers see preseason games
+        if (userDefaultWeek === 0) seasonFilter = 'PRE0'
+        else if (userDefaultWeek === 1) seasonFilter = 'PRE1'
+        else if (userDefaultWeek === 2) seasonFilter = 'PRE2'
+        else if (userDefaultWeek === 3) seasonFilter = 'PRE3'
+        else seasonFilter = 'REG1' // fallback
+      } else {
+        // Non-testers see regular season games
+        if (userDefaultWeek === 1) seasonFilter = 'REG1'
+        else if (userDefaultWeek === 2) seasonFilter = 'REG2'
+        else if (userDefaultWeek === 3) seasonFilter = 'REG3'
+        else seasonFilter = 'REG1' // fallback
+      }
+      
+      setSeasonFilter(seasonFilter)
+      
+      // Get matchups for the user's default week and season type
       const { data: matchupsData } = await supabase
         .from('matchups')
         .select('*')
-        .eq('week', week)
-        .order('get_season_order(season)', { ascending: true })
+        .eq('week', userDefaultWeek)
+        .eq('season', seasonFilter)
         .order('game_time', { ascending: true })
 
       // Get user's picks for current week with pick names
@@ -276,12 +296,21 @@ export default function PicksPage() {
   return (
     <div className="min-h-screen app-bg">
       <Header 
-        title={`Week ${currentWeek} Picks`}
+        title={`${seasonFilter || `Week ${currentWeek}`} Picks`}
         subtitle="Pick teams to lose"
         showBackButton={true}
         backHref="/dashboard"
         backText="Back"
       />
+      
+      {/* User Type Indicator */}
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-2">
+        <div className="bg-blue-500/20 border border-blue-500/30 text-blue-200 px-4 py-2 rounded-lg text-sm">
+          <strong>User Type:</strong> {getUserTypeDisplay(isTester ? 'tester' : 'regular')} 
+          {isTester && ' - You can access preseason games for testing'}
+          {!isTester && ' - You can only access regular season games (Week 1+)'}
+        </div>
+      </div>
       
       <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {error && (
@@ -299,7 +328,7 @@ export default function PicksPage() {
             </div>
             <div className="text-center">
               <p className="text-xs sm:text-sm text-blue-200 mb-1">Current Week</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{currentWeek}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{seasonFilter || currentWeek}</p>
             </div>
             <div className="text-center">
               <p className="text-xs sm:text-sm text-blue-200 mb-1">Wrong Picks Count</p>

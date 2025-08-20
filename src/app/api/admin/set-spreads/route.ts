@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
+interface SpreadUpdateData {
+  away_spread?: number
+  home_spread?: number
+  over_under?: number
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServiceRoleClient()
@@ -10,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Game ID is required' }, { status: 400 })
     }
 
-    const updateData: any = {}
+    const updateData: SpreadUpdateData = {}
     if (awaySpread !== undefined) updateData.away_spread = awaySpread
     if (homeSpread !== undefined) updateData.home_spread = homeSpread
     if (overUnder !== undefined) updateData.over_under = overUnder

@@ -19,6 +19,8 @@ export interface Database {
           last_name: string | null
           username: string | null
           is_admin: boolean
+          user_type: 'pending' | 'active' | 'tester' | 'eliminated'
+          default_week: number
           invited_by: string | null
           entries_used: number
           max_entries: number
@@ -33,6 +35,7 @@ export interface Database {
           last_name?: string | null
           username?: string | null
           is_admin?: boolean
+          user_type?: 'pending' | 'active' | 'tester' | 'eliminated'
           invited_by?: string | null
           entries_used?: number
           max_entries?: number
@@ -47,6 +50,7 @@ export interface Database {
           last_name?: string | null
           username?: string | null
           is_admin?: boolean
+          user_type?: 'pending' | 'active' | 'tester' | 'eliminated'
           invited_by?: string | null
           entries_used?: number
           max_entries?: number
@@ -94,6 +98,7 @@ export interface Database {
           home_score: number | null
           status: 'scheduled' | 'live' | 'final'
           venue: string | null
+          season: string
           created_at: string
         }
         Insert: {
@@ -106,6 +111,7 @@ export interface Database {
           home_score?: number | null
           status?: 'scheduled' | 'live' | 'final'
           venue?: string | null
+          season?: string
           created_at?: string
         }
         Update: {
@@ -303,6 +309,49 @@ export interface Database {
           updated_at?: string
         }
       }
+      leaderboard: {
+        Row: {
+          id: string
+          user_id: string
+          week: number
+          picks_remaining: number
+          picks_eliminated: number
+          total_picks_started: number
+          rank: number | null
+          eliminated_at_week: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          week: number
+          picks_remaining?: number
+          picks_eliminated?: number
+          total_picks_started?: number
+          rank?: number | null
+          eliminated_at_week?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          week?: number
+          picks_remaining?: number
+          picks_eliminated?: number
+          total_picks_started?: number
+          rank?: number | null
+          eliminated_at_week?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
-} 
+}
+
+// Export commonly used types
+export type Matchup = Database['public']['Tables']['matchups']['Row']
+export type Pick = Database['public']['Tables']['picks']['Row']
+export type User = Database['public']['Tables']['users']['Row']

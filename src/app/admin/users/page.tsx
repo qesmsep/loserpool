@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Users, Mail, Calendar, Plus, Edit, Trash2, Save, X } from 'lucide-react'
+import { Users, Mail, Calendar, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface User {
@@ -14,11 +14,33 @@ interface User {
   last_name: string | null
   phone: string | null
   is_admin: boolean
+  user_type: 'pending' | 'active' | 'tester' | 'eliminated'
   created_at: string
   totalPurchased: number
   activePicks: number
   eliminatedPicks: number
   isEliminated: boolean
+}
+
+// Phone number formatting function
+const formatPhoneNumber = (phone: string | null): string => {
+  if (!phone) return 'No phone'
+  
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/\D/g, '')
+  
+  // Check if it's a valid 10-digit number
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
+  }
+  
+  // If it's not 10 digits, return the original or a formatted version
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`
+  }
+  
+  // Return original if it doesn't match expected patterns
+  return phone
 }
 
 export default function AdminUsersPage() {
@@ -27,7 +49,6 @@ export default function AdminUsersPage() {
   const [authLoading, setAuthLoading] = useState(true)
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
-
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -41,6 +62,7 @@ export default function AdminUsersPage() {
     last_name: '',
     phone: '',
     is_admin: false,
+    user_type: 'pending' as 'pending' | 'active' | 'tester' | 'eliminated',
     temporaryPassword: ''
   })
 
@@ -50,7 +72,8 @@ export default function AdminUsersPage() {
     first_name: '',
     last_name: '',
     phone: '',
-    is_admin: false
+    is_admin: false,
+    user_type: 'pending' as 'pending' | 'active' | 'tester' | 'eliminated'
   })
   const [picksToAdd, setPicksToAdd] = useState(0)
 
@@ -134,7 +157,19 @@ export default function AdminUsersPage() {
         }
       }) || []
 
-      setUsers(usersWithStats)
+      // Sort users by username (or email if no username), with admins first
+      const sortedUsers = usersWithStats.sort((a, b) => {
+        // Admins first
+        if (a.is_admin && !b.is_admin) return -1
+        if (!a.is_admin && b.is_admin) return 1
+        
+        // Then by username/email
+        const aName = a.username || a.email || ''
+        const bName = b.username || b.email || ''
+        return aName.localeCompare(bName)
+      })
+
+      setUsers(sortedUsers)
     } catch (error) {
       console.error('Error loading users:', error)
       setError('Failed to load users')
@@ -171,6 +206,7 @@ export default function AdminUsersPage() {
         last_name: '',
         phone: '',
         is_admin: false,
+        user_type: 'pending',
         temporaryPassword: ''
       })
       loadUsers()
@@ -184,16 +220,21 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      const updateData = {
+        email: editUser.email,
+        username: editUser.username || null,
+        first_name: editUser.first_name || null,
+        last_name: editUser.last_name || null,
+        phone: editUser.phone || null,
+        is_admin: editUser.is_admin,
+        user_type: editUser.user_type
+      }
+      
+      console.log('Updating user with data:', updateData)
+      
       const { error } = await supabase
         .from('users')
-        .update({
-          email: editUser.email,
-          username: editUser.username || null,
-          first_name: editUser.first_name || null,
-          last_name: editUser.last_name || null,
-          phone: editUser.phone || null,
-          is_admin: editUser.is_admin
-        })
+        .update(updateData)
         .eq('id', userId)
 
       if (error) throw error
@@ -280,9 +321,15 @@ export default function AdminUsersPage() {
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       phone: user.phone || '',
-      is_admin: user.is_admin
+      is_admin: user.is_admin,
+      user_type: user.user_type
     })
-    setPicksToAdd(0) // Reset picks count when opening edit modal
+    setPicksToAdd(0)
+  }
+
+  const cancelEdit = () => {
+    setEditingUser(null)
+    setPicksToAdd(0)
   }
 
   if (authLoading || loading) {
@@ -483,6 +530,23 @@ export default function AdminUsersPage() {
                   />
                   <label className="text-sm text-white">Admin user</label>
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-white mb-1">User Type</label>
+                  <select
+                    value={newUser.user_type}
+                    onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'pending' | 'active' | 'tester' | 'eliminated'})}
+                    className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                  >
+                    <option value="pending">Pending (No Picks Yet)</option>
+                    <option value="active">Active (Normal Pool)</option>
+                    <option value="tester">Tester ($0 Picks)</option>
+                    <option value="eliminated">Eliminated (No Picks)</option>
+                  </select>
+                  <p className="text-xs text-blue-200 mt-1">
+                    Pending users haven&apos;t bought picks yet. Testers pay $0, active users pay normal price
+                  </p>
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3 mt-6">
@@ -526,40 +590,100 @@ export default function AdminUsersPage() {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white/5 divide-y divide-white/20">
                 {users.map((user) => (
-                  <tr key={user.id}>
+                  <tr key={user.id} className={editingUser === user.id ? 'bg-blue-500/10' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                            <span className="text-sm font-medium text-white">
-                              {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
-                            </span>
+                      {editingUser === user.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200 mb-1">Username</label>
+                            <input
+                              type="text"
+                              value={editUser.username}
+                              onChange={(e) => setEditUser({...editUser, username: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-blue-200 mb-1">First Name</label>
+                              <input
+                                type="text"
+                                value={editUser.first_name}
+                                onChange={(e) => setEditUser({...editUser, first_name: e.target.value})}
+                                className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-blue-200 mb-1">Last Name</label>
+                              <input
+                                type="text"
+                                value={editUser.last_name}
+                                onChange={(e) => setEditUser({...editUser, last_name: e.target.value})}
+                                className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-white">
-                            {user.username || 'No username'}
-                            {user.is_admin && (
-                              <span className="ml-2 inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-200">
-                                Admin
+                      ) : (
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                              <span className="text-sm font-medium text-white">
+                                {user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
                               </span>
-                            )}
+                            </div>
                           </div>
-                          <div className="text-sm text-blue-200">
-                            {user.first_name} {user.last_name}
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-white">
+                              {user.username || 'No username'}
+                            </div>
+                            <div className="text-sm text-blue-200">
+                              {user.first_name} {user.last_name}
+                              {user.is_admin && (
+                                <span className="ml-2 text-yellow-200 font-medium">⭐ Admin User</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white">{user.email}</div>
-                      <div className="text-sm text-blue-200">{user.phone || 'No phone'}</div>
+                      {editingUser === user.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200 mb-1">Email</label>
+                            <input
+                              type="email"
+                              value={editUser.email}
+                              onChange={(e) => setEditUser({...editUser, email: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200 mb-1">Phone</label>
+                            <input
+                              type="tel"
+                              value={editUser.phone}
+                              onChange={(e) => setEditUser({...editUser, phone: e.target.value})}
+                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-sm text-white">{user.email}</div>
+                          <div className="text-sm text-blue-200">{formatPhoneNumber(user.phone)}</div>
+                        </>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-white">
@@ -571,6 +695,28 @@ export default function AdminUsersPage() {
                       <div className="text-sm text-blue-200">
                         {user.totalPurchased} purchased
                       </div>
+                      {editingUser === user.id && (
+                        <div className="mt-2 space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200 mb-1">Add Picks</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={picksToAdd}
+                              onChange={(e) => setPicksToAdd(parseInt(e.target.value) || 0)}
+                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                              placeholder="0"
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleAddPicks(user.id)}
+                            disabled={picksToAdd <= 0}
+                            className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Add {picksToAdd} Picks
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -578,30 +724,109 @@ export default function AdminUsersPage() {
                           ? 'bg-red-500/20 text-red-200'
                           : user.totalPurchased > 0
                           ? 'bg-green-500/20 text-green-200'
-                          : user.is_admin
-                          ? 'bg-yellow-500/20 text-yellow-200'
                           : 'bg-gray-500/20 text-gray-200'
                       }`}>
-                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Has Picks' : user.is_admin ? 'Admin' : 'No Picks'}
+                        {user.isEliminated ? 'Eliminated' : user.totalPurchased > 0 ? 'Has Picks' : 'No Picks'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => startEditUser(user)}
-                          className="text-blue-200 hover:text-white"
-                          title="Edit user"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-200 hover:text-white"
-                          title="Delete user"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {editingUser === user.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
+                            <select
+                              value={editUser.user_type}
+                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'pending' | 'active' | 'tester' | 'eliminated'})}
+                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                            >
+                              <option value="pending">Pending (No Picks Yet)</option>
+                              <option value="active">Active (Normal Pool)</option>
+                              <option value="tester">Tester ($0 Picks)</option>
+                              <option value="eliminated">Eliminated (No Picks)</option>
+                            </select>
+                          </div>
+                          <div className="border-t border-white/20 pt-2">
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 cursor-pointer hover:bg-yellow-500/20 transition-colors" 
+                                 onClick={() => setEditUser({...editUser, is_admin: !editUser.is_admin})}>
+                              <div className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={editUser.is_admin}
+                                  onChange={(e) => {
+                                    console.log('Admin checkbox changed:', e.target.checked)
+                                    setEditUser({...editUser, is_admin: e.target.checked})
+                                  }}
+                                  className="mr-2 cursor-pointer"
+                                />
+                                <label className="text-xs text-yellow-200 font-medium cursor-pointer">
+                                  {editUser.is_admin ? '⭐ Remove Admin Access' : '⭐ Grant Admin Access'}
+                                </label>
+                              </div>
+                              <div className="text-xs text-yellow-100 mt-1">
+                                {editUser.is_admin ? 'Click to remove admin privileges' : 'Click to grant full system access'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.user_type === 'tester'
+                              ? 'bg-purple-500/20 text-purple-200'
+                              : user.user_type === 'active'
+                              ? 'bg-green-500/20 text-green-200'
+                              : user.user_type === 'pending'
+                              ? 'bg-yellow-500/20 text-yellow-200'
+                              : 'bg-red-500/20 text-red-200'
+                          }`}>
+                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : 'Eliminated'}
+                          </span>
+                          <div className="text-xs text-blue-200 mt-1">
+                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'pending' ? 'No picks yet' : 'No picks'}
+                          </div>
+                        </>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {editingUser === user.id ? (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleUpdateUser(user.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            title="Save changes"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span className="text-sm font-medium">Save</span>
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            title="Cancel edit"
+                          >
+                            <X className="w-4 h-4" />
+                            <span className="text-sm font-medium">Cancel</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => startEditUser(user)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            title="Edit user"
+                          >
+                            <Edit className="w-4 h-4" />
+                            <span className="text-sm font-medium">Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            title="Delete user"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="text-sm font-medium">Delete</span>
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -609,138 +834,6 @@ export default function AdminUsersPage() {
             </table>
           </div>
         </div>
-
-        {/* Edit User Modal */}
-        {editingUser && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 w-full max-w-md">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">Edit User</h3>
-                <button
-                  onClick={() => setEditingUser(null)}
-                  className="text-blue-200 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-1">Email *</label>
-                  <input
-                    type="email"
-                    value={editUser.email}
-                    onChange={(e) => setEditUser({...editUser, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-white mb-1">Username</label>
-                  <input
-                    type="text"
-                    value={editUser.username}
-                    onChange={(e) => setEditUser({...editUser, username: e.target.value})}
-                    className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-1">First Name</label>
-                    <input
-                      type="text"
-                      value={editUser.first_name}
-                      onChange={(e) => setEditUser({...editUser, first_name: e.target.value})}
-                      className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-1">Last Name</label>
-                    <input
-                      type="text"
-                      value={editUser.last_name}
-                      onChange={(e) => setEditUser({...editUser, last_name: e.target.value})}
-                      className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-white mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    value={editUser.phone}
-                    onChange={(e) => setEditUser({...editUser, phone: e.target.value})}
-                    className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                  />
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={editUser.is_admin}
-                    onChange={(e) => setEditUser({...editUser, is_admin: e.target.checked})}
-                    className="mr-2"
-                  />
-                  <label className="text-sm text-white">Admin user</label>
-                </div>
-
-                {/* Add Picks Section */}
-                <div className="border-t border-white/20 pt-4">
-                  <h4 className="text-sm font-medium text-white mb-3">Add Picks</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-white mb-1">Number of Picks</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={picksToAdd}
-                        onChange={(e) => setPicksToAdd(parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
-                        placeholder="0"
-                      />
-                    </div>
-                    
-                    <div className="text-sm text-blue-200">
-                      This will add {picksToAdd} picks to the user&apos;s account as a completed purchase.
-                    </div>
-                    
-                    <button
-                      onClick={() => handleAddPicks(editingUser)}
-                      disabled={picksToAdd <= 0}
-                      className="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      Add {picksToAdd} Picks
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 text-blue-200 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleUpdateUser(editingUser)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Save className="w-4 h-4 mr-2 inline" />
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
-
       </div>
     </div>
   )

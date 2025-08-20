@@ -10,7 +10,7 @@ export async function POST() {
     
     const scraper = new EnhancedNFLScraperService()
     let totalGamesStored = 0
-    let errors: string[] = []
+    const errors: string[] = []
 
     try {
       // Scrape and store current week schedule

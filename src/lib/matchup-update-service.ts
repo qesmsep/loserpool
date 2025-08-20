@@ -302,18 +302,16 @@ export class MatchupUpdateService {
 
       const weekNumber = parseInt(weekSetting?.value || '1')
       
-      // Determine season type for display
-      let seasonType = 'Regular Season'
-      if (weekNumber <= 4) {
-        seasonType = 'Preseason'
-      } else if (weekNumber > 21) {
-        seasonType = 'Postseason'
+      // Week 0 or negative = preseason
+      if (weekNumber <= 0) {
+        return `Preseason Week ${Math.abs(weekNumber) + 1}`
+      } else {
+        // Week 1+ = regular season
+        return `Week ${weekNumber}`
       }
-      
-      return `${seasonType} Week ${weekNumber}`
     } catch (error) {
       console.error('Error getting current week display:', error)
-      return 'Unknown Week'
+      return 'Week 1'
     }
   }
 
@@ -330,18 +328,16 @@ export class MatchupUpdateService {
       const currentWeekNumber = parseInt(weekSetting?.value || '1')
       const nextWeekNumber = currentWeekNumber + 1
       
-      // Determine next week season type for display
-      let seasonType = 'Regular Season'
-      if (nextWeekNumber <= 4) {
-        seasonType = 'Preseason'
-      } else if (nextWeekNumber > 21) {
-        seasonType = 'Postseason'
+      // Week 0 or negative = preseason
+      if (nextWeekNumber <= 0) {
+        return `Preseason Week ${Math.abs(nextWeekNumber) + 1}`
+      } else {
+        // Week 1+ = regular season
+        return `Week ${nextWeekNumber}`
       }
-      
-      return `${seasonType} Week ${nextWeekNumber}`
     } catch (error) {
       console.error('Error getting next week display:', error)
-      return 'Next Week'
+      return 'Week 2'
     }
   }
 }

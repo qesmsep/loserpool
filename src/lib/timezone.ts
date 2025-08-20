@@ -320,4 +320,68 @@ export function sortMatchupsChronologically<T extends { game_time: string }>(mat
       return 0
     }
   })
+}
+
+/**
+ * Gets the week start and end dates for a given array of matchups
+ * @param matchups - Array of matchups
+ * @returns Object with week start and end dates
+ */
+export function getWeekDateRange<T extends { game_time: string }>(matchups: T[]): {
+  weekStart: string
+  weekEnd: string
+  weekStartFormatted: string
+  weekEndFormatted: string
+} {
+  if (!matchups || matchups.length === 0) {
+    return {
+      weekStart: '',
+      weekEnd: '',
+      weekStartFormatted: '',
+      weekEndFormatted: ''
+    }
+  }
+
+  try {
+    // Parse all game times and find the earliest and latest
+    const gameTimes = matchups.map(matchup => {
+      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
+      return DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
+    })
+
+    const earliest = DateTime.min(...gameTimes)
+    const latest = DateTime.max(...gameTimes)
+
+    // Check if we have valid dates
+    if (!earliest || !latest) {
+      return {
+        weekStart: '',
+        weekEnd: '',
+        weekStartFormatted: '',
+        weekEndFormatted: ''
+      }
+    }
+
+    // Get the start of the week (Monday) for the earliest game
+    const weekStart = earliest.startOf('week').plus({ days: 1 }) // Monday
+    const weekEnd = latest.endOf('week').minus({ days: 1 }) // Sunday
+
+    const weekStartISO = weekStart.toISO()
+    const weekEndISO = weekEnd.toISO()
+
+    return {
+      weekStart: weekStartISO || '',
+      weekEnd: weekEndISO || '',
+      weekStartFormatted: weekStart.toFormat('MMM d'),
+      weekEndFormatted: weekEnd.toFormat('MMM d, yyyy')
+    }
+  } catch (error) {
+    console.error('Error calculating week date range:', error)
+    return {
+      weekStart: '',
+      weekEnd: '',
+      weekStartFormatted: '',
+      weekEndFormatted: ''
+    }
+  }
 } 

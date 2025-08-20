@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { espnService } from '@/lib/espn-service'
+import { espnService, ESPNGame } from '@/lib/espn-service'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all available games from ESPN API for different weeks and season types
-    let allEspnGames: any[] = []
+    const allEspnGames: ESPNGame[] = []
     const seasonTypes = ['PRE', 'REG', 'POST']
     const weeksToCheck = [1, 2, 3, 4, 5] // Check multiple weeks
     

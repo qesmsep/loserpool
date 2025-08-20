@@ -265,9 +265,9 @@ export default function PickNamesPage() {
         <div className="mb-6 bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-white mb-2">About Pick Names</h3>
           <div className="text-blue-200 space-y-1">
-            <p>• Each pick has a default name like "Pick 1", "Pick 2", etc.</p>
-            <p>• You can rename your picks to anything you want (e.g., "Chad1", "Finance 1")</p>
-            <p>• You can only edit names for picks that haven't been used yet</p>
+            <p>• Each pick has a default name like &quot;Pick 1&quot;, &quot;Pick 2&quot;, etc.</p>
+            <p>• You can rename your picks to anything you want (e.g., &quot;Chad1&quot;, &quot;Finance 1&quot;)</p>
+            <p>• You can only edit names for picks that haven&apos;t been used yet</p>
             <p>• Used picks are locked and cannot be changed</p>
           </div>
         </div>

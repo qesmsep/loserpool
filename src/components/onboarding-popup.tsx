@@ -17,13 +17,13 @@ const slides = [
     content: (
       <div className="text-center space-y-4">
         <p className="text-lg text-white mb-4">
-          You're about to join one of the most exciting NFL survivor pools around!
+          You&apos;re about to join one of the most exciting NFL survivor pools around!
         </p>
         <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
           <h3 className="text-xl font-bold text-blue-200 mb-2">How It Works</h3>
           <p className="text-blue-100">
             Pick the team you think will <strong>LOSE</strong> each week. 
-            If they lose, you survive. If they win, you're eliminated!
+            If they lose, you survive. If they win, you&apos;re eliminated!
           </p>
         </div>
       </div>
@@ -42,7 +42,7 @@ const slides = [
           </div>
           <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
             <h4 className="font-semibold text-red-200 mb-1">❌ If they WIN, you're OUT</h4>
-            <p className="text-red-100 text-sm">If your picked team wins, you're eliminated</p>
+            <p className="text-red-100 text-sm">If your picked team wins, you&apos;re eliminated</p>
           </div>
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
             <h4 className="font-semibold text-blue-200 mb-1">🏆 Last person standing wins!</h4>
@@ -112,9 +112,9 @@ const slides = [
     content: (
       <div className="text-center space-y-6">
         <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
-          <h3 className="text-xl font-bold text-green-200 mb-2">You're All Set!</h3>
+          <h3 className="text-xl font-bold text-green-200 mb-2">You&apos;re All Set!</h3>
           <p className="text-green-100 mb-4">
-            Now it's time to buy your picks and start your journey to becoming the last person standing!
+            Now it&apos;s time to buy your picks and start your journey to becoming the last person standing!
           </p>
           <div className="text-sm text-green-200 space-y-1">
             <p>• Picks are $21 each</p>
