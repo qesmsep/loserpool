@@ -234,6 +234,10 @@ export async function POST(request: NextRequest) {
               console.error('❌ Error sending admin notification:', emailError)
             }
 
+            // Add delay between admin notification and user confirmation to respect rate limits
+            console.log('⏳ Waiting 500ms before sending user confirmation (rate limit compliance)...')
+            await new Promise(resolve => setTimeout(resolve, 500))
+
             // Send user confirmation email
             console.log('📧 Sending user confirmation email...')
             try {

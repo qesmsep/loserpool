@@ -776,6 +776,12 @@ export class MatchupDataService {
       // Send email to each admin
       for (const admin of admins) {
         try {
+          // Add delay between emails to respect rate limits (2 requests per second = 500ms delay)
+          if (admins.indexOf(admin) > 0) {
+            console.log(`⏳ Waiting 500ms before sending next error notification (rate limit compliance)...`)
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+
           const response = await fetch('/api/admin/send-immediate-email', {
             method: 'POST',
             headers: {

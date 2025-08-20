@@ -37,6 +37,12 @@ export async function POST(request: NextRequest) {
     const results = []
     for (const admin of admins) {
       try {
+        // Add delay between emails to respect rate limits (2 requests per second = 500ms delay)
+        if (results.length > 0) {
+          console.log(`⏳ Waiting 500ms before sending next email (rate limit compliance)...`)
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+
         const subject = '🧪 Test Admin Notification - All Admins'
         const htmlBody = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">

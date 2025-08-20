@@ -127,6 +127,12 @@ export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotifi
 
     // Send email to each admin
     for (const admin of admins) {
+      // Add delay between emails to respect rate limits (2 requests per second = 500ms delay)
+      if (admins.indexOf(admin) > 0) {
+        console.log(`⏳ Waiting 500ms before sending next admin notification (rate limit compliance)...`)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
       await sendEmail({
         to: admin.email,
         subject,
@@ -565,6 +571,12 @@ export async function sendAdminSignupNotification(signupData: SignupNotification
     // Send to all admin users
     for (const admin of admins) {
       try {
+        // Add delay between emails to respect rate limits (2 requests per second = 500ms delay)
+        if (admins.indexOf(admin) > 0) {
+          console.log(`⏳ Waiting 500ms before sending next admin signup notification (rate limit compliance)...`)
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+
         await sendEmail({
           to: admin.email,
           subject,
