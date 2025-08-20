@@ -707,29 +707,98 @@ export class MatchupDataService {
     }
   }
 
-  // Send error notification email
+  // Send error notification email to all admins
   async sendErrorNotification(error: string): Promise<void> {
     try {
-      const response = await fetch('/api/admin/send-immediate-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: 'tim@828.life',
-          subject: 'Loser Pool - Automated Update Error',
-          template: 'error-notification',
-          data: {
-            error,
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV || 'development'
-          }
-        })
-      })
+      // Get all admin users from database
+      const { data: admins, error: adminError } = await this.supabase
+        .from('users')
+        .select('email, first_name, last_name')
+        .eq('is_admin', true)
 
-      if (!response.ok) {
-        console.error('Failed to send error notification email')
+      if (adminError) {
+        console.error('Error fetching admins for error notification:', adminError)
+        return
       }
+
+      if (!admins || admins.length === 0) {
+        console.log('No admin users found for error notification')
+        return
+      }
+
+      const subject = 'Loser Pool - Automated Update Error'
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+          <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 32px;">
+              <h1 style="color: #dc2626; font-size: 28px; margin: 0 0 8px 0;">⚠️ Automated Update Error</h1>
+              <p style="color: #6b7280; font-size: 16px; margin: 0;">An error occurred during automated data update</p>
+            </div>
+
+            <!-- Error Details -->
+            <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+              <h2 style="margin: 0 0 16px 0; font-size: 20px;">🚨 Error Details</h2>
+              <div style="background-color: rgba(255, 255, 255, 0.1); padding: 16px; border-radius: 6px; margin-bottom: 16px;">
+                <p style="margin: 0; font-family: monospace; font-size: 14px; white-space: pre-wrap;">${error}</p>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Timestamp</p>
+                  <p style="margin: 0; font-size: 16px; font-weight: 600;">${new Date().toLocaleString()}</p>
+                </div>
+                <div>
+                  <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Environment</p>
+                  <p style="margin: 0; font-size: 16px; font-weight: 600;">${process.env.NODE_ENV || 'development'}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <h3 style="color: #dc2626; margin: 0 0 16px 0;">⚡ Quick Actions</h3>
+              <div style="text-align: center;">
+                <a href="https://loserpool.vercel.app/admin/settings/maintenance" style="display: inline-block; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                  🔧 Check System Status
+                </a>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+              <p style="color: #dc2626; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">The Loser Pool Admin</p>
+              <p style="color: #6b7280; margin: 0;">This is an automated error notification from The Loser Pool system.</p>
+            </div>
+          </div>
+        </div>
+      `
+
+      // Send email to each admin
+      for (const admin of admins) {
+        try {
+          const response = await fetch('/api/admin/send-immediate-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: admin.email,
+              subject,
+              htmlBody
+            })
+          })
+
+          if (!response.ok) {
+            console.error(`Failed to send error notification email to ${admin.email}`)
+          } else {
+            console.log(`Error notification sent to admin: ${admin.email}`)
+          }
+        } catch (emailError) {
+          console.error(`Error sending error notification to ${admin.email}:`, emailError)
+        }
+      }
+
+      console.log(`Error notification sent to ${admins.length} admin(s)`)
     } catch (emailError) {
       console.error('Error sending error notification:', emailError)
     }
