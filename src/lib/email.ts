@@ -438,6 +438,153 @@ export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotific
   }
 }
 
+export async function sendAdminSignupNotification(signupData: SignupNotificationData) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    
+    // Get all admin users
+    const { data: admins, error: adminError } = await supabase
+      .from('users')
+      .select('email, first_name, last_name')
+      .eq('is_admin', true)
+
+    if (adminError) {
+      console.error('Error fetching admins:', adminError)
+      return
+    }
+
+    if (!admins || admins.length === 0) {
+      console.log('No admin users found')
+      return
+    }
+
+    const subject = `👤 New User Signup - ${signupData.firstName} ${signupData.lastName}`
+    
+    const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+      <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #1e40af; font-size: 28px; margin: 0 0 8px 0;">👤 New User Signup!</h1>
+          <p style="color: #6b7280; font-size: 16px; margin: 0;">A new user has just joined The Loser Pool</p>
+        </div>
+
+        <!-- Signup Details -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 20px;">📊 Signup Summary</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">User</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${signupData.firstName} ${signupData.lastName}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Username</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${signupData.username}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Email</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${signupData.userEmail}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 4px 0; font-size: 14px; opacity: 0.9;">Signup Time</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${signupData.signupTime}</p>
+            </div>
+          </div>
+          <div style="background-color: rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 6px;">
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Signup ID: ${signupData.signupId}</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">Status: Pending Email Confirmation</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #0369a1; margin: 0 0 16px 0;">⚡ Quick Actions</h3>
+          <div style="text-align: center;">
+            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
+              👥 View User Profile
+            </a>
+            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+              📈 Manage Users
+            </a>
+          </div>
+        </div>
+
+        <!-- Pool Impact -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #166534; margin: 0 0 16px 0;">📊 Pool Impact</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6; color: #166534;">
+            <li>New user has joined the pool</li>
+            <li>User needs to confirm their email before they can play</li>
+            <li>User will receive 10 free picks to start</li>
+            <li>User can purchase additional picks once confirmed</li>
+          </ul>
+        </div>
+
+        <!-- Next Steps for Admin -->
+        <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #92400e; margin: 0 0 16px 0;">🎯 Admin Next Steps</h3>
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6; color: #92400e;">
+            <li>Monitor user's email confirmation status</li>
+            <li>Check if user completes their profile</li>
+            <li>Consider sending a welcome message if needed</li>
+            <li>Track user engagement and pick purchases</li>
+          </ul>
+        </div>
+
+        <!-- User Journey -->
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #dc2626; margin: 0 0 16px 0;">🛤️ User Journey</h3>
+          <ol style="margin: 0; padding-left: 20px; line-height: 1.6; color: #dc2626;">
+            <li><strong>Signup Complete</strong> - User has created account</li>
+            <li><strong>Email Confirmation</strong> - User needs to confirm email</li>
+            <li><strong>Profile Setup</strong> - User can complete their profile</li>
+            <li><strong>Pick Purchase</strong> - User can buy picks to play</li>
+            <li><strong>Active Player</strong> - User starts making picks</li>
+          </ol>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+          <p style="color: #1e40af; font-size: 18px; font-weight: 600; margin: 0 0 8px 0;">Pool Growth Alert</p>
+          <p style="color: #6b7280; margin: 0 0 16px 0;">Another player has joined the competition!</p>
+          
+          <div style="margin-top: 24px;">
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">Best regards,<br>The Loser Pool Admin System</p>
+          </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            This is an automated notification from The Loser Pool admin system.<br>
+            Manage notifications in your admin dashboard.
+          </p>
+        </div>
+      </div>
+    </div>
+    `
+
+    // Send to all admin users
+    for (const admin of admins) {
+      try {
+        await sendEmail({
+          to: admin.email,
+          subject,
+          htmlBody,
+          adminName: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Admin'
+        })
+        console.log(`Admin signup notification sent to: ${admin.email}`)
+      } catch (error) {
+        console.error(`Failed to send admin signup notification to ${admin.email}:`, error)
+      }
+    }
+
+    console.log(`Admin signup notifications sent to ${admins.length} admin(s)`)
+  } catch (error) {
+    console.error('Error sending admin signup notifications:', error)
+  }
+}
+
 interface EmailData {
   to: string
   subject: string
@@ -445,6 +592,15 @@ interface EmailData {
   htmlBody?: string
   adminName?: string
   userName?: string
+}
+
+interface SignupNotificationData {
+  userEmail: string
+  username: string
+  firstName: string
+  lastName: string
+  signupTime: string
+  signupId: string
 }
 
 async function sendEmail({ to, subject, body, htmlBody, adminName, userName }: EmailData) {
