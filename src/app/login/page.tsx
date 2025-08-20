@@ -100,7 +100,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Sign In</h1>
-          <p className="text-gray-700 sm:text-gray-600 mt-2">Welcome back to The Loser Pool</p>
+          <p className="text-gray-800 mt-2">Welcome back to The Loser Pool</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -124,7 +124,7 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-800 sm:text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
               Email
             </label>
             <input
@@ -139,7 +139,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-800 sm:text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
               Password
             </label>
             <input
@@ -163,7 +163,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-gray-700 sm:text-gray-600">
+          <p className="text-gray-800">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-blue-600 hover:text-blue-500">
               Sign up
