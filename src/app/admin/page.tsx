@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { Settings, Users, Calendar, Trophy, RotateCcw } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
@@ -7,11 +7,12 @@ import AdminHeader from '@/components/admin-header'
 export default async function AdminPage() {
   await requireAdmin()
   const supabase = await createServerSupabaseClient()
+  const serviceClient = createServiceRoleClient()
 
-  // Get pool statistics
-  const { data: users } = await supabase
+  // Get pool statistics using service role client to bypass RLS
+  const { count: totalUsers } = await serviceClient
     .from('users')
-    .select('id, username, email, created_at')
+    .select('*', { count: 'exact', head: true })
 
   const { data: purchases } = await supabase
     .from('purchases')
@@ -47,7 +48,7 @@ export default async function AdminPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-blue-100">Total Users</p>
-                <p className="text-2xl font-bold text-white">{users?.length || 0}</p>
+                <p className="text-2xl font-bold text-white">{totalUsers || 0}</p>
               </div>
             </div>
           </div>

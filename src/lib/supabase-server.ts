@@ -34,7 +34,7 @@ export async function createServerSupabaseClient() {
   )
 }
 
-// Service role client (bypasses RLS)
+// Service role client that bypasses RLS (for admin operations)
 export function createServiceRoleClient() {
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
