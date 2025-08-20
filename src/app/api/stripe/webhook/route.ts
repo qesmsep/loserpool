@@ -58,7 +58,18 @@ export async function POST(request: NextRequest) {
         console.log('Purchase completed successfully:', session.id)
 
         // Get purchase details for email notification
-        const { data: purchase, error: purchaseError } = await supabase
+        let purchase = null
+        
+        // First, let's check if there are any purchases with this session ID (without .single())
+        const { data: allPurchases, error: allPurchasesError } = await supabase
+          .from('purchases')
+          .select('user_id, picks_count, amount_paid, id, status, created_at')
+          .eq('stripe_session_id', session.id)
+
+        console.log('All purchases with session ID:', session.id, ':', allPurchases)
+        console.log('All purchases error:', allPurchasesError)
+
+        const { data: purchaseData, error: purchaseError } = await supabase
           .from('purchases')
           .select('user_id, picks_count, amount_paid, id')
           .eq('stripe_session_id', session.id)
@@ -66,7 +77,39 @@ export async function POST(request: NextRequest) {
 
         if (purchaseError) {
           console.error('Error fetching purchase details for notification:', purchaseError)
-        } else if (purchase) {
+          // If purchase record doesn't exist, try to create it from session metadata
+          if (purchaseError.code === 'PGRST116') {
+            console.log('Purchase record not found, attempting to create from session metadata')
+            console.log('Session metadata:', session.metadata)
+            console.log('Session amount_total:', session.amount_total)
+            console.log('Session ID:', session.id)
+            
+            const { data: newPurchase, error: createError } = await supabase
+              .from('purchases')
+              .insert({
+                user_id: session.metadata?.user_id,
+                stripe_session_id: session.id,
+                amount_paid: session.amount_total || 0,
+                picks_count: parseInt(session.metadata?.picks_count || '0'),
+                status: 'completed',
+              })
+              .select('user_id, picks_count, amount_paid, id')
+              .single()
+            
+            if (createError) {
+              console.error('Error creating purchase record from session:', createError)
+              // Try to get more details about the session
+              console.log('Full session object:', JSON.stringify(session, null, 2))
+            } else {
+              console.log('Purchase record created from session metadata:', newPurchase)
+              purchase = newPurchase
+            }
+          }
+        } else {
+          purchase = purchaseData
+        }
+        
+        if (purchase) {
           // Update user type to 'active' when purchase is completed
           const { error: userUpdateError } = await supabase
             .from('users')

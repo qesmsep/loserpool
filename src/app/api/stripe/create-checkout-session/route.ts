@@ -20,8 +20,11 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
+      console.error('Auth error in create-checkout-session:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('Creating checkout session for user:', user.email, 'picks_count:', picks_count)
 
     // Check pool lock status
     const poolStatus = await getPoolStatus()
@@ -30,23 +33,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Get admin settings
-    const { data: settings } = await supabase
+    const { data: settings, error: settingsError } = await supabase
       .from('global_settings')
       .select('key, value')
       .in('key', ['pick_price', 'max_total_entries', 'entries_per_user'])
 
+    if (settingsError) {
+      console.error('Error fetching settings:', settingsError)
+      return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 })
+    }
+
     // Get total picks purchased
-    const { data: purchases } = await supabase
+    const { data: purchases, error: purchasesError } = await supabase
       .from('purchases')
       .select('picks_count')
       .eq('status', 'completed')
 
+    if (purchasesError) {
+      console.error('Error fetching purchases:', purchasesError)
+      return NextResponse.json({ error: 'Failed to load purchase data' }, { status: 500 })
+    }
+
     // Get current user's picks purchased
-    const { data: userPurchases } = await supabase
+    const { data: userPurchases, error: userPurchasesError } = await supabase
       .from('purchases')
       .select('picks_count')
       .eq('user_id', user.id)
       .eq('status', 'completed')
+
+    if (userPurchasesError) {
+      console.error('Error fetching user purchases:', userPurchasesError)
+      return NextResponse.json({ error: 'Failed to load user purchase data' }, { status: 500 })
+    }
 
     // Create settings map
     const settingsMap = settings?.reduce((acc, setting) => {
@@ -54,11 +72,23 @@ export async function POST(request: NextRequest) {
       return acc
     }, {} as Record<string, string>) || {}
 
+    console.log('Raw settings from database:', settings)
+    console.log('Settings map:', settingsMap)
+
     const pickPrice = parseInt(settingsMap.pick_price || '21')
     const maxTotalEntries = parseInt(settingsMap.max_total_entries || '2100')
     const entriesPerUser = parseInt(settingsMap.entries_per_user || '10')
     const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
     const userPicksPurchased = userPurchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+
+    console.log('Purchase validation:', {
+      pickPrice,
+      maxTotalEntries,
+      entriesPerUser,
+      totalPicksPurchased,
+      userPicksPurchased,
+      requestedPicks: picks_count
+    })
 
     // Validate limits
     if (userPicksPurchased + picks_count > entriesPerUser) {
@@ -98,21 +128,45 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    console.log('Stripe session created:', session.id)
+
     // Create pending purchase record
-    const { error: purchaseError } = await supabase
+    const purchaseData = {
+      user_id: user.id,
+      stripe_session_id: session.id,
+      amount_paid: picks_count * pickPrice * 100, // Convert to cents
+      picks_count: picks_count,
+      status: 'pending',
+    }
+
+    console.log('Creating purchase record with data:', purchaseData)
+
+    const { data: insertedPurchase, error: purchaseError } = await supabase
       .from('purchases')
-      .insert({
-        user_id: user.id,
-        stripe_session_id: session.id,
-        amount: picks_count * pickPrice,
-        amount_paid: picks_count * pickPrice, // For consistency with webhook
-        picks_count: picks_count,
-        status: 'pending',
-      })
+      .insert(purchaseData)
+      .select('id, user_id, stripe_session_id, amount_paid, picks_count, status')
 
     if (purchaseError) {
       console.error('Error creating purchase record:', purchaseError)
-      // Continue anyway - the webhook will handle it
+      console.error('Purchase data that failed:', purchaseData)
+      console.error('Full error details:', JSON.stringify(purchaseError, null, 2))
+      // Don't fail the entire request - the webhook will handle it
+      // But log the error for debugging
+    } else {
+      console.log('Purchase record created successfully:', insertedPurchase)
+      
+      // Verify the record was actually created by fetching it back
+      const { data: verifyPurchase, error: verifyError } = await supabase
+        .from('purchases')
+        .select('*')
+        .eq('stripe_session_id', session.id)
+        .single()
+      
+      if (verifyError) {
+        console.error('Error verifying purchase record was created:', verifyError)
+      } else {
+        console.log('Purchase record verified in database:', verifyPurchase)
+      }
     }
 
     return NextResponse.json({ sessionId: session.id })

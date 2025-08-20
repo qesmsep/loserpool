@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       .from('purchases')
       .insert({
         user_id: user.id,
-        stripe_session_id: `free_${Date.now()}_${user.id}`, // Generate unique ID for free purchases
+        stripe_session_id: null, // Free purchases don't need a Stripe session ID
         amount_paid: 0, // $0 for free picks
         picks_count: picks_count,
         status: 'completed',
