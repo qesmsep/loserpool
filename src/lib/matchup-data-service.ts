@@ -784,7 +784,13 @@ export class MatchupDataService {
             body: JSON.stringify({
               to: admin.email,
               subject,
-              htmlBody
+              body: `Loser Pool - Automated Update Error
+
+Error: ${error}
+Timestamp: ${new Date().toLocaleString()}
+Environment: ${process.env.NODE_ENV || 'development'}
+
+${htmlBody.replace(/<[^>]*>/g, '')}`
             })
           })
 

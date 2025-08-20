@@ -132,8 +132,8 @@ export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotifi
       await sendEmail({
         to: admin.email,
         subject,
-        htmlBody,
-        adminName: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Admin'
+        html: htmlBody,
+        text: `New Pick Purchase - ${userName}\n\nUser: ${userName}\nEmail: ${purchaseData.userEmail}\nPicks: ${purchaseData.picksCount}\nAmount: $${(purchaseData.amount / 100).toFixed(2)}\nPurchase ID: ${purchaseData.purchaseId}`
       })
     }
 
@@ -570,8 +570,8 @@ export async function sendAdminSignupNotification(signupData: SignupNotification
         await sendEmail({
           to: admin.email,
           subject,
-          htmlBody,
-          adminName: `${admin.first_name || ''} ${admin.last_name || ''}`.trim() || 'Admin'
+          html: htmlBody,
+          text: `New User Signup - ${signupData.firstName} ${signupData.lastName}\n\nUser: ${signupData.firstName} ${signupData.lastName}\nUsername: ${signupData.username}\nEmail: ${signupData.userEmail}\nSignup Time: ${signupData.signupTime}\nSignup ID: ${signupData.signupId}`
         })
         console.log(`Admin signup notification sent to: ${admin.email}`)
       } catch (error) {
