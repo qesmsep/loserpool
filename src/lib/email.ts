@@ -426,8 +426,8 @@ export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotific
     await sendEmail({
       to: purchaseData.userEmail,
       subject,
-      htmlBody,
-      userName
+      html: htmlBody,
+      text: `Purchase Complete!\n\nHi ${userName}, your payment has been processed and ${purchaseData.picksCount} picks have been added to your account!\n\nPurchase Summary:\n- Picks Purchased: ${purchaseData.picksCount}\n- Amount Paid: $${(purchaseData.amount / 100).toFixed(2)}\n- Purchase ID: ${purchaseData.purchaseId}\n- Date: ${new Date().toLocaleString()}\n\nGo to your dashboard to start making picks: https://loserpool.vercel.app/dashboard`
     })
 
     console.log(`Purchase confirmation sent to user: ${purchaseData.userEmail}`)
