@@ -5,11 +5,13 @@ export async function GET() {
     const emailConfig = {
       provider: process.env.EMAIL_PROVIDER || 'console',
       fromEmail: process.env.FROM_EMAIL || 'noreply@loserpool.com',
-      hasApiKey: !!process.env.EMAIL_API_KEY,
+      hasApiKey: !!(process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY),
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       hasResendKey: !!process.env.RESEND_API_KEY,
-      hasSendGridKey: !!process.env.SENDGRID_API_KEY
+      hasSendGridKey: !!process.env.SENDGRID_API_KEY,
+      emailApiKey: process.env.EMAIL_API_KEY ? 'SET' : 'NOT SET',
+      resendApiKey: process.env.RESEND_API_KEY ? 'SET' : 'NOT SET'
     }
 
     console.log('📧 Email Configuration Debug:', emailConfig)
