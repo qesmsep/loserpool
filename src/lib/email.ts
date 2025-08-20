@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { calculatePicksDeadline } from './timezone'
 import { Resend } from 'resend'
 
@@ -24,7 +24,7 @@ interface PickReminderData {
 
 export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotificationData) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
     
     // Get all admin users
     const { data: admins, error: adminError } = await supabase
@@ -145,7 +145,7 @@ export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotifi
 
 export async function sendThursdayPickReminders() {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
     
     // Get current week from global settings
     const { data: settings, error: settingsError } = await supabase
@@ -308,7 +308,7 @@ ${body}
 
 export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotificationData) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
     
     // Get user details
     const { data: user, error: userError } = await supabase
@@ -440,7 +440,7 @@ export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotific
 
 export async function sendAdminSignupNotification(signupData: SignupNotificationData) {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
     
     // Get all admin users
     const { data: admins, error: adminError } = await supabase
