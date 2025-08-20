@@ -10,13 +10,37 @@ export async function getCurrentUser() {
     
     // If no session, return null silently (this is expected for unauthenticated users)
     if (!session || sessionError) {
+      if (sessionError) {
+        console.error('Session error in getCurrentUser:', sessionError.message)
+      }
       return null
+    }
+    
+    // Check if session is expired
+    if (session.expires_at) {
+      const expiresAt = new Date(session.expires_at * 1000)
+      const now = new Date()
+      
+      if (expiresAt <= now) {
+        console.log('Session expired, attempting refresh')
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (refreshError) {
+          console.error('Session refresh error:', refreshError.message)
+          return null
+        }
+        
+        if (!refreshedSession) {
+          console.log('No refreshed session available')
+          return null
+        }
+      }
     }
     
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error) {
-      console.error('Auth error:', error.message || error)
+      console.error('Auth error in getCurrentUser:', error.message)
       return null
     }
     

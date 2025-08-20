@@ -41,8 +41,8 @@ const slides = [
             <p className="text-green-100 text-sm">Choose the team you think will lose the game</p>
           </div>
           <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
-            <h4 className="font-semibold text-red-200 mb-1">❌ If they WIN, you're OUT</h4>
-            <p className="text-red-100 text-sm">If your picked team wins, you&apos;re eliminated</p>
+            <h4 className="font-semibold text-red-200 mb-1">❌ IF they WIN, You're PICK is Eliminated</h4>
+            <p className="text-red-100 text-sm">If all of your picks are wrong, then you're eliminated</p>
           </div>
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
             <h4 className="font-semibold text-blue-200 mb-1">🏆 Last person standing wins!</h4>
@@ -63,15 +63,15 @@ const slides = [
           <div className="grid grid-cols-1 gap-3 text-sm">
             <div className="flex items-center space-x-2">
               <span className="text-purple-300">•</span>
-              <span className="text-purple-100">Buy as many picks as you want</span>
+              <span className="text-purple-100">Buy up to 10 picks</span>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-purple-300">•</span>
-              <span className="text-purple-100">Allocate multiple picks to the same team</span>
+              <span className="text-purple-100">You must use all your active picks every week</span>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-purple-300">•</span>
-              <span className="text-purple-100">Spread picks across different teams</span>
+              <span className="text-purple-100">Only correctly chosen LOSER picks make it to the next week</span>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-purple-300">•</span>
@@ -84,29 +84,6 @@ const slides = [
   },
   {
     id: 4,
-    title: "Season Timeline 📅",
-    icon: <Calendar className="w-16 h-16 text-green-400 mb-4" />,
-    content: (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3">
-          <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3">
-            <h4 className="font-semibold text-yellow-200 mb-1">🏈 Preseason (Weeks 1-3)</h4>
-            <p className="text-yellow-100 text-sm">Practice weeks - get familiar with the system</p>
-          </div>
-          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
-            <h4 className="font-semibold text-blue-200 mb-1">🏆 Regular Season (Weeks 4-20)</h4>
-            <p className="text-blue-100 text-sm">The real competition begins - picks matter!</p>
-          </div>
-          <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3">
-            <h4 className="font-semibold text-purple-200 mb-1">🎯 Playoffs (Weeks 21-24)</h4>
-            <p className="text-purple-100 text-sm">High stakes - every pick counts!</p>
-          </div>
-        </div>
-      </div>
-    )
-  },
-  {
-    id: 5,
     title: "Ready to Get Started? 🚀",
     icon: <ShoppingCart className="w-16 h-16 text-green-400 mb-4" />,
     content: (
@@ -117,16 +94,12 @@ const slides = [
             Now it&apos;s time to buy your picks and start your journey to becoming the last person standing!
           </p>
           <div className="text-sm text-green-200 space-y-1">
-            <p>• Picks are $21 each</p>
-            <p>• Buy as many as you want</p>
-            <p>• Start with preseason to practice</p>
-            <p>• Regular season starts Week 4</p>
+            <p>• Once the Regular season starts, you will not be able to purchase any more picks so buy up to 10 right now!</p>
+            <p>• Picks are $21 each ($1 goes to administration costs and the other $20 goes to the pool!)</p>
+            <p>• You can adjust picks up until TNF</p>
+            <p>• All picks are locked and cannot be changed after kickoff TNF</p>
+            <p>• You are picking the LOSER of the game - no takebacks!</p>
           </div>
-        </div>
-        <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
-          <p className="text-blue-200 text-sm">
-            <strong>Pro Tip:</strong> Start with a few picks to get comfortable, then add more as you learn the strategy!
-          </p>
         </div>
       </div>
     )

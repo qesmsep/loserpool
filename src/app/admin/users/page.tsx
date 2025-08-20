@@ -115,61 +115,16 @@ export default function AdminUsersPage() {
     try {
       setLoading(true)
       
-      // Get all users with their stats
-      const { data: usersData } = await supabase
-        .from('users')
-        .select(`
-          *,
-          purchases(
-            picks_count,
-            status
-          )
-        `)
+      // Use the admin API route to fetch users (bypasses RLS)
+      const response = await fetch('/api/admin/users')
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch users')
+      }
 
-      // Get picks data for each user
-      const { data: picks } = await supabase
-        .from('picks')
-        .select('user_id, status, picks_count')
-
-      // Calculate stats for each user
-      const usersWithStats = usersData?.map(user => {
-        const userPurchases = user.purchases || []
-        const userPicks = picks?.filter(p => p.user_id === user.id) || []
-        
-        const totalPurchased = userPurchases
-          .filter((p: { status: string }) => p.status === 'completed')
-          .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
-        
-        const activePicks = userPicks
-          .filter((p: { status: string }) => p.status === 'active')
-          .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
-        
-        const eliminatedPicks = userPicks
-          .filter((p: { status: string }) => p.status === 'eliminated')
-          .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
-
-        return {
-          ...user,
-          totalPurchased,
-          activePicks,
-          eliminatedPicks,
-          isEliminated: eliminatedPicks > 0 && activePicks === 0 && totalPurchased > 0
-        }
-      }) || []
-
-      // Sort users by username (or email if no username), with admins first
-      const sortedUsers = usersWithStats.sort((a, b) => {
-        // Admins first
-        if (a.is_admin && !b.is_admin) return -1
-        if (!a.is_admin && b.is_admin) return 1
-        
-        // Then by username/email
-        const aName = a.username || a.email || ''
-        const bName = b.username || b.email || ''
-        return aName.localeCompare(bName)
-      })
-
-      setUsers(sortedUsers)
+      const { users: usersData } = await response.json()
+      setUsers(usersData || [])
     } catch (error) {
       console.error('Error loading users:', error)
       setError('Failed to load users')

@@ -1,29 +1,73 @@
--- Check Admin Users and Create Admin if Needed
--- Run this in Supabase SQL Editor
+-- Check admin users issue
+-- Let's see what users exist and why admin page might not show all
 
--- Check current users and their admin status
-SELECT 'Current users:' as status, id, email, username, is_admin, created_at 
+-- Check all users in the database
+SELECT 
+    'All users in database' as status,
+    id,
+    email,
+    username,
+    first_name,
+    last_name,
+    is_admin,
+    user_type,
+    created_at
 FROM users 
 ORDER BY created_at DESC;
 
--- Check if there are any admin users
-SELECT 'Admin users count:' as status, COUNT(*) as count 
-FROM users 
-WHERE is_admin = TRUE;
+-- Check auth users
+SELECT 
+    'Auth users' as status,
+    id,
+    email,
+    created_at
+FROM auth.users 
+ORDER BY created_at DESC;
 
--- If no admin users exist, make the user with email 'tim@skylineandco.com' an admin
--- (Replace with your actual email)
-UPDATE users 
-SET is_admin = TRUE 
-WHERE email = 'tim@skylineandco.com' 
-AND is_admin = FALSE;
+-- Check if any auth users are missing profiles
+SELECT 
+    'Auth users without profiles' as status,
+    COUNT(*) as count
+FROM auth.users au
+LEFT JOIN users u ON au.id = u.id
+WHERE u.id IS NULL;
 
--- Verify the admin update
-SELECT 'User after admin update:' as status, id, email, username, is_admin, created_at 
-FROM users 
-WHERE email = 'tim@skylineandco.com';
+-- Check RLS policies for users table
+SELECT 
+    'RLS policies' as status,
+    policyname,
+    cmd,
+    permissive,
+    roles
+FROM pg_policies 
+WHERE tablename = 'users';
 
--- Show final admin users
-SELECT 'Final admin users:' as status, id, email, username, is_admin, created_at 
-FROM users 
-WHERE is_admin = TRUE;
+-- Check if RLS is enabled
+SELECT 
+    'RLS status' as status,
+    schemaname,
+    tablename,
+    rowsecurity
+FROM pg_tables 
+WHERE tablename = 'users';
+
+-- Test admin access to users table
+DO $$
+DECLARE
+    user_count INTEGER;
+    user_record RECORD;
+BEGIN
+    -- Count users as admin
+    SELECT COUNT(*) INTO user_count FROM users;
+    RAISE NOTICE 'Total users accessible: %', user_count;
+    
+    -- Show user details
+    FOR user_record IN SELECT id, email, is_admin, user_type FROM users ORDER BY created_at DESC
+    LOOP
+        RAISE NOTICE 'User: ID=%, Email=%, Admin=%, Type=%', 
+            user_record.id, user_record.email, user_record.is_admin, user_record.user_type;
+    END LOOP;
+    
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE '❌ ERROR accessing users: %', SQLERRM;
+END $$;

@@ -21,9 +21,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting initial session:', error.message)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        
+        if (session) {
+          // Check if session is expired
+          if (session.expires_at) {
+            const expiresAt = new Date(session.expires_at * 1000)
+            const now = new Date()
+            
+            if (expiresAt <= now) {
+              console.log('Initial session expired, attempting refresh')
+              const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+              
+              if (refreshError) {
+                console.error('Session refresh error:', refreshError.message)
+                setUser(null)
+              } else if (refreshedSession) {
+                setUser(refreshedSession.user)
+              } else {
+                setUser(null)
+              }
+            } else {
+              setUser(session.user)
+            }
+          } else {
+            setUser(session.user)
+          }
+        } else {
+          setUser(null)
+        }
+      } catch (err) {
+        console.error('Error in getInitialSession:', err)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getInitialSession()
@@ -31,8 +71,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
+        console.log('Auth state change:', event, session?.user?.email)
+        
+        try {
+          if (session) {
+            // Check if session is expired
+            if (session.expires_at) {
+              const expiresAt = new Date(session.expires_at * 1000)
+              const now = new Date()
+              
+              if (expiresAt <= now) {
+                console.log('Session expired in auth state change, attempting refresh')
+                const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                
+                if (refreshError) {
+                  console.error('Session refresh error in auth state change:', refreshError.message)
+                  setUser(null)
+                } else if (refreshedSession) {
+                  setUser(refreshedSession.user)
+                } else {
+                  setUser(null)
+                }
+              } else {
+                setUser(session.user)
+              }
+            } else {
+              setUser(session.user)
+            }
+          } else {
+            setUser(null)
+          }
+        } catch (err) {
+          console.error('Error in auth state change handler:', err)
+          setUser(null)
+        } finally {
+          setLoading(false)
+        }
       }
     )
 
