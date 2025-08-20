@@ -14,7 +14,7 @@ interface User {
   last_name: string | null
   phone: string | null
   is_admin: boolean
-  user_type: 'pending' | 'active' | 'tester' | 'eliminated'
+  user_type: 'registered' | 'active' | 'tester' | 'eliminated'
   created_at: string
   totalPurchased: number
   activePicks: number
@@ -62,7 +62,7 @@ export default function AdminUsersPage() {
     last_name: '',
     phone: '',
     is_admin: false,
-    user_type: 'pending' as 'pending' | 'active' | 'tester' | 'eliminated',
+    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated',
     temporaryPassword: ''
   })
 
@@ -73,7 +73,7 @@ export default function AdminUsersPage() {
     last_name: '',
     phone: '',
     is_admin: false,
-    user_type: 'pending' as 'pending' | 'active' | 'tester' | 'eliminated'
+    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated'
   })
   const [picksToAdd, setPicksToAdd] = useState(0)
 
@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
         last_name: '',
         phone: '',
         is_admin: false,
-        user_type: 'pending',
+        user_type: 'registered',
         temporaryPassword: ''
       })
       loadUsers()
@@ -186,20 +186,29 @@ export default function AdminUsersPage() {
       }
       
       console.log('Updating user with data:', updateData)
+      console.log('User ID:', userId)
+      console.log('Edit user state:', editUser)
       
-      const { error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', userId)
+      const response = await fetch('/api/admin/update-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, updateData })
+      })
 
-      if (error) throw error
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update user')
+      }
 
       setSuccess('User updated successfully')
       setEditingUser(null)
       loadUsers()
     } catch (error) {
       console.error('Error updating user:', error)
-      setError('Failed to update user')
+      setError(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -490,10 +499,10 @@ export default function AdminUsersPage() {
                   <label className="block text-sm font-medium text-white mb-1">User Type</label>
                   <select
                     value={newUser.user_type}
-                    onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'pending' | 'active' | 'tester' | 'eliminated'})}
+                    onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated'})}
                     className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
                   >
-                    <option value="pending">Pending (No Picks Yet)</option>
+                    <option value="registered">Registered (No Picks Yet)</option>
                     <option value="active">Active (Normal Pool)</option>
                     <option value="tester">Tester ($0 Picks)</option>
                     <option value="eliminated">Eliminated (No Picks)</option>
@@ -691,10 +700,10 @@ export default function AdminUsersPage() {
                             <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
                             <select
                               value={editUser.user_type}
-                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'pending' | 'active' | 'tester' | 'eliminated'})}
+                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated'})}
                               className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
                             >
-                              <option value="pending">Pending (No Picks Yet)</option>
+                              <option value="registered">Registered (No Picks Yet)</option>
                               <option value="active">Active (Normal Pool)</option>
                               <option value="tester">Tester ($0 Picks)</option>
                               <option value="eliminated">Eliminated (No Picks)</option>
@@ -730,14 +739,14 @@ export default function AdminUsersPage() {
                               ? 'bg-purple-500/20 text-purple-200'
                               : user.user_type === 'active'
                               ? 'bg-green-500/20 text-green-200'
-                              : user.user_type === 'pending'
+                              : user.user_type === 'registered'
                               ? 'bg-yellow-500/20 text-yellow-200'
                               : 'bg-red-500/20 text-red-200'
                           }`}>
-                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : 'Eliminated'}
+                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'registered' ? 'Registered' : 'Eliminated'}
                           </span>
                           <div className="text-xs text-blue-200 mt-1">
-                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'pending' ? 'No picks yet' : 'No picks'}
+                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'registered' ? 'No picks yet' : 'No picks'}
                           </div>
                         </>
                       )}

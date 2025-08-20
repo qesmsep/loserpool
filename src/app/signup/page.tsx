@@ -224,6 +224,33 @@ function SignupForm() {
         // Note: Supabase automatically sends a confirmation email
         // Our custom email system is available for additional emails if needed
         console.log('✅ User created successfully - Supabase will send confirmation email automatically')
+        
+        // Send admin notification for new user signup
+        try {
+          const response = await fetch('/api/auth/signup-notification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userEmail: email,
+              username: username,
+              firstName: firstName,
+              lastName: lastName,
+              signupId: user.id
+            }),
+          })
+
+          if (response.ok) {
+            console.log('✅ Admin notification sent for new user signup')
+          } else {
+            console.error('❌ Failed to send admin notification')
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending admin notification for signup:', emailError)
+          // Don't fail the signup if email fails
+        }
+        
         console.log('🔄 Redirecting to confirm-email page...')
 
         router.push('/confirm-email')

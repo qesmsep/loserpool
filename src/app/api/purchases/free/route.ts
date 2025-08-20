@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getPoolStatus } from '@/lib/pool-status'
 import { isUserTester } from '@/lib/user-types'
+import { sendAdminPurchaseNotification } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create completed purchase record for free picks
-    const { error: purchaseError } = await supabase
+    const { data: purchaseData, error: purchaseError } = await supabase
       .from('purchases')
       .insert({
         user_id: user.id,
@@ -85,12 +86,37 @@ export async function POST(request: NextRequest) {
         picks_count: picks_count,
         status: 'completed',
       })
+      .select('id')
+      .single()
 
     if (purchaseError) {
       console.error('Error creating free purchase record:', purchaseError)
       return NextResponse.json({ 
         error: 'Failed to create purchase record' 
       }, { status: 500 })
+    }
+
+    // Send admin notification for free purchase
+    try {
+      const { data: userDetails } = await supabase
+        .from('users')
+        .select('email, username, first_name, last_name')
+        .eq('id', user.id)
+        .single()
+
+      if (userDetails) {
+        await sendAdminPurchaseNotification({
+          userEmail: userDetails.email,
+          username: userDetails.username || userDetails.first_name || 'Unknown',
+          picksCount: picks_count,
+          amount: 0, // $0 for free picks
+          purchaseId: purchaseData.id
+        })
+        console.log('✅ Admin notification sent for free purchase')
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending admin notification for free purchase:', emailError)
+      // Don't fail the purchase if email fails
     }
 
     // Create default pick records in the picks table with sequential names
