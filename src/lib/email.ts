@@ -97,10 +97,10 @@ export async function sendAdminPurchaseNotification(purchaseData: PurchaseNotifi
         <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
           <h3 style="color: #0369a1; margin: 0 0 16px 0;">⚡ Quick Actions</h3>
           <div style="text-align: center;">
-            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
+            <a href="https://www.loserpool.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
               👥 View User Profile
             </a>
-            <a href="https://loserpool.vercel.app/admin/purchases" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            <a href="https://www.loserpool.app/admin/purchases" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
               📈 View Purchase History
             </a>
           </div>
@@ -381,7 +381,7 @@ export async function sendUserPurchaseConfirmation(purchaseData: PurchaseNotific
 
         <!-- Dashboard Button -->
         <div style="text-align: center; margin-bottom: 24px;">
-          <a href="https://loserpool.vercel.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+          <a href="https://www.loserpool.app/dashboard" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
             🏠 Go to Your Dashboard
           </a>
         </div>
@@ -504,10 +504,10 @@ export async function sendAdminSignupNotification(signupData: SignupNotification
         <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
           <h3 style="color: #0369a1; margin: 0 0 16px 0;">⚡ Quick Actions</h3>
           <div style="text-align: center;">
-            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
+            <a href="https://www.loserpool.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 12px;">
               👥 View User Profile
             </a>
-            <a href="https://loserpool.vercel.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            <a href="https://www.loserpool.app/admin/users" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
               📈 Manage Users
             </a>
           </div>
