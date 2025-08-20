@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
         const result = await sendEmail({
           to: admin.email,
           subject,
-          htmlBody
+          html: htmlBody,
+          text: `Test Admin Notification\n\nRecipient: ${admin.first_name || ''} ${admin.last_name || ''}\nEmail: ${admin.email}\nAdmin Status: ${admin.is_admin ? 'Admin' : 'Not Admin'}\nTest Time: ${new Date().toLocaleString()}\nTotal Admins Found: ${admins.length}`
         })
 
         if (result.success) {
