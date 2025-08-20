@@ -52,7 +52,7 @@ export async function GET() {
       totalUsers: allUsers?.length || 0,
       adminUsers: adminUsers?.length || 0,
       allUsers: allUsers || [],
-      adminUsers: adminUsers || [],
+      adminUsersList: adminUsers || [],
       summary: {
         totalUsers: allUsers?.length || 0,
         adminUsers: adminUsers?.length || 0,
