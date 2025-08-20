@@ -123,6 +123,31 @@ export async function POST(request: NextRequest) {
             console.log('User type updated to active for user:', purchase.user_id)
           }
 
+          // Create pick records for the purchased picks
+          console.log('Creating pick records for purchase:', purchase.id, 'picks_count:', purchase.picks_count)
+          
+          const pickRecords = []
+          for (let i = 0; i < purchase.picks_count; i++) {
+            pickRecords.push({
+              user_id: purchase.user_id,
+              picks_count: 1,
+              status: 'pending',
+              pick_name: `Pick ${i + 1}`,
+              notes: `Auto-generated from purchase ${purchase.id}`
+            })
+          }
+
+          const { data: createdPicks, error: picksError } = await supabase
+            .from('picks')
+            .insert(pickRecords)
+            .select('id, user_id, picks_count, status, pick_name')
+
+          if (picksError) {
+            console.error('Error creating pick records:', picksError)
+          } else {
+            console.log('Successfully created pick records:', createdPicks?.length, 'picks')
+          }
+
           // Get user details
           const { data: user, error: userError } = await supabase
             .from('users')
