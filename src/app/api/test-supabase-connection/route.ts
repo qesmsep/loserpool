@@ -85,8 +85,7 @@ export async function GET() {
             email: 'test@example.com',
             password: 'testpassword123',
             options: {
-              emailRedirectTo: redirectUrl,
-              emailConfirm: false
+              emailRedirectTo: redirectUrl
             }
           })
         })
@@ -110,12 +109,11 @@ export async function GET() {
 
     // Test 6: Test direct Supabase signup
     try {
-      const { data, error } = await supabase.auth.signUp({
+              const { data, error } = await supabase.auth.signUp({
         email: 'test@example.com',
         password: 'testpassword123',
         options: {
-          emailRedirectTo: 'https://loserpool.vercel.app/api/auth/confirm-email',
-          emailConfirm: false
+          emailRedirectTo: 'https://loserpool.vercel.app/api/auth/confirm-email'
         }
       })
       

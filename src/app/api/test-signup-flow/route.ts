@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     // Test 2: Try signup with Supabase auth
     const signupOptions = {
-      emailConfirm: false,
+      
       data: {
         first_name: 'Test',
         last_name: 'User',

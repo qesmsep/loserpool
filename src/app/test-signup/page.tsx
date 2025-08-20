@@ -19,7 +19,7 @@ export default function TestSignupPage() {
         email,
         password,
         options: {
-          emailConfirm: false // Skip email confirmation for testing
+          // Skip email confirmation for testing
         }
       })
 
@@ -54,7 +54,7 @@ export default function TestSignupPage() {
         password,
         options: {
           emailRedirectTo: 'https://loserpool.vercel.app/api/auth/confirm-email',
-          emailConfirm: false
+  
         }
       })
 

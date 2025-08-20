@@ -57,7 +57,7 @@ export async function isUserRegistered(userId: string): Promise<boolean> {
     .eq('id', userId)
     .single()
 
-  return user?.user_type === 'registered'
+  return user?.user_type === 'active'
 }
 
 /**
