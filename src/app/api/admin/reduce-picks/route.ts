@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     // Reduce picks from active picks, starting with the first pick
     let remainingToReduce = picksCount
-    const updates: Promise<any>[] = []
+    const updates: Promise<{ error?: any }>[] = []
 
     for (const pick of userPicks) {
       if (remainingToReduce <= 0) break
