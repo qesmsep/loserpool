@@ -59,23 +59,25 @@ export async function POST(request: Request) {
       if (newPicksCount === 0) {
         // If this pick will have 0 picks, mark it as eliminated
         updates.push(
-          supabaseAdmin
-            .from('picks')
-            .update({ 
-              picks_count: 0,
-              status: 'eliminated'
-            })
-            .eq('id', pick.id)
-            .then()
+          Promise.resolve(
+            supabaseAdmin
+              .from('picks')
+              .update({ 
+                picks_count: 0,
+                status: 'eliminated'
+              })
+              .eq('id', pick.id)
+          )
         )
       } else {
         // Just reduce the picks count
         updates.push(
-          supabaseAdmin
-            .from('picks')
-            .update({ picks_count: newPicksCount })
-            .eq('id', pick.id)
-            .then()
+          Promise.resolve(
+            supabaseAdmin
+              .from('picks')
+              .update({ picks_count: newPicksCount })
+              .eq('id', pick.id)
+          )
         )
       }
 
