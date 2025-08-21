@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { requireAdmin } from '@/lib/auth'
 
 async function updateUser(request: NextRequest) {
   try {
-    // Verify admin access
-    await requireAdmin()
-    
     const { userId, updateData } = await request.json()
 
     if (!userId) {
