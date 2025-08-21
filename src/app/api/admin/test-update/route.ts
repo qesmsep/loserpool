@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
-import { requireAdmin } from '@/lib/auth'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 
-async function updateUser(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Verify admin access
-    await requireAdmin()
-    
     const { userId, updateData } = await request.json()
-
-    console.log('🔍 API Debug - Received request:', { userId, updateData })
 
     if (!userId) {
       return NextResponse.json(
@@ -18,10 +12,7 @@ async function updateUser(request: NextRequest) {
       )
     }
 
-    // Use service role client to bypass RLS
-    const supabaseAdmin = createServiceRoleClient()
-
-    console.log('🔍 API Debug - About to query database for user:', userId)
+    const supabaseAdmin = await createServerSupabaseClient()
 
     // Get existing user data for comparison
     const { data: existingUser, error: fetchError } = await supabaseAdmin
@@ -30,10 +21,7 @@ async function updateUser(request: NextRequest) {
       .eq('id', userId)
       .single()
 
-    console.log('🔍 API Debug - Database query result:', { existingUser, fetchError })
-
     if (fetchError || !existingUser) {
-      console.log('🔍 API Debug - User not found, error:', fetchError)
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -65,18 +53,10 @@ async function updateUser(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in update user API:', error)
+    console.error('Error in test update API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
-
-export async function PUT(request: NextRequest) {
-  return updateUser(request)
-}
-
-export async function POST(request: NextRequest) {
-  return updateUser(request)
 }
