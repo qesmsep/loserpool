@@ -22,8 +22,16 @@ export async function GET(request: NextRequest) {
       .eq('id', userId)
       .single()
 
-    // Admins are always testers
-    const isTester = user?.is_admin || user?.user_type === 'tester'
+    // Check user_type first - if explicitly set to non-tester, respect that
+    let isTester = false
+    if (user?.user_type && user.user_type !== 'tester') {
+      isTester = false
+    } else if (user?.is_admin) {
+      // Admins are testers by default, unless explicitly set to another type
+      isTester = true
+    } else {
+      isTester = user?.user_type === 'tester'
+    }
 
     return NextResponse.json({
       success: true,

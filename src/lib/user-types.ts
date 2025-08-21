@@ -24,7 +24,12 @@ export async function isUserTester(userId: string): Promise<boolean> {
     .eq('id', userId)
     .single()
 
-  // Admins are always testers
+  // Check user_type first - if explicitly set to non-tester, respect that
+  if (user?.user_type && user.user_type !== 'tester') {
+    return false
+  }
+  
+  // Admins are testers by default, unless explicitly set to another type
   if (user?.is_admin) return true
   
   return user?.user_type === 'tester'
