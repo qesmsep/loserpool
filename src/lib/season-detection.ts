@@ -7,6 +7,8 @@
  * This system is SEASON-AGNOSTIC and will work for any NFL season automatically.
  */
 
+import { createServerSupabaseClient } from './supabase-server'
+
 export interface SeasonInfo {
   currentSeason: 'PRE' | 'REG'
   currentWeek: number
@@ -22,7 +24,6 @@ export interface SeasonInfo {
  * This determines the REAL current week dynamically
  */
 export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
-  const { createServerSupabaseClient } = await import('./supabase-server')
   const supabase = await createServerSupabaseClient()
   
   const now = new Date()
@@ -250,7 +251,6 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
  * SEASON-AGNOSTIC: Works for any NFL season automatically
  */
 export async function getUserSeasonFilter(userId: string): Promise<string> {
-  const { createServerSupabaseClient } = await import('./supabase-server')
   const supabase = await createServerSupabaseClient()
   
   // Get user info
