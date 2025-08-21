@@ -848,7 +848,7 @@ export default function AdminUsersPage() {
                                     </div>
                                   )
                                 }
-                              } else if (originalUser.user_type !== 'tester' && editUser.user_type !== 'tester') {
+                              } else if ((originalUser.user_type as string) !== 'tester' && editUser.user_type !== 'tester') {
                                 return (
                                   <div className="mt-1 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-200">
                                     ✅ Will continue to see current Regular Season games
