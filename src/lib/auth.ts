@@ -85,13 +85,13 @@ export async function requireAdmin() {
   
   if (error) {
     console.error('Admin check error:', error)
-    // If we can't check admin status due to RLS, redirect to dashboard
-    redirect('/dashboard')
+    // If we can't check admin status due to RLS, throw an error for API routes
+    throw new Error('Admin verification failed')
   }
   
   if (!userProfile?.is_admin) {
-    console.log('User is not admin, redirecting to dashboard')
-    redirect('/dashboard')
+    console.log('User is not admin')
+    throw new Error('User is not admin')
   }
   
   return user
