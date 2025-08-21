@@ -59,6 +59,7 @@ export async function GET() {
     // Calculate stats for each user
     const usersWithStats = usersData?.map(user => {
       const userPurchases = user.purchases || []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userPicks = (picks as any[])?.filter((p: any) => p.user_id === user.id) || []
       
       const totalPurchased = userPurchases
