@@ -72,7 +72,20 @@ export async function GET(request: Request) {
       .eq('week', currentWeek)
 
     // Create a mapping of team_matchup_id to team name and matchup info
-    const matchupMapping: { [key: string]: any } = {}
+    const matchupMapping: { [key: string]: {
+      team: string
+      opponent: string
+      matchup: {
+        id: string
+        away_team: string
+        home_team: string
+        away_score: number | null
+        home_score: number | null
+        game_time: string
+        status: string
+      }
+      isHome: boolean
+    } } = {}
     matchupsData?.forEach(matchup => {
       const awayTeamMatchupId = `${matchup.id}_${matchup.away_team}`
       const homeTeamMatchupId = `${matchup.id}_${matchup.home_team}`

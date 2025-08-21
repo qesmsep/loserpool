@@ -40,7 +40,12 @@ interface UserDetails {
   user: User
   currentWeek: number
   picks: UserPick[]
-  purchases: any[]
+  purchases: Array<{
+    created_at: string
+    picks_count: number
+    amount_paid: number
+    status: string
+  }>
   stats: {
     totalPurchased: number
     activePicks: number
@@ -77,7 +82,7 @@ export default function AdminUsersPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null)
-  const [loadingUserDetails, setLoadingUserDetails] = useState(false)
+
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -385,7 +390,6 @@ export default function AdminUsersPage() {
 
   const handleViewUserDetails = async (userId: string) => {
     try {
-      setLoadingUserDetails(true)
       setError('')
       
       const response = await fetch(`/api/admin/user-details?userId=${userId}`)
@@ -400,8 +404,6 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error('Error loading user details:', error)
       setError(`Failed to load user details: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setLoadingUserDetails(false)
     }
   }
 
