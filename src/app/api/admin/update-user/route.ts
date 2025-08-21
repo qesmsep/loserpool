@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
 
-export async function PUT(request: NextRequest) {
+async function updateUser(request: NextRequest) {
   try {
     // Verify admin access
     await requireAdmin()
     
-    const { userId, ...updateData } = await request.json()
+    const { userId, updateData } = await request.json()
 
     if (!userId) {
       return NextResponse.json(
@@ -63,4 +63,12 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function PUT(request: NextRequest) {
+  return updateUser(request)
+}
+
+export async function POST(request: NextRequest) {
+  return updateUser(request)
 }

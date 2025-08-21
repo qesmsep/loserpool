@@ -27,16 +27,54 @@ export async function POST(request: NextRequest) {
     const currentWeek = parseInt(weekSetting?.value || '1')
     console.log(`Current week: ${currentWeek}`)
 
-    // Determine current season type
+    // Determine current season type based on available games and date
+    const { data: allMatchups } = await supabase
+      .from('matchups')
+      .select('season, game_time')
+      .order('game_time', { ascending: true })
+    
     let currentSeason = 'REG'
-    if (currentWeek <= 4) {
-      currentSeason = 'PRE'
-    } else if (currentWeek > 21) {
-      currentSeason = 'POST'
+    let preseasonCutoff: Date
+    
+    if (allMatchups && allMatchups.length > 0) {
+      // Determine preseason cutoff based on available games
+      const preseasonGames = allMatchups.filter(m => m.season?.startsWith('PRE'))
+      const regularSeasonGames = allMatchups.filter(m => m.season?.startsWith('REG'))
+      
+      if (preseasonGames.length > 0 && regularSeasonGames.length > 0) {
+        // We have both preseason and regular season games
+        const earliestRegularSeasonGame = new Date(Math.min(...regularSeasonGames.map(m => new Date(m.game_time).getTime())))
+        preseasonCutoff = new Date(earliestRegularSeasonGame.getTime() - (7 * 24 * 60 * 60 * 1000)) // 1 week before
+      } else if (preseasonGames.length > 0) {
+        // Only preseason games available
+        const latestPreseasonGame = new Date(Math.max(...preseasonGames.map(m => new Date(m.game_time).getTime())))
+        preseasonCutoff = new Date(latestPreseasonGame.getTime() + (7 * 24 * 60 * 60 * 1000)) // 1 week after
+      } else {
+        // Only regular season games, use reasonable default
+        const currentYear = new Date().getFullYear()
+        preseasonCutoff = new Date(`${currentYear}-08-26`)
+      }
+      
+      const now = new Date()
+      if (now < preseasonCutoff) {
+        currentSeason = 'PRE'
+      } else if (currentWeek > 21) {
+        currentSeason = 'POST'
+      }
+    } else {
+      // No games available, use default
+      const currentYear = new Date().getFullYear()
+      preseasonCutoff = new Date(`${currentYear}-08-26`)
+      const now = new Date()
+      if (now < preseasonCutoff) {
+        currentSeason = 'PRE'
+      } else if (currentWeek > 21) {
+        currentSeason = 'POST'
+      }
     }
 
     const seasonString = `${currentSeason}${currentWeek}`
-    console.log(`Checking games for ${seasonString}`)
+    console.log(`Checking games for ${seasonString} (date: ${new Date().toISOString()}, preseason cutoff: ${preseasonCutoff.toISOString()})`)
 
     // Get all matchups for the current week
     const { data: matchups, error: fetchError } = await supabase

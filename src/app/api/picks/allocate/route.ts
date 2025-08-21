@@ -3,9 +3,9 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, matchupId, teamPicked, picksCount } = await request.json()
+    const { matchupId, teamName, pickNameIds } = await request.json()
 
-    if (!userId || !matchupId || !teamPicked || !picksCount) {
+    if (!matchupId || !teamName || !pickNameIds || !Array.isArray(pickNameIds)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -14,9 +14,26 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient()
 
-    // Use the new season detection system to get user's default week
-    const { getUserDefaultWeek } = await import('@/lib/season-detection')
-    const userDefaultWeek = await getUserDefaultWeek(userId)
+    // Get the current user from the session
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      )
+    }
+
+    const userId = user.id
+    const picksCount = pickNameIds.length
+
+    // Use the new season detection system to get the correct column name
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const { isUserTester } = await import('@/lib/user-types')
+    const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
+    
+    const seasonInfo = await getCurrentSeasonInfo()
+    const isTester = await isUserTester(userId)
+    const weekColumnName = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
 
     // Check if user has enough picks available
     const { data: purchases } = await supabase
@@ -43,21 +60,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the pick
+    // Create the team_matchup_id value in the format: "matchupId_teamName"
+    const teamMatchupId = `${matchupId}_${teamName}`
+
+    // Create or update the pick for the current week
     const { data: pick, error } = await supabase
       .from('picks')
-      .insert({
+      .upsert({
         user_id: userId,
-        matchup_id: matchupId,
-        team_picked: teamPicked,
+        [weekColumnName]: teamMatchupId,
         picks_count: picksCount,
-        status: 'active'
+        status: 'active',
+        pick_name: `Pick ${pickNameIds.join(', ')}`
+      }, {
+        onConflict: 'user_id'
       })
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating pick:', error)
+      console.error('Error creating/updating pick:', error)
       return NextResponse.json(
         { error: 'Failed to create pick' },
         { status: 500 }
@@ -68,7 +90,7 @@ export async function POST(request: NextRequest) {
       success: true,
       pick,
       picksRemaining: picksAvailable - picksCount,
-      userDefaultWeek
+      weekColumnName
     })
 
   } catch (error) {

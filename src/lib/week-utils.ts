@@ -36,6 +36,24 @@ export function getWeekColumnName(userDefaultWeek: number): string {
 }
 
 /**
+ * Get the week column name from season detection info
+ * This is the new function that works with the season detection system
+ * 
+ * @param seasonInfo - The season info from getCurrentSeasonInfo()
+ * @param isTester - Whether the user is a tester
+ * @returns The database column name for that week
+ */
+export function getWeekColumnNameFromSeasonInfo(seasonInfo: { currentSeason: string, currentWeek: number, isPreseason: boolean }, isTester: boolean): string {
+  if (isTester && seasonInfo.isPreseason) {
+    // Tester in preseason - use preseason column
+    return `pre${seasonInfo.currentWeek}_team_matchup_id`
+  } else {
+    // Regular season or non-tester - use regular season column
+    return `reg${seasonInfo.currentWeek}_team_matchup_id`
+  }
+}
+
+/**
  * Gets the display name for a week based on the user's default week
  * 
  * @param userDefaultWeek - The user's default week number

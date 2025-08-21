@@ -88,9 +88,9 @@ export default function PicksPage() {
       console.log('🔍 DEBUG: Picks page - user is tester:', userIsTester)
       setIsTester(userIsTester)
       
-      // Use the new season detection system
-      const { getUserSeasonFilter } = await import('@/lib/season-detection')
-      const seasonFilter = await getUserSeasonFilter(user.id)
+                   // Use the client-side season detection system
+             const { getUserSeasonFilter } = await import('@/lib/season-detection-client')
+             const seasonFilter = await getUserSeasonFilter(user.id)
       
       setSeasonFilter(seasonFilter)
       
@@ -302,7 +302,7 @@ export default function PicksPage() {
       {/* User Type Indicator */}
       <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-2">
         <div className="bg-blue-500/20 border border-blue-500/30 text-blue-200 px-4 py-2 rounded-lg text-sm">
-          <strong>User Type:</strong> {getUserTypeDisplay(isTester ? 'tester' : 'regular')} 
+          <strong>User Type:</strong> {getUserTypeDisplay(isTester ? 'tester' : 'active')} 
           {isTester && ' - You can access preseason games for testing'}
           {!isTester && ' - You can only access regular season games (Week 1+)'}
         </div>

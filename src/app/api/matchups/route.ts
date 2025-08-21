@@ -34,10 +34,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Format the week display for the dashboard based on user's season filter
+    let weekDisplay: string
+    if (seasonFilter.startsWith('PRE')) {
+      const week = seasonFilter.replace('PRE', '')
+      weekDisplay = `Pre Season : Week ${week}`
+    } else if (seasonFilter.startsWith('REG')) {
+      const week = seasonFilter.replace('REG', '')
+      weekDisplay = `Regular Season : Week ${week}`
+    } else if (seasonFilter.startsWith('POST')) {
+      const week = seasonFilter.replace('POST', '')
+      weekDisplay = `Post Season : Week ${week}`
+    } else {
+      weekDisplay = `Regular Season : Week 1` // fallback
+    }
+
     return NextResponse.json({
       success: true,
       matchups: matchups || [],
       seasonFilter,
+      week_display: weekDisplay, // This is what the dashboard expects
       userId
     })
 

@@ -358,51 +358,29 @@ export default function DashboardPage() {
 
       setProfile(profileData)
 
-      // Get user's default week
-      let userDefaultWeek: number
-      if (profileData?.default_week) {
-        userDefaultWeek = profileData.default_week
-      } else {
-        userDefaultWeek = 1
-        if (profileData?.is_admin || profileData?.user_type === 'tester') {
-          userDefaultWeek = 3
-        }
-      }
-
-  // Check if user needs to change password
+      // Check if user needs to change password
       if (profileData?.needs_password_change) {
         router.push('/change-password')
         return
-  }
+      }
 
-  // Get user's total picks purchased
-  const { data: purchases } = await supabase
-    .from('purchases')
-    .select('picks_count')
-    .eq('user_id', user.id)
-    .eq('status', 'completed')
-
-
-
+      // Get user's total picks purchased
+      const { data: purchases } = await supabase
+        .from('purchases')
+        .select('picks_count')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
 
       // Get current week display from API
       let week = 1 // Default fallback
       try {
-        const weekDisplayResponse = await fetch('/api/current-week-display')
+        const weekDisplayResponse = await fetch(`/api/current-week-display?userId=${user.id}`)
         const weekDisplayResult = await weekDisplayResponse.json()
         
         if (weekDisplayResult.success) {
           week = weekDisplayResult.current_week
           setCurrentWeek(week)
           setCurrentWeekDisplay(weekDisplayResult.week_display)
-          
-
-          
-          // Note: Preseason warning removed since games are available
-          // If we're in preseason, show a note about game availability
-          // if (weekDisplayResult.is_preseason) {
-          //   setPreseasonNote('Preseason games are not yet available from the data provider. Regular season games will be shown below.')
-          // }
         } else {
           // Fallback to database settings
           const { data: settings } = await supabase
@@ -440,7 +418,7 @@ export default function DashboardPage() {
   
   try {
     // Fetch current week matchups
-    const currentWeekResponse = await fetch('/api/matchups')
+    const currentWeekResponse = await fetch(`/api/matchups?userId=${user.id}`)
     const currentWeekResult = await currentWeekResponse.json()
     
     if (currentWeekResult.success) {
@@ -474,9 +452,9 @@ export default function DashboardPage() {
   } catch (error) {
     console.error('Error loading matchup data:', error)
     // Fallback to database - get current week games only
-    // Use the new season detection system
-    const { getUserSeasonFilter } = await import('@/lib/season-detection')
-    const seasonFilter = await getUserSeasonFilter(user.id)
+                 // Use the client-side season detection system
+             const { getUserSeasonFilter } = await import('@/lib/season-detection-client')
+             const seasonFilter = await getUserSeasonFilter(user.id)
     
     const { data: dbMatchupsData } = await supabase
       .from('matchups')
@@ -504,7 +482,23 @@ export default function DashboardPage() {
       
       // Load user's picks for their default week
       console.log('Debug: Loading picks for user:', user.id)
-      console.log('Debug: User default week:', userDefaultWeek)
+      
+      // Use the client-side season detection system to get the correct column name
+      const { getCurrentSeasonInfo } = await import('@/lib/season-detection-client')
+      const { isUserTester } = await import('@/lib/user-types-client')
+      const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
+      
+      const seasonInfo = await getCurrentSeasonInfo(user.id)
+      const isTester = await isUserTester(user.id)
+      const userDefaultWeekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
+      
+      console.log('Debug: Season detection info:', {
+        seasonInfo,
+        isTester,
+        userDefaultWeekColumn,
+        userType: profileData?.user_type,
+        isAdmin: profileData?.is_admin
+      })
       
       const { data: allUserPicksForWeek, error: picksError } = await supabase
         .from('picks')
@@ -512,19 +506,18 @@ export default function DashboardPage() {
         .eq('user_id', user.id)
       
       console.log('Debug: All picks query result:', { allUserPicksForWeek, picksError })
+      console.log('Debug: Looking for picks in column:', userDefaultWeekColumn)
       
       // Transform picks to work with the new table structure - show picks for user's default week
       const userPicksData: Pick[] = allUserPicksForWeek?.map(pick => {
-        // Get the user's default week column name using centralized logic
-        const userDefaultWeekColumn = getWeekColumnName(userDefaultWeek)
-        
         // Check if this pick is allocated to the user's default week
         const userDefaultWeekValue = pick[userDefaultWeekColumn as keyof typeof pick]
         
         console.log(`Debug: Processing pick ${pick.pick_name}:`, {
           userDefaultWeekColumn,
           userDefaultWeekValue,
-          pick_id: pick.id
+          pick_id: pick.id,
+          allColumns: Object.keys(pick).filter(key => key.includes('_team_matchup_id'))
         })
         
         let teamName = null
@@ -558,7 +551,7 @@ export default function DashboardPage() {
         } as Pick
       }) || []
       
-      console.log('Debug: Transformed picks for current week:', userPicksData)
+      console.log('Debug: Final transformed picks for current week:', userPicksData)
       
       setUserPicks(userPicksData || [])
       setDbPicksRemaining(dbPicksRemaining)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { getUserDefaultWeek } from '@/lib/user-types'
+import { getUserDefaultWeek } from '@/lib/season-detection'
 
 export async function GET(request: NextRequest) {
   try {
