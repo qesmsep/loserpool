@@ -30,6 +30,9 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
   
   const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
   
+  console.log('🔍 Season Detection - Global Settings current_week:', currentWeekSetting?.value)
+  console.log('🔍 Season Detection - Parsed currentWeek:', currentWeek)
+  
   // Simple logic: if we're in preseason (before 8/26/25), show preseason
   // Otherwise, show regular season
   const preseasonCutoff = new Date('2025-08-26')
@@ -37,19 +40,25 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
   
   if (now < preseasonCutoff) {
     // Preseason
+    const seasonDisplay = `PRE${currentWeek}`
+    console.log('🔍 Season Detection - Preseason mode, seasonDisplay:', seasonDisplay)
+    
     return {
       currentSeason: 'PRE',
       currentWeek,
-      seasonDisplay: `PRE${currentWeek}`,
+      seasonDisplay,
       isPreseason: true,
       isRegularSeason: false
     }
   } else {
     // Regular Season
+    const seasonDisplay = `REG${currentWeek}`
+    console.log('🔍 Season Detection - Regular season mode, seasonDisplay:', seasonDisplay)
+    
     return {
       currentSeason: 'REG',
       currentWeek,
-      seasonDisplay: `REG${currentWeek}`,
+      seasonDisplay,
       isPreseason: false,
       isRegularSeason: true
     }
@@ -72,8 +81,11 @@ export async function getUserSeasonFilter(userId: string): Promise<string> {
     .single()
   
   if (!user) {
+    console.log('🔍 getUserSeasonFilter - No user found, fallback to REG1')
     return 'REG1' // fallback
   }
+  
+  console.log('🔍 getUserSeasonFilter - User:', { id: userId, user_type: user.user_type, is_admin: user.is_admin })
   
   // Check if user is a tester
   const isTester = user.user_type === 'tester' || (user.is_admin && user.user_type !== 'active')
@@ -85,6 +97,7 @@ export async function getUserSeasonFilter(userId: string): Promise<string> {
     
     if (now < preseasonCutoff) {
       // Before 8/26/25, testers see preseason week 3
+      console.log('🔍 getUserSeasonFilter - Tester before cutoff, returning PRE3')
       return 'PRE3'
     } else {
       // After 8/26/25, testers see current regular season week
@@ -95,7 +108,9 @@ export async function getUserSeasonFilter(userId: string): Promise<string> {
         .single()
       
       const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
-      return `REG${currentWeek}`
+      const seasonFilter = `REG${currentWeek}`
+      console.log('🔍 getUserSeasonFilter - Tester after cutoff, returning:', seasonFilter)
+      return seasonFilter
     }
   } else {
     // Non-testers always see current regular season week
@@ -106,7 +121,9 @@ export async function getUserSeasonFilter(userId: string): Promise<string> {
       .single()
     
     const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
-    return `REG${currentWeek}`
+    const seasonFilter = `REG${currentWeek}`
+    console.log('🔍 getUserSeasonFilter - Non-tester, returning:', seasonFilter)
+    return seasonFilter
   }
 }
 
@@ -121,12 +138,15 @@ export async function getUserDefaultWeek(userId: string): Promise<number> {
   
   if (isTester) {
     // Testers see current week (preseason or regular season)
+    console.log('🔍 getUserDefaultWeek - Tester, returning week:', seasonInfo.currentWeek)
     return seasonInfo.currentWeek
   } else {
     // Non-testers see regular season week
     if (seasonInfo.isPreseason) {
+      console.log('🔍 getUserDefaultWeek - Non-tester in preseason, returning week 1')
       return 1 // Regular season week 1
     } else {
+      console.log('🔍 getUserDefaultWeek - Non-tester in regular season, returning week:', seasonInfo.currentWeek)
       return seasonInfo.currentWeek
     }
   }
