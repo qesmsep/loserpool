@@ -1228,11 +1228,11 @@ export default function AdminUsersPage() {
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
-                    <div><span className="text-blue-200">User ID:</span> <span className="text-gray-300 font-mono">{selectedUser.user.id}</span></div>
-                    <div><span className="text-blue-200">Name:</span> {selectedUser.user.first_name} {selectedUser.user.last_name}</div>
-                    <div><span className="text-blue-200">Email:</span> {selectedUser.user.email}</div>
-                    <div><span className="text-blue-200">Username:</span> {selectedUser.user.username || 'Not set'}</div>
-                    <div><span className="text-blue-200">Phone:</span> {formatPhoneNumber(selectedUser.user.phone)}</div>
+                    <div><span className="text-blue-200">User ID:</span> <span className="text-white font-mono">{selectedUser.user.id}</span></div>
+                    <div><span className="text-blue-200">Name:</span> <span className="text-white">{selectedUser.user.first_name} {selectedUser.user.last_name}</span></div>
+                    <div><span className="text-blue-200">Email:</span> <span className="text-white">{selectedUser.user.email}</span></div>
+                    <div><span className="text-blue-200">Username:</span> <span className="text-white">{selectedUser.user.username || 'Not set'}</span></div>
+                    <div><span className="text-blue-200">Phone:</span> <span className="text-white">{formatPhoneNumber(selectedUser.user.phone)}</span></div>
                     <div><span className="text-blue-200">User Type:</span> 
                       <span className={`ml-2 px-2 py-1 text-xs rounded ${
                         selectedUser.user.user_type === 'tester' ? 'bg-purple-500/20 text-purple-200' :
