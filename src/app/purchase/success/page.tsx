@@ -16,7 +16,7 @@ interface PurchaseSuccessData {
 function PurchaseSuccessContent() {
   const [loading, setLoading] = useState(true)
   const [purchaseData, setPurchaseData] = useState<PurchaseSuccessData | null>(null)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 

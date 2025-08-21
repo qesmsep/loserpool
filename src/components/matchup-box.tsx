@@ -509,11 +509,11 @@ export default function MatchupBox({
   const awayIsPicked = awayTeamPicks.length > 0
   const homeIsPicked = homeTeamPicks.length > 0
   
-  const awayPicksCount = awayTeamPicks.reduce((sum, pick) => sum + pick.picks_count, 0)
-  const homePicksCount = homeTeamPicks.reduce((sum, pick) => sum + pick.picks_count, 0)
+  const awayPicksCount = awayTeamPicks.reduce((sum, pick) => sum + (pick.picks_count as number || 0), 0)
+  const homePicksCount = homeTeamPicks.reduce((sum, pick) => sum + (pick.picks_count as number || 0), 0)
   
-  const awayPickNames = awayTeamPicks.map(pick => pick.pick_name).filter(Boolean)
-  const homePickNames = homeTeamPicks.map(pick => pick.pick_name).filter(Boolean)
+  const awayPickNames = awayTeamPicks.map(pick => pick.pick_name as string).filter(Boolean)
+  const homePickNames = homeTeamPicks.map(pick => pick.pick_name as string).filter(Boolean)
 
   const disabled = checkDeadlinePassed()
   const canShowControls = showControls || (!picksSaved && userPicks.length > 0)

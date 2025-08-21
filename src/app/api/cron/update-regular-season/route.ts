@@ -148,8 +148,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to update matchups for a specific week
-async function updateMatchupsForWeek(schedule: {
+// Type for schedule data
+type ScheduleData = {
   games?: Array<{
     away_team: string;
     home_team: string;
@@ -161,7 +161,10 @@ async function updateMatchupsForWeek(schedule: {
   }>;
   season_type: string;
   week_number: number;
-}) {
+}
+
+// Helper function to update matchups for a specific week
+async function updateMatchupsForWeek(schedule: ScheduleData) {
   if (!schedule.games || schedule.games.length === 0) {
     console.log('No games to update for this week')
     return

@@ -1,5 +1,17 @@
 import { createServerSupabaseClient } from './supabase-server'
 
+// Import ChatGPTNFLGame type
+interface ChatGPTNFLGame {
+  id: string
+  away_team: string
+  home_team: string
+  game_time: string
+  day: string
+  status: string
+  venue?: string
+  network?: string
+}
+
 // Types for the data we'll be working with
 export interface ESPNGame {
   id: string
@@ -152,21 +164,21 @@ export class MatchupDataService {
     try {
       // Try Preseason Data Service first (most reliable for preseason)
       const { preseasonDataService } = await import('@/lib/preseason-data-service')
-      return await preseasonDataService.getCurrentWeekSchedule()
+      return await preseasonDataService.getCurrentWeekSchedule() as unknown as Record<string, unknown>
     } catch (preseasonError) {
       console.error('Preseason data service failed:', preseasonError)
       
       // Fallback to ChatGPT
       try {
         const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
-        return await chatgptNFLService.getCurrentWeekSchedule()
+        return await chatgptNFLService.getCurrentWeekSchedule() as unknown as Record<string, unknown>
       } catch (chatgptError) {
         console.error('ChatGPT NFL service failed:', chatgptError)
         
         // Final fallback to Puppeteer scraping
         try {
           const { nflScraper } = await import('@/lib/nfl-scraper')
-          return await nflScraper.getGamesFromAPI(2025, 3)
+          return await nflScraper.getGamesFromAPI(2025, 3) as unknown as Record<string, unknown>
         } catch (scraperError) {
           console.error('Puppeteer scraping also failed:', scraperError)
           throw new Error(`Failed to fetch NFL schedule: Preseason error - ${preseasonError instanceof Error ? preseasonError.message : 'Unknown'}, ChatGPT error - ${chatgptError instanceof Error ? chatgptError.message : 'Unknown'}, Scraper error - ${scraperError instanceof Error ? scraperError.message : 'Unknown'}`)
@@ -180,21 +192,21 @@ export class MatchupDataService {
     try {
       // Try Preseason Data Service first (most reliable for preseason)
       const { preseasonDataService } = await import('@/lib/preseason-data-service')
-      return await preseasonDataService.getNextWeekSchedule()
+      return await preseasonDataService.getNextWeekSchedule() as unknown as Record<string, unknown>
     } catch (preseasonError) {
       console.error('Preseason data service failed for next week:', preseasonError)
       
       // Fallback to ChatGPT
       try {
         const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
-        return await chatgptNFLService.getNextWeekSchedule()
+        return await chatgptNFLService.getNextWeekSchedule() as unknown as Record<string, unknown>
       } catch (chatgptError) {
         console.error('ChatGPT NFL service failed for next week:', chatgptError)
         
         // Final fallback to Puppeteer scraping
         try {
           const { nflScraper } = await import('@/lib/nfl-scraper')
-          return await nflScraper.getGamesFromAPI(2025, 4)
+          return await nflScraper.getGamesFromAPI(2025, 4) as unknown as Record<string, unknown>
         } catch (scraperError) {
           console.error('Puppeteer scraping also failed for next week:', scraperError)
           throw new Error(`Failed to fetch next week NFL schedule: Preseason error - ${preseasonError instanceof Error ? preseasonError.message : 'Unknown'}, ChatGPT error - ${chatgptError instanceof Error ? chatgptError.message : 'Unknown'}, Scraper error - ${scraperError instanceof Error ? scraperError.message : 'Unknown'}`)
@@ -595,13 +607,14 @@ export class MatchupDataService {
       }
 
       // Process each NFL.com game
-      for (const game of nflSchedule.games) {
+      const games = (nflSchedule as Record<string, unknown>).games as Array<Record<string, unknown>>
+      for (const game of games) {
         processed++
         
         try {
           // Convert game to our format
           const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
-          const gameData: Record<string, unknown> = chatgptNFLService.convertToMatchupFormat(game)
+          const gameData: Record<string, unknown> = chatgptNFLService.convertToMatchupFormat(game as unknown as ChatGPTNFLGame)
 
           // Find matching matchup in database
           const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
@@ -615,22 +628,22 @@ export class MatchupDataService {
 
           // Prepare update data
           const updateData: Partial<MatchupUpdate> = {
-            status: gameData.status,
-            awayScore: gameData.away_score,
-            homeScore: gameData.home_score,
-            venue: gameData.venue,
-            weatherForecast: gameData.weather_forecast,
-            temperature: gameData.temperature,
-            windSpeed: gameData.wind_speed,
-            humidity: gameData.humidity,
-            isDome: gameData.is_dome,
-            awaySpread: gameData.away_spread,
-            homeSpread: gameData.home_spread,
-            overUnder: gameData.over_under,
-            oddsLastUpdated: gameData.odds_last_updated,
-            dataSource: gameData.data_source,
-            lastApiUpdate: gameData.last_api_update,
-            winner: gameData.winner
+            status: gameData.status as string,
+            awayScore: gameData.away_score as number,
+            homeScore: gameData.home_score as number,
+            venue: gameData.venue as string,
+            weatherForecast: gameData.weather_forecast as string,
+            temperature: gameData.temperature as number,
+            windSpeed: gameData.wind_speed as number,
+            humidity: gameData.humidity as number,
+            isDome: gameData.is_dome as boolean,
+            awaySpread: gameData.away_spread as number,
+            homeSpread: gameData.home_spread as number,
+            overUnder: gameData.over_under as number,
+            oddsLastUpdated: gameData.odds_last_updated as Date,
+            dataSource: gameData.data_source as string,
+            lastApiUpdate: gameData.last_api_update as Date,
+            winner: gameData.winner as string
           }
 
           // Add weather data if not a dome (API-Sports doesn't provide venue info, so we'll skip for now)
@@ -643,7 +656,7 @@ export class MatchupDataService {
           }
 
           // Add odds data
-          const oddsData = await this.fetchOddsData(gameData.away_team, gameData.home_team)
+          const oddsData = await this.fetchOddsData(gameData.away_team as string, gameData.home_team as string)
           updateData.awaySpread = oddsData.awaySpread
           updateData.homeSpread = oddsData.homeSpread
           updateData.overUnder = oddsData.overUnder
@@ -831,7 +844,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       
       // Fetch current week NFL.com schedule data
       const nflSchedule = await this.fetchNFLSchedule()
-      gamesFound = nflSchedule.games?.length || 0
+      gamesFound = ((nflSchedule as Record<string, unknown>).games as Array<unknown>)?.length || 0
       
       // Get existing matchups from database for current week
       const { data: existingMatchups, error: fetchError } = await this.supabase
@@ -844,7 +857,8 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       }
 
       // Process each NFL.com game
-      for (const game of nflSchedule.games || []) {
+      const games = (nflSchedule as Record<string, unknown>).games as Array<Record<string, unknown>> || []
+      for (const game of games) {
         try {
           // Convert game to our format
           let gameData: Record<string, unknown>
@@ -935,7 +949,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       
       // Fetch next week NFL.com schedule data
       const nflSchedule = await this.fetchNextWeekNFLSchedule()
-      gamesFound = nflSchedule.games?.length || 0
+      gamesFound = ((nflSchedule as Record<string, unknown>).games as Array<unknown>)?.length || 0
       
       // Get existing matchups from database for next week
       const { data: existingMatchups, error: fetchError } = await this.supabase
@@ -948,7 +962,8 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       }
 
       // Process each NFL.com game
-      for (const game of nflSchedule.games || []) {
+      const games = (nflSchedule as Record<string, unknown>).games as Array<Record<string, unknown>> || []
+      for (const game of games) {
         try {
           // Convert game to our format
           let gameData: Record<string, unknown>

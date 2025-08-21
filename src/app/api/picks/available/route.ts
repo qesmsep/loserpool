@@ -6,7 +6,7 @@ import { requireAuth } from '@/lib/auth'
 type PickData = {
   pick_name: string
   status: string
-  [key: string]: string | null // Allow dynamic week column properties
+  [key: string]: string | null | undefined // Allow dynamic week column properties
 }
 
 export async function GET() {

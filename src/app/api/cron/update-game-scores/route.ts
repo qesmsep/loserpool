@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
 
     // Create a map of ESPN games by team matchup for easy lookup
-    const espnGameMap = new Map<string, { status: string; away_score: number | null; home_score: number | null; last_api_update: string; quarter_info: string | null; broadcast_info: string | null }>()
+    const espnGameMap = new Map<string, Record<string, unknown>>()
     allEspnGames.forEach(game => {
       const convertedGame = espnService.convertToMatchupFormat(game)
       if (convertedGame) {
@@ -164,12 +164,12 @@ export async function POST(request: NextRequest) {
         console.log(`✅ Found ESPN game for: ${matchup.away_team} @ ${matchup.home_team}`)
 
         // Extract data from ESPN API
-        const newStatus = espnGame.status
-        const awayScore = espnGame.away_score
-        const homeScore = espnGame.home_score
-        const lastUpdated = espnGame.last_api_update
-        const quarterInfo = espnGame.quarter_info
-        const broadcastInfo = espnGame.broadcast_info
+        const newStatus = espnGame.status as string
+        const awayScore = espnGame.away_score as number | null
+        const homeScore = espnGame.home_score as number | null
+        const lastUpdated = espnGame.last_api_update as string
+        const quarterInfo = espnGame.quarter_info as string | null
+        const broadcastInfo = espnGame.broadcast_info as string | null
         
         // ESPN doesn't provide weather data, so we'll keep existing values
         const weather = matchup.weather_forecast

@@ -172,7 +172,7 @@ interface TeamStats {
 }
 
 export class TeamUpdateService {
-  private supabase: any
+  private supabase: ReturnType<typeof createServerSupabaseClient>
 
   constructor() {
     this.supabase = createServerSupabaseClient()
@@ -181,7 +181,7 @@ export class TeamUpdateService {
 
 
   // Get team data from database
-  async getTeamData(teamName: string, season: number = 2024): Promise<any> {
+  async getTeamData(teamName: string, season: number = 2024): Promise<Record<string, unknown> | null> {
     try {
       const { data, error } = await this.supabase
         .from('teams')
@@ -203,7 +203,7 @@ export class TeamUpdateService {
   }
 
   // Get all teams for a season
-  async getAllTeams(season: number = 2024): Promise<any[]> {
+  async getAllTeams(season: number = 2024): Promise<Array<Record<string, unknown>>> {
     try {
       const { data, error } = await this.supabase
         .from('teams')

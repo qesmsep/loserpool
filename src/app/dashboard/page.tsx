@@ -79,7 +79,7 @@ function getEliminatedTeamName(pick: Pick): string | null {
   
   for (const column of weekColumns) {
     const value = (pick as Record<string, unknown>)[column]
-    if (value) {
+    if (value && typeof value === 'string') {
       const parts = value.split('_')
       if (parts.length >= 2) {
         return parts.slice(1).join('_')

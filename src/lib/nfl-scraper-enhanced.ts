@@ -492,7 +492,7 @@ export class EnhancedNFLScraperService {
   }
 
   // Convert scraped game to our internal format
-  convertToMatchupFormat(game: NFLGame): any {
+  convertToMatchupFormat(game: NFLGame): Record<string, unknown> {
     return {
       away_team: game.away_team,
       home_team: game.home_team,
@@ -517,7 +517,7 @@ export class EnhancedNFLScraperService {
   }
 
   // Convert scraped game data to standardized matchup format
-  static convertToMatchupFormat(game: NFLGame, weekNumber: number, seasonType: string): any {
+  static convertToMatchupFormat(game: NFLGame, weekNumber: number, seasonType: string): Record<string, unknown> {
     // Determine season based on week number and season type
     let season: string
     if (seasonType === 'preseason') {

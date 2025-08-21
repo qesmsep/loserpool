@@ -258,7 +258,7 @@ export class MockNFLDataService {
   }
 
   // Convert mock game to our internal format
-  convertToMatchupFormat(game: MockNFLGame): any {
+  convertToMatchupFormat(game: MockNFLGame): Record<string, unknown> {
     return {
       away_team: game.away_team,
       home_team: game.home_team,

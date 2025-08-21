@@ -143,7 +143,7 @@ export class MatchupUpdateService {
   }
 
   // Update matchups for a specific week
-  async updateMatchupsForWeek(schedule: any): Promise<void> {
+  async updateMatchupsForWeek(schedule: Record<string, unknown>): Promise<void> {
     try {
       const supabase = createServiceRoleClient()
       const weekNumber = schedule.week_number.toString()
@@ -165,7 +165,7 @@ export class MatchupUpdateService {
       console.log(`Deleted existing matchups for season ${season}`)
 
       // Insert new matchups
-      const matchupsToInsert = schedule.games.map((game: any) => 
+      const matchupsToInsert = schedule.games.map((game: Record<string, unknown>) => 
         NFLScheduleScraper.convertToMatchupFormat(game, schedule.week_number, schedule.season_type)
       )
 
@@ -195,7 +195,7 @@ export class MatchupUpdateService {
   }
 
   // Get current week matchups from database
-  async getCurrentWeekMatchups(): Promise<any[]> {
+  async getCurrentWeekMatchups(): Promise<Array<Record<string, unknown>>> {
     const supabase = createServiceRoleClient()
     
     try {
@@ -242,7 +242,7 @@ export class MatchupUpdateService {
   }
 
   // Get next week matchups from database
-  async getNextWeekMatchups(): Promise<any[]> {
+  async getNextWeekMatchups(): Promise<Array<Record<string, unknown>>> {
     const supabase = createServiceRoleClient()
     
     try {
