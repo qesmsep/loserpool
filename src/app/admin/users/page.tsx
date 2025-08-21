@@ -20,6 +20,12 @@ interface User {
   activePicks: number
   eliminatedPicks: number
   isEliminated: boolean
+  currentWeekPicks: Array<{
+    pick_name: string
+    status: string
+    picks_count: number
+    team_matchup_id: string
+  }>
 }
 
 interface UserPick {
@@ -30,10 +36,11 @@ interface UserPick {
   team_picked: string
   opponent: string
   is_home: boolean
-  game_time: string
-  game_status: string
+  game_time: string | null
+  game_status: string | null
   away_score: number | null
   home_score: number | null
+  has_team_selected: boolean
 }
 
 interface UserDetails {
@@ -110,6 +117,7 @@ export default function AdminUsersPage() {
     user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   })
   const [picksToAdd, setPicksToAdd] = useState(0)
+  const [picksToReduce, setPicksToReduce] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   
   // Filter states
@@ -339,6 +347,45 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleReducePicks = async (userId: string) => {
+    try {
+      setError('')
+      
+      if (picksToReduce <= 0) {
+        setError('Please enter a valid number of picks to reduce')
+        return
+      }
+
+      if (!confirm(`Are you sure you want to reduce ${picksToReduce} picks for this user? This action cannot be undone.`)) {
+        return
+      }
+
+      const response = await fetch('/api/admin/reduce-picks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId, 
+          picksCount: picksToReduce 
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reduce picks')
+      }
+
+      setSuccess(`${picksToReduce} picks reduced successfully`)
+      setPicksToReduce(0)
+      loadUsers()
+    } catch (error) {
+      console.error('Error reducing picks:', error)
+      setError(`Failed to reduce picks: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return
@@ -381,11 +428,13 @@ export default function AdminUsersPage() {
       user_type: user.user_type
     })
     setPicksToAdd(0)
+    setPicksToReduce(0)
   }
 
   const cancelEdit = () => {
     setEditingUser(null)
     setPicksToAdd(0)
+    setPicksToReduce(0)
   }
 
   const handleViewUserDetails = async (userId: string) => {
@@ -718,6 +767,9 @@ export default function AdminUsersPage() {
                     Picks
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                    Current Week Picks
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
@@ -846,6 +898,52 @@ export default function AdminUsersPage() {
                           >
                             Add {picksToAdd} Picks
                           </button>
+                          
+                          <div className="border-t border-white/20 pt-2">
+                            <div>
+                              <label className="block text-xs font-medium text-red-200 mb-1">Reduce Picks</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={picksToReduce}
+                                onChange={(e) => setPicksToReduce(parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-red-500 bg-white/10 text-white"
+                                placeholder="0"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleReducePicks(user.id)}
+                              disabled={picksToReduce <= 0}
+                              className="w-full px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                            >
+                              Reduce {picksToReduce} Picks
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.currentWeekPicks.length === 0 ? (
+                        <div className="text-sm text-gray-400 italic">No picks this week</div>
+                      ) : (
+                        <div className="space-y-1">
+                          {user.currentWeekPicks.map((pick, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-white font-medium">{pick.pick_name}</span>
+                                <span className={`px-1.5 py-0.5 text-xs rounded ${
+                                  pick.status === 'eliminated' ? 'bg-red-500/20 text-red-200' :
+                                  pick.status === 'active' ? 'bg-green-500/20 text-green-200' :
+                                  'bg-blue-500/20 text-blue-200'
+                                }`}>
+                                  {pick.status}
+                                </span>
+                              </div>
+                              <span className="text-blue-200 text-xs">
+                                ({pick.picks_count})
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </td>
@@ -1040,6 +1138,7 @@ export default function AdminUsersPage() {
               <div className="bg-white/5 rounded-lg p-4">
                 <h4 className="text-lg font-medium text-white mb-3">User Information</h4>
                 <div className="space-y-2 text-sm">
+                  <div><span className="text-blue-200">User ID:</span> <span className="text-gray-300 font-mono">{selectedUser.user.id}</span></div>
                   <div><span className="text-blue-200">Name:</span> {selectedUser.user.first_name} {selectedUser.user.last_name}</div>
                   <div><span className="text-blue-200">Email:</span> {selectedUser.user.email}</div>
                   <div><span className="text-blue-200">Username:</span> {selectedUser.user.username || 'Not set'}</div>
@@ -1096,72 +1195,96 @@ export default function AdminUsersPage() {
                   <p className="text-blue-200">No picks made for this week yet.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {selectedUser.picks.map((pick) => (
-                    <div key={pick.id} className={`border rounded-lg p-4 ${
-                      pick.status === 'eliminated' ? 'border-red-500/30 bg-red-500/10' :
-                      pick.status === 'active' ? 'border-green-500/30 bg-green-500/10' :
-                      'border-blue-500/30 bg-blue-500/10'
-                    }`}>
-                      <div className="flex justify-between items-start mb-2">
-                        <h5 className="font-medium text-white">{pick.pick_name}</h5>
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          pick.status === 'eliminated' ? 'bg-red-500/20 text-red-200' :
-                          pick.status === 'active' ? 'bg-green-500/20 text-green-200' :
-                          'bg-blue-500/20 text-blue-200'
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-white/20">
+                    <thead className="bg-white/5">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Pick Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Chosen Team</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Picks Count</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Game Info</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/20">
+                      {selectedUser.picks.map((pick) => (
+                        <tr key={pick.id} className={`${
+                          pick.status === 'eliminated' ? 'bg-red-500/5' :
+                          pick.status === 'active' ? 'bg-green-500/5' :
+                          'bg-blue-500/5'
                         }`}>
-                          {pick.status}
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1 text-sm">
-                        <div>
-                          <span className="text-blue-200">Picks Count:</span> 
-                          <span className="ml-2 text-white font-medium">{pick.picks_count}</span>
-                        </div>
-                        <div>
-                          <span className="text-blue-200">Team:</span> 
-                          <span className="ml-2 text-white font-medium">{pick.team_picked}</span>
-                          {pick.is_home && <span className="ml-1 text-xs text-blue-200">(Home)</span>}
-                        </div>
-                        <div>
-                          <span className="text-blue-200">vs:</span> 
-                          <span className="ml-2 text-white">{pick.opponent}</span>
-                        </div>
-                        
-                        {pick.game_status && (
-                          <div>
-                            <span className="text-blue-200">Game Status:</span> 
-                            <span className={`ml-2 ${
-                              pick.game_status === 'final' ? 'text-red-200' :
-                              pick.game_status === 'live' ? 'text-green-200' :
-                              'text-yellow-200'
+                          <td className="px-4 py-3 text-sm font-medium text-white">
+                            {pick.pick_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <div className="flex items-center space-x-2">
+                              <span className={`font-medium ${
+                                pick.team_picked === 'Pending' ? 'text-yellow-300' : 'text-white'
+                              }`}>
+                                {pick.team_picked}
+                              </span>
+                              {pick.team_picked !== 'Pending' && pick.is_home && (
+                                <span className="text-xs text-blue-200">(Home)</span>
+                              )}
+                            </div>
+                            {pick.team_picked !== 'Pending' && (
+                              <div className="text-xs text-gray-400">
+                                vs {pick.opponent}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-white">
+                            {pick.picks_count}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 text-xs rounded ${
+                              pick.status === 'eliminated' ? 'bg-red-500/20 text-red-200' :
+                              pick.status === 'active' ? 'bg-green-500/20 text-green-200' :
+                              'bg-blue-500/20 text-blue-200'
                             }`}>
-                              {pick.game_status}
+                              {pick.status}
                             </span>
-                          </div>
-                        )}
-                        
-                        {pick.away_score !== null && pick.home_score !== null && (
-                          <div>
-                            <span className="text-blue-200">Score:</span> 
-                            <span className="ml-2 text-white">
-                              {pick.away_score} - {pick.home_score}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {pick.game_time && (
-                          <div>
-                            <span className="text-blue-200">Game Time:</span> 
-                            <span className="ml-2 text-white">
-                              {new Date(pick.game_time).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {pick.team_picked === 'Pending' ? (
+                              <span className="text-yellow-300 text-xs">No team selected</span>
+                            ) : (
+                              <div className="space-y-1 text-xs">
+                                {pick.game_status && (
+                                  <div>
+                                    <span className="text-blue-200">Status:</span> 
+                                    <span className={`ml-1 ${
+                                      pick.game_status === 'final' ? 'text-red-200' :
+                                      pick.game_status === 'live' ? 'text-green-200' :
+                                      'text-yellow-200'
+                                    }`}>
+                                      {pick.game_status}
+                                    </span>
+                                  </div>
+                                )}
+                                {pick.away_score !== null && pick.home_score !== null && (
+                                  <div>
+                                    <span className="text-blue-200">Score:</span> 
+                                    <span className="ml-1 text-white">
+                                      {pick.away_score} - {pick.home_score}
+                                    </span>
+                                  </div>
+                                )}
+                                {pick.game_time && (
+                                  <div>
+                                    <span className="text-blue-200">Time:</span> 
+                                    <span className="ml-1 text-white">
+                                      {new Date(pick.game_time).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

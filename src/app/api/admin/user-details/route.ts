@@ -53,12 +53,12 @@ export async function GET(request: Request) {
       weekColumn = `post${currentWeek - 20}_team_matchup_id`
     }
 
-    // Get user's picks for current week
+    // Get user's picks for current week (both allocated and unallocated)
     const { data: picks, error: picksError } = await supabaseAdmin
       .from('picks')
       .select('*')
       .eq('user_id', userId)
-      .not(weekColumn, 'is', null)
+      .not('pick_name', 'is', null)
 
     if (picksError) {
       console.error('Error fetching picks:', picksError)
@@ -107,20 +107,22 @@ export async function GET(request: Request) {
     const picksWithDetails = picks?.map(pick => {
       const teamMatchupId = (pick as Record<string, unknown>)[weekColumn]
       const matchupInfo = teamMatchupId ? matchupMapping[teamMatchupId as string] : null
+      const hasTeamSelected = teamMatchupId !== null && teamMatchupId !== undefined
       
       return {
         id: pick.id,
         pick_name: pick.pick_name,
         picks_count: pick.picks_count,
         status: pick.status,
-        team_picked: matchupInfo?.team || 'Unknown',
-        opponent: matchupInfo?.opponent || 'Unknown',
-        is_home: matchupInfo?.isHome || false,
-        game_time: matchupInfo?.matchup?.game_time,
-        game_status: matchupInfo?.matchup?.status,
-        away_score: matchupInfo?.matchup?.away_score,
-        home_score: matchupInfo?.matchup?.home_score,
-        team_matchup_id: teamMatchupId
+        team_picked: hasTeamSelected ? (matchupInfo?.team || 'Unknown') : 'Pending',
+        opponent: hasTeamSelected ? (matchupInfo?.opponent || 'Unknown') : 'Pending',
+        is_home: hasTeamSelected ? (matchupInfo?.isHome || false) : false,
+        game_time: hasTeamSelected ? matchupInfo?.matchup?.game_time : null,
+        game_status: hasTeamSelected ? matchupInfo?.matchup?.status : null,
+        away_score: hasTeamSelected ? matchupInfo?.matchup?.away_score : null,
+        home_score: hasTeamSelected ? matchupInfo?.matchup?.home_score : null,
+        team_matchup_id: teamMatchupId,
+        has_team_selected: hasTeamSelected
       }
     }) || []
 
