@@ -364,7 +364,7 @@ export default function PurchasePage() {
             <h3 className="text-lg font-semibold text-white mb-2">How it works:</h3>
             <ul className="text-blue-200 space-y-1 text-sm">
               <li>• Pick teams you think will LOSE each week</li>
-              <li>• If your pick wins, you're eliminated</li>
+              <li>• If your pick wins, you&apos;re eliminated</li>
               <li>• If your pick loses, you survive to next week</li>
               <li>• Last person standing wins the pool!</li>
             </ul>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { formatDeadlineForUser, isDeadlinePassed, formatGameTime, calculatePicksDeadline } from '@/lib/timezone'
-import { Save, Clock, AlertTriangle, CheckCircle, Plus, Minus, Tag, X } from 'lucide-react'
+import { Save, Clock, AlertTriangle, Plus, Minus, Tag, X } from 'lucide-react'
 import Header from '@/components/header'
 import PickNamesManager from '@/components/pick-names-manager'
 import StyledTeamName from '@/components/styled-team-name'
@@ -169,14 +169,9 @@ export default function PicksPage() {
     setShowPickPopup(true)
   }
 
-  const handlePicksAllocated = (newPicks: any[]) => {
+  const handlePicksAllocated = (newPicks: Array<Record<string, unknown>>) => {
     // Refresh the data to show the new picks
     loadData()
-  }
-
-  const addPickToTeam = (matchupId: string, teamName: string) => {
-    // This function is kept for backward compatibility but now triggers the popup
-    handleTeamClick(matchupId, teamName)
   }
 
   const addNamedPickToTeam = (matchupId: string, teamName: string, pickName: PickNameWithUsage) => {

@@ -148,7 +148,7 @@ export class MatchupDataService {
   }
 
   // Fetch current NFL season data using Preseason Data Service (primary), ChatGPT (secondary), or Puppeteer (fallback)
-  async fetchNFLSchedule(): Promise<any> {
+  async fetchNFLSchedule(): Promise<Record<string, unknown>> {
     try {
       // Try Preseason Data Service first (most reliable for preseason)
       const { preseasonDataService } = await import('@/lib/preseason-data-service')
@@ -176,7 +176,7 @@ export class MatchupDataService {
   }
 
   // Fetch next week's NFL schedule using Preseason Data Service (primary), ChatGPT (secondary), or Puppeteer (fallback)
-  async fetchNextWeekNFLSchedule(): Promise<any> {
+  async fetchNextWeekNFLSchedule(): Promise<Record<string, unknown>> {
     try {
       // Try Preseason Data Service first (most reliable for preseason)
       const { preseasonDataService } = await import('@/lib/preseason-data-service')
@@ -601,10 +601,10 @@ export class MatchupDataService {
         try {
           // Convert game to our format
           const { chatgptNFLService } = await import('@/lib/chatgpt-nfl-service')
-          const gameData: any = chatgptNFLService.convertToMatchupFormat(game)
+          const gameData: Record<string, unknown> = chatgptNFLService.convertToMatchupFormat(game)
 
           // Find matching matchup in database
-          const existingMatchup = existingMatchups?.find((m: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
             m.away_team === gameData.away_team && m.home_team === gameData.home_team
           )
 
@@ -847,7 +847,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       for (const game of nflSchedule.games || []) {
         try {
           // Convert game to our format
-          let gameData: any
+          let gameData: Record<string, unknown>
           try {
             const { preseasonDataService } = await import('@/lib/preseason-data-service')
             gameData = preseasonDataService.convertToMatchupFormat(game)
@@ -862,7 +862,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
           }
 
           // Find matching matchup in database
-          const existingMatchup = existingMatchups?.find((m: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
             m.away_team === gameData.away_team && m.home_team === gameData.home_team
           )
 
@@ -951,7 +951,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
       for (const game of nflSchedule.games || []) {
         try {
           // Convert game to our format
-          let gameData: any
+          let gameData: Record<string, unknown>
           try {
             const { preseasonDataService } = await import('@/lib/preseason-data-service')
             gameData = preseasonDataService.convertToMatchupFormat(game)
@@ -966,7 +966,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
           }
 
           // Find matching matchup in database
-          const existingMatchup = existingMatchups?.find((m: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
             m.away_team === gameData.away_team && m.home_team === gameData.home_team
           )
 
@@ -1024,7 +1024,7 @@ ${htmlBody.replace(/<[^>]*>/g, '')}`
   }
 
   // Helper method to check if data has changed
-  private hasDataChanged(existingMatchup: any, newData: any): boolean { // eslint-disable-line @typescript-eslint/no-explicit-any
+  private hasDataChanged(existingMatchup: Record<string, unknown>, newData: Record<string, unknown>): boolean {
     // Compare key fields that might change
     const fieldsToCompare = [
       'status',

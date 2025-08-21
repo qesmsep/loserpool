@@ -40,12 +40,12 @@ export default async function DebugAuthPage() {
             {envVars.supabaseUrl === 'SET' && (
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
                 <p className="text-sm text-yellow-800">
-                  <strong>Note:</strong> If you're still getting 400/500 errors, check your Supabase project settings:
+                  <strong>Note:</strong> If you&apos;re still getting 400/500 errors, check your Supabase project settings:
                 </p>
                 <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
                   <li>Go to your Supabase dashboard</li>
                   <li>Navigate to Authentication → Settings</li>
-                  <li>Check "Site URL" and "Redirect URLs"</li>
+                  <li>Check &quot;Site URL&quot; and &quot;Redirect URLs&quot;</li>
                   <li>Add <code className="bg-yellow-100 px-1 rounded">{redirectUrl}</code> to redirect URLs</li>
                   <li>Ensure your project is not paused</li>
                 </ul>
@@ -118,7 +118,7 @@ export default async function DebugAuthPage() {
                 <p className="text-sm text-red-700 mb-2">This usually means:</p>
                 <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
                   <li>Invalid credentials (wrong email/password)</li>
-                  <li>User doesn't exist</li>
+                  <li>User doesn&apos;t exist</li>
                   <li>Account is disabled or deleted</li>
                   <li>Supabase project is paused</li>
                 </ul>

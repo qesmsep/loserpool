@@ -5,7 +5,7 @@ interface CachedSchedule {
   week_type: 'current' | 'next'
   week_number: number
   week_display: string
-  games: any[]
+  games: Array<Record<string, unknown>>
   last_updated: string
   expires_at: string
 }
@@ -40,7 +40,7 @@ export class ScheduleCache {
   }
 
   // Store schedule data in cache
-  static async setCachedSchedule(weekType: 'current' | 'next', schedule: any): Promise<void> {
+  static async setCachedSchedule(weekType: 'current' | 'next', schedule: Record<string, unknown>): Promise<void> {
     try {
       const supabase = await createServerSupabaseClient()
       

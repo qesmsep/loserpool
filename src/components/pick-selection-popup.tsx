@@ -69,7 +69,7 @@ interface PickSelectionPopupProps {
   onClose: () => void
   matchupId: string
   teamName: string
-  onPicksAllocated: (picks: any[]) => void
+  onPicksAllocated: (picks: Array<Record<string, unknown>>) => void
 }
 
 export default function PickSelectionPopup({
@@ -129,13 +129,7 @@ export default function PickSelectionPopup({
     })
   }
 
-  const handleSelectAll = () => {
-    setSelectedPickIds(availablePicks.filter(pick => pick.status !== 'lost').map(pick => pick.id))
-  }
 
-  const handleSelectNone = () => {
-    setSelectedPickIds([])
-  }
 
   const handleAllocate = async () => {
     if (selectedPickIds.length === 0) {

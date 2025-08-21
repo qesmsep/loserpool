@@ -41,8 +41,8 @@ const slides = [
             <p className="text-green-100 text-sm">Choose the team you think will lose the game</p>
           </div>
           <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
-            <h4 className="font-semibold text-red-200 mb-1">❌ IF they WIN, You're PICK is Eliminated</h4>
-            <p className="text-red-100 text-sm">If all of your picks are wrong, then you're eliminated</p>
+            <h4 className="font-semibold text-red-200 mb-1">❌ IF they WIN, You&apos;re PICK is Eliminated</h4>
+            <p className="text-red-100 text-sm">If all of your picks are wrong, then you&apos;re eliminated</p>
           </div>
           <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
             <h4 className="font-semibold text-blue-200 mb-1">🏆 Last person standing wins!</h4>

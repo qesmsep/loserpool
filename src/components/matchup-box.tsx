@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Minus, MapPin, Clock, Cloud, Sun, CloudRain, CloudSnow } from 'lucide-react'
+import { Clock, Cloud, Sun, CloudRain, CloudSnow } from 'lucide-react'
 import TeamBackground from './team-background'
 import { getTeamColors } from '@/lib/team-logos'
 
@@ -40,12 +40,7 @@ const TEAM_ABBREVIATIONS: Record<string, string> = {
   'NE': 'New England Patriots'
 }
 
-// Default team data fallback (will be replaced by database data)
-const DEFAULT_TEAM_DATA = {
-  record: '0-0',
-  venue: 'Unknown',
-  city: 'Unknown'
-}
+
 
 // Function to get full team name
 function getFullTeamName(teamName: string): string {
@@ -189,13 +184,13 @@ interface MatchupBoxProps {
   }
   showControls: boolean
   picksSaved: boolean
-  userPicks: any[] // eslint-disable-line @typescript-eslint/no-explicit-any
+  userPicks: Array<Record<string, unknown>>
   picksRemaining: number
   checkDeadlinePassed: () => boolean
   addPickToTeam: (matchupId: string, teamName: string) => void
   removePickFromTeam: (matchupId: string, teamName: string) => void
   formatGameTime: (gameTime: string) => string
-  getPicksForMatchup?: (matchupId: string) => any[]
+  getPicksForMatchup?: (matchupId: string) => Array<Record<string, unknown>>
   isPickingAllowed?: boolean
 }
 
@@ -213,8 +208,6 @@ interface TeamCardProps {
   }
   disabled: boolean
   showControls: boolean
-  isHomeTeam?: boolean
-  homeTeamName: string
   venue?: string
   score?: number | null
   spread?: number
@@ -231,8 +224,6 @@ function TeamCard({
   colors,
   disabled,
   showControls,
-  isHomeTeam = false,
-  homeTeamName,
   venue,
   score,
   spread,
@@ -240,7 +231,7 @@ function TeamCard({
 }: TeamCardProps) {
 
   const fullTeamName = getFullTeamName(teamName)
-  const teamStats = getTeamStats(teamName, venue)
+
   
   const teamCardStyle = {
     borderRadius: '8px',
@@ -268,7 +259,7 @@ function TeamCard({
     '--safari-min-width': '95%'
   } as React.CSSProperties
 
-  const innerGlowStyle = {}
+
 
   const carbonFiberOverlay = {
     content: "''",
@@ -330,7 +321,7 @@ function TeamCard({
         }}
         aria-label={`Edit picks for ${fullTeamName}`}
       >
-        <div style={{ ...teamCardStyle, ...innerGlowStyle }}>
+        <div style={{ ...teamCardStyle }}>
           <div style={carbonFiberOverlay} />
           <div
             aria-hidden="true"
@@ -593,7 +584,6 @@ export default function MatchupBox({
             colors={awayColors}
             disabled={disabled}
             showControls={canShowControls}
-            homeTeamName={matchup.home_team}
             venue={matchup.venue}
             score={matchup.away_score}
             spread={matchup.away_spread}
@@ -646,8 +636,6 @@ export default function MatchupBox({
             colors={homeColors}
             disabled={disabled}
             showControls={canShowControls}
-            isHomeTeam={true}
-            homeTeamName={matchup.home_team}
             venue={matchup.venue}
             score={matchup.home_score}
             spread={matchup.home_spread}

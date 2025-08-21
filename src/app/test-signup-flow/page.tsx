@@ -80,7 +80,7 @@ export default function TestSignupFlowPage() {
         <div className="bg-white p-6 rounded-lg shadow mt-6">
           <h2 className="text-xl font-semibold mb-4">What This Test Does</h2>
           <div className="space-y-2 text-sm text-gray-700">
-            <p>1. <strong>Current Auth State:</strong> Checks if there's an existing session/user</p>
+            <p>1. <strong>Current Auth State:</strong> Checks if there&apos;s an existing session/user</p>
             <p>2. <strong>Supabase Signup:</strong> Attempts to create a new user via Supabase auth</p>
             <p>3. <strong>Database Insert:</strong> Tries to insert the user into the users table</p>
             <p>4. <strong>Service Role Test:</strong> Tests insertion with admin privileges (bypasses RLS)</p>

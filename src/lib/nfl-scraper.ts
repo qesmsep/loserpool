@@ -88,7 +88,7 @@ export class NFLScraper {
     }
   }
 
-  private parseAPIResponse(data: any): NFLGame[] {
+  private parseAPIResponse(data: Record<string, unknown>): NFLGame[] {
     // Parse the API response based on NFL.com's data structure
     // This will depend on the actual API response format
     return []

@@ -69,11 +69,9 @@ export default function TeamBackground({
   size = 'md',
   diagonalStripes = true,
   gradientDepth = true,
-  borderGlow = true,
   watermarkLogo = true,
   embossLogo = true,
-  duotoneLogo = true,
-  croppedLogo = true
+  duotoneLogo = true
 }: TeamBackgroundProps) {
   const fullTeamName = getFullTeamName(teamName)
   const colors = getTeamColors(fullTeamName)

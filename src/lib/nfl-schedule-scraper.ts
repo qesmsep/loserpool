@@ -183,9 +183,9 @@ export class NFLScheduleScraper {
         console.log(`Found ${jsonModules.length} elements with data-json-module`)
         
         let scheduleDataFromJson = null
-        for (const module of jsonModules) {
+        for (const jsonModule of jsonModules) {
           try {
-            const jsonData = JSON.parse(module.getAttribute('data-json-module') || '{}')
+            const jsonData = JSON.parse(jsonModule.getAttribute('data-json-module') || '{}')
             if (jsonData.SeasonType && jsonData.SeasonType.includes('REG')) {
               console.log('Found schedule JSON data:', jsonData)
               scheduleDataFromJson = jsonData
@@ -208,7 +208,7 @@ export class NFLScheduleScraper {
         const containers = gameContainers.length > 0 ? gameContainers : alternativeContainers
         console.log(`Using ${containers.length} containers for processing`)
         
-        const allGames: any[] = []
+        const allGames: Array<Record<string, unknown>> = []
         
         // Process each game container
         containers.forEach((container, index) => {
@@ -337,7 +337,7 @@ export class NFLScheduleScraper {
   }
 
   // Convert scraped game to matchup format for database
-  static convertToMatchupFormat(game: NFLGame, weekNumber: number, seasonType: string): any {
+  static convertToMatchupFormat(game: NFLGame, weekNumber: number, seasonType: string): Record<string, unknown> {
     // Determine season based on season type
     let season: string
     if (seasonType === 'PRE') {

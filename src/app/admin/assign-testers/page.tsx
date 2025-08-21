@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Users, UserCheck, UserX, Save, ArrowLeft } from 'lucide-react'
+import { Users, UserCheck, UserX, Save } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface User {
@@ -23,7 +22,7 @@ export default function AssignTestersPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+
 
   useEffect(() => {
     loadUsers()
@@ -64,7 +63,7 @@ export default function AssignTestersPage() {
       setSuccess('')
 
       // Get users that have been changed
-      const changedUsers = users.filter(user => {
+      const changedUsers = users.filter(() => {
         // We'll need to compare with original data, but for now, just update all
         return true
       })

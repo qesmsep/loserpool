@@ -149,7 +149,19 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to update matchups for a specific week
-async function updateMatchupsForWeek(schedule: any) {
+async function updateMatchupsForWeek(schedule: {
+  games?: Array<{
+    away_team: string;
+    home_team: string;
+    game_time?: string;
+    day?: string;
+    status?: string;
+    venue?: string;
+    network?: string;
+  }>;
+  season_type: string;
+  week_number: number;
+}) {
   if (!schedule.games || schedule.games.length === 0) {
     console.log('No games to update for this week')
     return
@@ -226,7 +238,7 @@ async function updateMatchupsForWeek(schedule: any) {
         }
       }
 
-      const matchupData = {
+      const matchupData: Record<string, unknown> = {
         away_team: game.away_team,
         home_team: game.home_team,
         game_time: gameTime,

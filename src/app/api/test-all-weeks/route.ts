@@ -29,7 +29,7 @@ export async function GET() {
         const scraper = new NFLScheduleScraper()
         const schedule = await scraper.scrapeWeekSchedule(weekInfo.week, weekInfo.seasonType)
 
-        const result: any = {
+        const result: Record<string, unknown> = {
           week: `${weekInfo.seasonType}${weekInfo.week}`,
           games_found: schedule.games.length,
           week_number: schedule.week_number,

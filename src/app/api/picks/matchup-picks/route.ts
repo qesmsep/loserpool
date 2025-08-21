@@ -63,7 +63,7 @@ export async function GET(request: Request) {
 
     // Map picks to team names
     const picksWithTeams = picks?.map(pick => {
-      const teamMatchupId = (pick as any)[weekColumn]
+      const teamMatchupId = (pick as Record<string, unknown>)[weekColumn]
       
       // Determine which team this pick belongs to
       let team_picked = 'Unknown'

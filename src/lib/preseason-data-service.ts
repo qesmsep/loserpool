@@ -94,7 +94,7 @@ export class PreseasonDataService {
   }
 
   // Convert preseason game to our internal format
-  convertToMatchupFormat(game: PreseasonGame): any {
+  convertToMatchupFormat(game: PreseasonGame): Record<string, unknown> {
     return {
       away_team: game.away_team,
       home_team: game.home_team,

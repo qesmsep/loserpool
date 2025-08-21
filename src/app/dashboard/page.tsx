@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Trophy, Calendar, Save, Tag, ShoppingCart, Edit, X } from 'lucide-react'
+import { Calendar, Save, ShoppingCart, Edit, X } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically, getWeekDateRange } from '@/lib/timezone'
 import { DateTime } from 'luxon'
@@ -78,7 +78,7 @@ function getEliminatedTeamName(pick: Pick): string | null {
   ]
   
   for (const column of weekColumns) {
-    const value = (pick as any)[column]
+    const value = (pick as Record<string, unknown>)[column]
     if (value) {
       const parts = value.split('_')
       if (parts.length >= 2) {
@@ -281,7 +281,7 @@ export default function DashboardPage() {
   const [showPickPopup, setShowPickPopup] = useState(false)
   const [selectedMatchup, setSelectedMatchup] = useState<string | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
-  const [preseasonNote, setPreseasonNote] = useState<string>('')
+
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [editingPickId, setEditingPickId] = useState<string | null>(null)
   const [editingPickName, setEditingPickName] = useState('')
@@ -382,7 +382,7 @@ export default function DashboardPage() {
     .eq('user_id', user.id)
     .eq('status', 'completed')
 
-      const totalPicks = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
+
 
 
       // Get current week display from API
@@ -608,7 +608,7 @@ export default function DashboardPage() {
     if (picks.length > 0) {
       const pick = picks[0]
       return {
-        team_picked: (pick as any).team_picked || (pick as any).away_team || (pick as any).home_team || '',
+        team_picked: (pick as Record<string, unknown>).team_picked as string || (pick as Record<string, unknown>).away_team as string || (pick as Record<string, unknown>).home_team as string || '',
         picks_count: pick.picks_count || 0
       }
     }
@@ -660,7 +660,7 @@ export default function DashboardPage() {
     setShowPickPopup(true)
   }
 
-  const handlePicksAllocated = (newPicks: any[]) => {
+  const handlePicksAllocated = (newPicks: Array<Record<string, unknown>>) => {
     console.log('Picks allocated:', newPicks)
     console.log('Selected matchup:', selectedMatchup)
     console.log('Selected team:', selectedTeam)
@@ -932,7 +932,7 @@ export default function DashboardPage() {
             <div className="text-xs sm:text-base text-blue-200 space-y-1">
               <p>• Click on a team matchup card to open the pick selection popup</p>
               <p>• Select which pick you want to allocate to that team</p>
-              <p>• Click "PICK TEAM TO LOSE" to confirm your selection</p>
+              <p>• Click &quot;PICK TEAM TO LOSE&quot; to confirm your selection</p>
               <p>• To change your pick, click on the team and choose that pick to update</p>
               <p>• If your picked team wins, you&apos;re eliminated</p>
               <p>• If your picked team loses, your pick moves on to next week</p>
@@ -1001,7 +1001,7 @@ export default function DashboardPage() {
                       {/* Left Column */}
                       <div className="space-y-3">
                         {leftColumn.map((pick) => {
-                          const teamName = (pick as any).team_picked || null
+                          const teamName = (pick as Record<string, unknown>).team_picked as string || null
                           
                           // Calculate dynamic status based on game results
                           const pickStatus = calculatePickStatus(pick, matchups)
@@ -1125,7 +1125,7 @@ export default function DashboardPage() {
                       {/* Right Column */}
                       <div className="space-y-3">
                         {rightColumn.map((pick) => {
-                          const teamName = (pick as any).team_picked || null
+                          const teamName = (pick as Record<string, unknown>).team_picked as string || null
                           
                           // Calculate dynamic status based on game results
                           const pickStatus = calculatePickStatus(pick, matchups)
@@ -1315,11 +1315,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {preseasonNote && (
-              <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-200 px-3 sm:px-4 py-3 rounded-lg mb-3 sm:mb-6 text-xs sm:text-base">
-                {preseasonNote}
-              </div>
-            )}
+
 
 
 

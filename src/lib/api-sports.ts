@@ -153,7 +153,7 @@ export class APISportsService {
   }
 
   // Get team statistics
-  async getTeamStats(season: number, teamId: number): Promise<any> {
+  async getTeamStats(season: number, teamId: number): Promise<Record<string, unknown>> {
     try {
       const url = new URL(`${this.baseUrl}/teams/statistics`)
       url.searchParams.append('league', '1') // NFL league ID
@@ -180,7 +180,7 @@ export class APISportsService {
   }
 
   // Get standings/league table
-  async getStandings(season: number): Promise<any> {
+  async getStandings(season: number): Promise<Record<string, unknown>> {
     try {
       const url = new URL(`${this.baseUrl}/standings`)
       url.searchParams.append('league', '1') // NFL league ID
@@ -206,7 +206,7 @@ export class APISportsService {
   }
 
   // Convert API-Sports game format to our internal format
-  convertGameToMatchup(game: APISportsGame): any {
+  convertGameToMatchup(game: APISportsGame): Record<string, unknown> {
     return {
       id: game.fixture.id.toString(),
       away_team: game.teams.away.name,

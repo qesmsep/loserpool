@@ -128,7 +128,7 @@ export class ESPNService {
   }
 
   // Convert ESPN game to our internal format
-  convertToMatchupFormat(espnGame: ESPNGame): any {
+  convertToMatchupFormat(espnGame: ESPNGame): Record<string, unknown> | null {
     if (!espnGame.competitions || espnGame.competitions.length === 0) {
       return null
     }

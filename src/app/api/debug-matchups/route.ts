@@ -32,7 +32,16 @@ export async function GET(request: NextRequest) {
         winner: matchup.winner
       })
       return acc
-    }, {} as Record<number, any[]>) || {}
+    }, {} as Record<number, Array<{
+      id: string;
+      away_team: string;
+      home_team: string;
+      game_time: string | null;
+      status: string;
+      away_score: number | null;
+      home_score: number | null;
+      winner: string | null;
+    }>>) || {}
 
     return NextResponse.json({
       success: true,
