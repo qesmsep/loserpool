@@ -75,9 +75,17 @@ export async function POST() {
             user_type: newType 
           }
           
-          // If transitioning from tester to active, clear default_week to force recalculation
+          // If transitioning from tester to active, calculate new default_week
           if (user.user_type === 'tester' && newType === 'active') {
-            updateData.default_week = null
+            // Get current week from global settings
+            const { data: currentWeekSetting } = await supabase
+              .from('global_settings')
+              .select('value')
+              .eq('key', 'current_week')
+              .single()
+            
+            const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
+            updateData.default_week = currentWeek
           }
           
           const { error: updateError } = await supabase

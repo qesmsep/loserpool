@@ -112,10 +112,14 @@ export async function getUserDefaultWeek(userId: string): Promise<number> {
     .eq('id', userId)
     .single()
 
-  // If user has a default_week set, use it
+  // If user has a default_week set (and it's not null), use it
   if (user?.default_week !== null && user?.default_week !== undefined) {
+    console.log('🔍 DEBUG: Using existing default_week:', user.default_week)
     return user.default_week
   }
+
+  // If default_week is NULL, we need to recalculate it
+  console.log('🔍 DEBUG: default_week is NULL, recalculating...')
 
   // Check if user is a tester
   const isTester = user?.is_admin || user?.user_type === 'tester'
@@ -257,6 +261,8 @@ export async function fixUserDefaultWeek(userId: string): Promise<boolean> {
 
   return false
 }
+
+
 
 /**
  * Fix all users who have the Tester to Active transition issue

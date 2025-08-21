@@ -22,6 +22,33 @@ interface User {
   isEliminated: boolean
 }
 
+interface UserPick {
+  id: string
+  pick_name: string
+  picks_count: number
+  status: string
+  team_picked: string
+  opponent: string
+  is_home: boolean
+  game_time: string
+  game_status: string
+  away_score: number | null
+  home_score: number | null
+}
+
+interface UserDetails {
+  user: User
+  currentWeek: number
+  picks: UserPick[]
+  purchases: any[]
+  stats: {
+    totalPurchased: number
+    activePicks: number
+    eliminatedPicks: number
+    isEliminated: boolean
+  }
+}
+
 // Phone number formatting function
 const formatPhoneNumber = (phone: string | null): string => {
   if (!phone) return 'No phone'
@@ -49,6 +76,8 @@ export default function AdminUsersPage() {
   const [authLoading, setAuthLoading] = useState(true)
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null)
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false)
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -352,6 +381,32 @@ export default function AdminUsersPage() {
   const cancelEdit = () => {
     setEditingUser(null)
     setPicksToAdd(0)
+  }
+
+  const handleViewUserDetails = async (userId: string) => {
+    try {
+      setLoadingUserDetails(true)
+      setError('')
+      
+      const response = await fetch(`/api/admin/user-details?userId=${userId}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch user details')
+      }
+
+      const userDetails = await response.json()
+      setSelectedUser(userDetails)
+    } catch (error) {
+      console.error('Error loading user details:', error)
+      setError(`Failed to load user details: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoadingUserDetails(false)
+    }
+  }
+
+  const closeUserDetails = () => {
+    setSelectedUser(null)
   }
 
   if (authLoading || loading) {
@@ -925,6 +980,14 @@ export default function AdminUsersPage() {
                       ) : (
                         <div className="flex items-center space-x-2">
                           <button
+                            onClick={() => handleViewUserDetails(user.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            title="View user details"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="text-sm font-medium">View</span>
+                          </button>
+                          <button
                             onClick={() => startEditUser(user)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
                             title="Edit user"
@@ -950,6 +1013,200 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  User Details: {selectedUser.user.username || selectedUser.user.email}
+                </h3>
+                <p className="text-blue-200">Week {selectedUser.currentWeek} Picks & Information</p>
+              </div>
+              <button
+                onClick={closeUserDetails}
+                className="text-blue-200 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-white mb-3">User Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-blue-200">Name:</span> {selectedUser.user.first_name} {selectedUser.user.last_name}</div>
+                  <div><span className="text-blue-200">Email:</span> {selectedUser.user.email}</div>
+                  <div><span className="text-blue-200">Username:</span> {selectedUser.user.username || 'Not set'}</div>
+                  <div><span className="text-blue-200">Phone:</span> {formatPhoneNumber(selectedUser.user.phone)}</div>
+                  <div><span className="text-blue-200">User Type:</span> 
+                    <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                      selectedUser.user.user_type === 'tester' ? 'bg-purple-500/20 text-purple-200' :
+                      selectedUser.user.user_type === 'active' ? 'bg-green-500/20 text-green-200' :
+                      selectedUser.user.user_type === 'pending' ? 'bg-orange-500/20 text-orange-200' :
+                      selectedUser.user.user_type === 'registered' ? 'bg-yellow-500/20 text-yellow-200' :
+                      'bg-red-500/20 text-red-200'
+                    }`}>
+                      {selectedUser.user.user_type}
+                    </span>
+                  </div>
+                  {selectedUser.user.is_admin && (
+                    <div><span className="text-yellow-200">⭐ Admin User</span></div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-white mb-3">Pick Statistics</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center">
+                    <Trophy className="w-4 h-4 text-green-300 mr-2" />
+                    <span className="text-blue-200">Active Picks:</span> 
+                    <span className="ml-2 text-green-300 font-medium">{selectedUser.stats.activePicks}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-4 h-4 text-red-300 mr-2" />
+                    <span className="text-blue-200">Eliminated Picks:</span> 
+                    <span className="ml-2 text-red-300 font-medium">{selectedUser.stats.eliminatedPicks}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 text-blue-300 mr-2" />
+                    <span className="text-blue-200">Total Purchased:</span> 
+                    <span className="ml-2 text-blue-300 font-medium">{selectedUser.stats.totalPurchased}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 text-purple-300 mr-2" />
+                    <span className="text-blue-200">Current Week:</span> 
+                    <span className="ml-2 text-purple-300 font-medium">{selectedUser.currentWeek}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Week Picks */}
+            <div className="bg-white/5 rounded-lg p-4 mb-6">
+              <h4 className="text-lg font-medium text-white mb-4">Week {selectedUser.currentWeek} Picks</h4>
+              {selectedUser.picks.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-blue-200">No picks made for this week yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {selectedUser.picks.map((pick) => (
+                    <div key={pick.id} className={`border rounded-lg p-4 ${
+                      pick.status === 'eliminated' ? 'border-red-500/30 bg-red-500/10' :
+                      pick.status === 'active' ? 'border-green-500/30 bg-green-500/10' :
+                      'border-blue-500/30 bg-blue-500/10'
+                    }`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h5 className="font-medium text-white">{pick.pick_name}</h5>
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          pick.status === 'eliminated' ? 'bg-red-500/20 text-red-200' :
+                          pick.status === 'active' ? 'bg-green-500/20 text-green-200' :
+                          'bg-blue-500/20 text-blue-200'
+                        }`}>
+                          {pick.status}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1 text-sm">
+                        <div>
+                          <span className="text-blue-200">Picks Count:</span> 
+                          <span className="ml-2 text-white font-medium">{pick.picks_count}</span>
+                        </div>
+                        <div>
+                          <span className="text-blue-200">Team:</span> 
+                          <span className="ml-2 text-white font-medium">{pick.team_picked}</span>
+                          {pick.is_home && <span className="ml-1 text-xs text-blue-200">(Home)</span>}
+                        </div>
+                        <div>
+                          <span className="text-blue-200">vs:</span> 
+                          <span className="ml-2 text-white">{pick.opponent}</span>
+                        </div>
+                        
+                        {pick.game_status && (
+                          <div>
+                            <span className="text-blue-200">Game Status:</span> 
+                            <span className={`ml-2 ${
+                              pick.game_status === 'final' ? 'text-red-200' :
+                              pick.game_status === 'live' ? 'text-green-200' :
+                              'text-yellow-200'
+                            }`}>
+                              {pick.game_status}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {pick.away_score !== null && pick.home_score !== null && (
+                          <div>
+                            <span className="text-blue-200">Score:</span> 
+                            <span className="ml-2 text-white">
+                              {pick.away_score} - {pick.home_score}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {pick.game_time && (
+                          <div>
+                            <span className="text-blue-200">Game Time:</span> 
+                            <span className="ml-2 text-white">
+                              {new Date(pick.game_time).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Purchase History */}
+            {selectedUser.purchases.length > 0 && (
+              <div className="bg-white/5 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-white mb-4">Purchase History</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-white/20">
+                    <thead className="bg-white/5">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Date</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Picks</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Amount</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-blue-200 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/20">
+                      {selectedUser.purchases.map((purchase, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-sm text-white">
+                            {new Date(purchase.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-white">{purchase.picks_count}</td>
+                          <td className="px-4 py-2 text-sm text-white">
+                            ${purchase.amount_paid ? (purchase.amount_paid / 100).toFixed(2) : '0.00'}
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            <span className={`px-2 py-1 text-xs rounded ${
+                              purchase.status === 'completed' ? 'bg-green-500/20 text-green-200' :
+                              purchase.status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
+                              'bg-red-500/20 text-red-200'
+                            }`}>
+                              {purchase.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

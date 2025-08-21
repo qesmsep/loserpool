@@ -37,11 +37,19 @@ export async function POST(request: Request) {
     console.log('Existing user data:', existingUser)
     console.log('About to update with data:', updateData)
     
-    // Check if transitioning from tester to active and clear default_week
+    // Check if transitioning from tester to active and calculate new default_week
     const finalUpdateData = { ...updateData }
     if (existingUser.user_type === 'tester' && updateData.user_type === 'active') {
-      finalUpdateData.default_week = null
-      console.log('Transitioning from tester to active - clearing default_week')
+      // Calculate what the new default week should be for an active user
+      const { data: currentWeekSetting } = await supabaseAdmin
+        .from('global_settings')
+        .select('value')
+        .eq('key', 'current_week')
+        .single()
+      
+      const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
+      finalUpdateData.default_week = currentWeek
+      console.log('Transitioning from tester to active - setting default_week to current week:', currentWeek)
     }
     
     // Update the user using service role client

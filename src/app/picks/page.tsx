@@ -71,6 +71,7 @@ export default function PicksPage() {
 
       // Get user's default week based on their type
       const userDefaultWeek = await getUserDefaultWeek(user.id)
+      console.log('🔍 DEBUG: Picks page - user default week:', userDefaultWeek)
       setCurrentWeek(userDefaultWeek)
 
       // Get user's total picks purchased
@@ -84,6 +85,7 @@ export default function PicksPage() {
 
       // Check if user is a tester
       const userIsTester = await isUserTester(user.id)
+      console.log('🔍 DEBUG: Picks page - user is tester:', userIsTester)
       setIsTester(userIsTester)
       
       // Determine the season type based on user type and week
@@ -106,6 +108,9 @@ export default function PicksPage() {
       
       setSeasonFilter(seasonFilter)
       
+      console.log('🔍 DEBUG: Picks page - season filter:', seasonFilter)
+      console.log('🔍 DEBUG: Picks page - looking for week:', userDefaultWeek)
+      
       // Get matchups for the user's default week and season type
       const { data: matchupsData } = await supabase
         .from('matchups')
@@ -113,6 +118,16 @@ export default function PicksPage() {
         .eq('week', userDefaultWeek)
         .eq('season', seasonFilter)
         .order('game_time', { ascending: true })
+
+      console.log('🔍 DEBUG: Picks page - found matchups:', matchupsData?.length || 0)
+      if (matchupsData && matchupsData.length > 0) {
+        console.log('🔍 DEBUG: Picks page - first matchup:', {
+          week: matchupsData[0].week,
+          season: matchupsData[0].season,
+          away_team: matchupsData[0].away_team,
+          home_team: matchupsData[0].home_team
+        })
+      }
 
       // Get user's picks for current week with pick names
       const { data: picksData } = await supabase
