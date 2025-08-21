@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { NFLScheduleScraper } from '@/lib/nfl-schedule-scraper'
+import { espnService } from '@/lib/espn-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,18 +23,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get current week from NFL scraper
-    const scraper = new NFLScheduleScraper()
-    const currentWeekInfo = await scraper.getCurrentWeekInfo()
+    // Get current week from ESPN API
+    const currentYear = new Date().getFullYear()
+    const currentWeek = await espnService.getCurrentNFLWeek(currentYear)
     
-    console.log('NFL Scraper detected current week:', currentWeekInfo)
+    console.log('ESPN API detected current week:', currentWeek)
 
     // Update global settings with the detected week
     const { error: updateError } = await supabase
       .from('global_settings')
       .upsert({
         key: 'current_week',
-        value: currentWeekInfo.weekNumber.toString()
+        value: currentWeek.toString()
       })
 
     if (updateError) {
@@ -45,24 +45,11 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Also update the season type if needed
-    const { error: seasonUpdateError } = await supabase
-      .from('global_settings')
-      .upsert({
-        key: 'current_season_type',
-        value: currentWeekInfo.seasonType
-      })
-
-    if (seasonUpdateError) {
-      console.error('Error updating season type:', seasonUpdateError)
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Current week updated successfully',
-      current_week: currentWeekInfo.weekNumber,
-      current_week_display: currentWeekInfo.currentWeek,
-      season_type: currentWeekInfo.seasonType
+      current_week: currentWeek,
+      current_week_display: `Week ${currentWeek}`
     })
 
   } catch (error) {

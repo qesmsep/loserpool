@@ -223,33 +223,37 @@ export class MatchupUpdateServicePreserveUuid {
   }
 
   /**
-   * Fetch fresh matchup data from external sources
-   * This should integrate with your existing data fetching logic
+   * Fetch fresh matchup data from ESPN API
    */
   private async fetchFreshMatchupData(): Promise<any[]> { // eslint-disable-line @typescript-eslint/no-explicit-any
     try {
-      // Import and use your existing data fetching services
+      // Import and use ESPN service
+      const { espnService } = await import('./espn-service')
+      
+      // Get current week
       const { MatchupDataService } = await import('./matchup-data-service')
       const matchupService = new MatchupDataService()
+      const currentWeek = await matchupService.getCurrentWeek()
       
-      // This should return the raw data from your external sources
-      // You may need to modify this based on your actual data fetching logic
-      const nflSchedule = await matchupService.fetchNFLSchedule()
+      // Fetch data from ESPN API
+      const espnGames = await espnService.getNFLSchedule(2024, currentWeek, 'REG')
       
-      // Convert to your internal format
-      const convertedData = nflSchedule.games?.map((game: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-        // Convert game data to your internal format
-        // This should match the format expected by your existing code
+      // Convert ESPN games to internal format
+      const convertedData = espnGames.map((game: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const competition = game.competitions?.[0]
+        const awayTeam = competition?.competitors?.find((c: any) => c.homeAway === 'away')?.team?.name || '' // eslint-disable-line @typescript-eslint/no-explicit-any
+        const homeTeam = competition?.competitors?.find((c: any) => c.homeAway === 'home')?.team?.name || '' // eslint-disable-line @typescript-eslint/no-explicit-any
+        
         return {
-          week: game.week?.number || 1,
-          season: this.determineSeason(game.week?.number || 1),
-          away_team: game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'away')?.team?.name || '', // eslint-disable-line @typescript-eslint/no-explicit-any
-          home_team: game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'home')?.team?.name || '', // eslint-disable-line @typescript-eslint/no-explicit-any
-          game_time: game.competitions?.[0]?.date || new Date().toISOString(),
-          status: game.competitions?.[0]?.status?.type?.state || 'scheduled',
-          away_score: parseInt(game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'away')?.score || '0'), // eslint-disable-line @typescript-eslint/no-explicit-any
-          home_score: parseInt(game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'home')?.score || '0'), // eslint-disable-line @typescript-eslint/no-explicit-any
-          venue: game.competitions?.[0]?.venue?.fullName || '',
+          week: game.week?.number || currentWeek,
+          season: this.determineSeason(game.week?.number || currentWeek),
+          away_team: awayTeam,
+          home_team: homeTeam,
+          game_time: competition?.date || new Date().toISOString(),
+          status: competition?.status?.type?.state || 'scheduled',
+          away_score: parseInt(competition?.competitors?.find((c: any) => c.homeAway === 'away')?.score || '0'), // eslint-disable-line @typescript-eslint/no-explicit-any
+          home_score: parseInt(competition?.competitors?.find((c: any) => c.homeAway === 'home')?.score || '0'), // eslint-disable-line @typescript-eslint/no-explicit-any
+          venue: competition?.venue?.fullName || '',
           away_spread: 0,
           home_spread: 0
         }

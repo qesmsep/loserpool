@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MatchupUpdateService } from '@/lib/matchup-update-service'
+import { matchupDataService } from '@/lib/matchup-data-service'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
@@ -7,18 +7,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const week = searchParams.get('week')
     
-    const updateService = new MatchupUpdateService()
-    
     if (week === 'next') {
-      // Get next week matchups
-      const matchups = await updateService.getNextWeekMatchups()
-      const weekDisplay = await updateService.getNextWeekDisplay()
+      // Get next week matchups from database
+      const supabase = await createServerSupabaseClient()
+      const currentWeek = await matchupDataService.getCurrentWeek()
+      const nextWeek = currentWeek + 1
+      
+      const { data: matchups } = await supabase
+        .from('matchups')
+        .select('*')
+        .eq('week', nextWeek)
+        .order('game_time', { ascending: true })
+      
+      const weekDisplay = `Week ${nextWeek}`
       
       return NextResponse.json({
         success: true,
         week_display: weekDisplay,
-        matchups: matchups,
-        count: matchups.length
+        matchups: matchups || [],
+        count: matchups?.length || 0
       })
     } else {
       // Get current week matchups based on user type
@@ -34,14 +41,20 @@ export async function GET(request: NextRequest) {
       
       if (authError || !user) {
         // If no user, use global current week
-        const matchups = await updateService.getCurrentWeekMatchups()
-        const globalWeekDisplay = await updateService.getCurrentWeekDisplay()
+        const currentWeek = await matchupDataService.getCurrentWeek()
+        const { data: matchups } = await supabase
+          .from('matchups')
+          .select('*')
+          .eq('week', currentWeek)
+          .order('game_time', { ascending: true })
+        
+        const globalWeekDisplay = await matchupDataService.getCurrentWeekDisplay()
         
         return NextResponse.json({
           success: true,
           week_display: globalWeekDisplay,
-          matchups: matchups,
-          count: matchups.length
+          matchups: matchups || [],
+          count: matchups?.length || 0
         })
       } else {
         // Get user's default week based on their type

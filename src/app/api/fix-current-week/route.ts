@@ -1,29 +1,29 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { NFLScheduleScraper } from '@/lib/nfl-schedule-scraper'
+import { espnService } from '@/lib/espn-service'
 
 export async function GET() {
   try {
     const supabase = createServiceRoleClient()
     
-    // Get current week from NFL scraper
-    const scraper = new NFLScheduleScraper()
-    const currentWeekInfo = await scraper.getCurrentWeekInfo()
+    // Get current week from ESPN API
+    const currentYear = new Date().getFullYear()
+    const currentWeek = await espnService.getCurrentNFLWeek(currentYear)
     
-    console.log('NFL Scraper detected current week:', currentWeekInfo)
+    console.log('ESPN API detected current week:', currentWeek)
 
-    if (!currentWeekInfo || typeof currentWeekInfo.weekNumber !== 'number') {
+    if (!currentWeek || typeof currentWeek !== 'number') {
       return NextResponse.json({
         success: false,
-        error: 'Invalid current week info from NFL scraper',
-        currentWeekInfo
+        error: 'Invalid current week info from ESPN API',
+        currentWeek
       }, { status: 500 })
     }
 
     // Update global settings with the detected week
     const { error: updateError } = await supabase
       .from('global_settings')
-      .update({ value: currentWeekInfo.weekNumber.toString() })
+      .update({ value: currentWeek.toString() })
       .eq('key', 'current_week')
 
     if (updateError) {
@@ -32,18 +32,6 @@ export async function GET() {
         success: false,
         error: `Failed to update current week: ${updateError.message}`
       }, { status: 500 })
-    }
-
-    // Also update the season type if needed
-    const { error: seasonUpdateError } = await supabase
-      .from('global_settings')
-      .upsert({
-        key: 'current_season_type',
-        value: currentWeekInfo.seasonType
-      })
-
-    if (seasonUpdateError) {
-      console.error('Error updating season type:', seasonUpdateError)
     }
 
     // Verify the update by fetching the new setting
@@ -56,9 +44,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message: 'Current week updated successfully',
-      current_week: currentWeekInfo.weekNumber,
-      current_week_display: currentWeekInfo.currentWeek,
-      season_type: currentWeekInfo.seasonType,
+      current_week: currentWeek,
+      current_week_display: `Week ${currentWeek}`,
       updated_setting: updatedSetting
     })
 

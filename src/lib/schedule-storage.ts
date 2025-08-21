@@ -17,7 +17,7 @@ export class ScheduleStorage {
       const supabase = await createServerSupabaseClient()
       
       const now = new Date()
-      const weekNumber = this.extractWeekNumber(schedule.current_week)
+      const weekNumber = this.extractWeekNumber(schedule.current_week as string)
       
       const scheduleData = {
         week_type: weekType,
@@ -37,7 +37,8 @@ export class ScheduleStorage {
         console.error('Error storing schedule:', error)
         throw error
       } else {
-        console.log(`Stored ${weekType} week schedule: ${schedule.current_week} with ${schedule.games.length} games`)
+        const games = (schedule.games as Array<unknown>) || []
+        console.log(`Stored ${weekType} week schedule: ${schedule.current_week} with ${games.length} games`)
       }
     } catch (error) {
       console.error('Error storing schedule:', error)

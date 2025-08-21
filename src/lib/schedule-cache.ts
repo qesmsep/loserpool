@@ -49,7 +49,7 @@ export class ScheduleCache {
       
       const cacheData = {
         week_type: weekType,
-        week_number: this.extractWeekNumber(schedule.current_week),
+        week_number: this.extractWeekNumber(schedule.current_week as string),
         week_display: schedule.current_week,
         games: schedule.games,
         last_updated: now.toISOString(),
