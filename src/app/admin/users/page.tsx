@@ -89,6 +89,16 @@ export default function AdminUsersPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null)
+  const [modalEditMode, setModalEditMode] = useState(false)
+  const [modalEditData, setModalEditData] = useState({
+    email: '',
+    username: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    is_admin: false,
+    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
+  })
 
 
   const [error, setError] = useState('')
@@ -450,6 +460,18 @@ export default function AdminUsersPage() {
 
       const userDetails = await response.json()
       setSelectedUser(userDetails)
+      
+      // Set up modal edit data
+      setModalEditData({
+        email: userDetails.user.email,
+        username: userDetails.user.username || '',
+        first_name: userDetails.user.first_name || '',
+        last_name: userDetails.user.last_name || '',
+        phone: userDetails.user.phone || '',
+        is_admin: userDetails.user.is_admin,
+        user_type: userDetails.user.user_type
+      })
+      setModalEditMode(false)
     } catch (error) {
       console.error('Error loading user details:', error)
       setError(`Failed to load user details: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -458,6 +480,49 @@ export default function AdminUsersPage() {
 
   const closeUserDetails = () => {
     setSelectedUser(null)
+    setModalEditMode(false)
+  }
+
+  const handleModalUpdateUser = async () => {
+    if (!selectedUser) return
+    
+    try {
+      setError('')
+      
+      const updateData = {
+        email: modalEditData.email,
+        username: modalEditData.username || null,
+        first_name: modalEditData.first_name || null,
+        last_name: modalEditData.last_name || null,
+        phone: modalEditData.phone || null,
+        is_admin: modalEditData.is_admin,
+        user_type: modalEditData.user_type
+      }
+      
+      const response = await fetch('/api/admin/update-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: selectedUser.user.id, updateData })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update user')
+      }
+
+      setSuccess('User updated successfully')
+      setModalEditMode(false)
+      
+      // Refresh the user details
+      await handleViewUserDetails(selectedUser.user.id)
+      loadUsers()
+    } catch (error) {
+      console.error('Error updating user:', error)
+      setError(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   if (authLoading || loading) {
@@ -666,14 +731,11 @@ export default function AdminUsersPage() {
                                                   onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
                     className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
                   >
-                    <option value="registered">Registered (No Picks Yet)</option>
-                    <option value="active">Active (Normal Pool)</option>
-                    <option value="tester">Tester ($0 Picks)</option>
-                    <option value="eliminated">Eliminated (No Picks)</option>
+                    <option value="registered">Registered</option>
+                    <option value="active">Active</option>
+                    <option value="tester">Tester</option>
+                    <option value="eliminated">Eliminated</option>
                   </select>
-                  <p className="text-xs text-blue-200 mt-1">
-                    Registered users haven&apos;t bought picks yet. Testers pay $0, active users pay normal price
-                  </p>
                 </div>
               </div>
               
@@ -767,13 +829,13 @@ export default function AdminUsersPage() {
                     Picks
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
-                    Current Week Picks
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
+                    Admin
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-blue-200 uppercase tracking-wider">
                     Actions
@@ -831,15 +893,12 @@ export default function AdminUsersPage() {
                             </div>
                             <div className="text-sm text-blue-200">
                               {user.first_name} {user.last_name}
-                              {user.is_admin && (
-                                <span className="ml-2 text-yellow-200 font-medium">⭐ Admin User</span>
-                              )}
                             </div>
                           </div>
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="pl-2 pr-6 py-4 whitespace-nowrap">
                       {editingUser === user.id ? (
                         <div className="space-y-2">
                           <div>
@@ -869,14 +928,9 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white">
-                        <span className="text-green-300">{user.activePicks} active</span>
-                        {user.eliminatedPicks > 0 && (
-                          <span className="text-red-300 ml-2">, {user.eliminatedPicks} eliminated</span>
-                        )}
-                      </div>
-                      <div className="text-sm text-blue-200">
-                        {user.totalPurchased} purchased
+                      <div className="text-xs text-blue-200 space-y-1">
+                        <div>{user.activePicks} active</div>
+                        <div>{user.totalPurchased} total</div>
                       </div>
                       {editingUser === user.id && (
                         <div className="mt-2 space-y-2">
@@ -922,31 +976,6 @@ export default function AdminUsersPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      {user.currentWeekPicks.length === 0 ? (
-                        <div className="text-sm text-gray-400 italic">No picks this week</div>
-                      ) : (
-                        <div className="space-y-1">
-                          {user.currentWeekPicks.map((pick, index) => (
-                            <div key={index} className="flex items-center justify-between text-sm">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-white font-medium">{pick.pick_name}</span>
-                                <span className={`px-1.5 py-0.5 text-xs rounded ${
-                                  pick.status === 'eliminated' ? 'bg-red-500/20 text-red-200' :
-                                  pick.status === 'active' ? 'bg-green-500/20 text-green-200' :
-                                  'bg-blue-500/20 text-blue-200'
-                                }`}>
-                                  {pick.status}
-                                </span>
-                              </div>
-                              <span className="text-blue-200 text-xs">
-                                ({pick.picks_count})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         user.isEliminated
@@ -960,101 +989,63 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {editingUser === user.id ? (
-                        <div className="space-y-2">
-                          <div>
-                            <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
-                            <select
-                              value={editUser.user_type}
-                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
-                              className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
-                            >
-                              <option value="registered">Registered (No Picks Yet)</option>
-                              <option value="pending">Pending (Purchased, No Selections)</option>
-                              <option value="active">Active (Normal Pool)</option>
-                              <option value="tester">Tester ($0 Picks)</option>
-                              <option value="eliminated">Eliminated (No Picks)</option>
-                            </select>
-                            {/* Show helpful info about user type changes */}
-                            {(() => {
-                              const originalUser = users.find(u => u.id === editingUser)
-                              if (!originalUser || originalUser.user_type === editUser.user_type) return null
-                              
-                              if (originalUser.user_type === 'tester' && editUser.user_type !== 'tester') {
-                                return (
-                                  <div className="mt-1 p-2 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-200">
-                                    ✅ Will automatically switch from Preseason Week 3 to current Regular Season games
-                                  </div>
-                                )
-                              } else if (editUser.user_type === 'tester') {
-                                // Check if we're past the preseason cutoff
-                                const preseasonCutoff = new Date('2025-08-26')
-                                const now = new Date()
-                                
-                                if (now >= preseasonCutoff) {
-                                  return (
-                                    <div className="mt-1 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs text-purple-200">
-                                      ✅ Will automatically switch to current Regular Season games ($0 picks)
-                                    </div>
-                                  )
-                                } else {
-                                  return (
-                                    <div className="mt-1 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs text-purple-200">
-                                      ✅ Will automatically switch to Preseason Week 3 games ($0 picks)
-                                    </div>
-                                  )
-                                }
-                              } else if ((originalUser.user_type as string) !== 'tester' && (editUser.user_type as string) !== 'tester') {
-                                return (
-                                  <div className="mt-1 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-200">
-                                    ✅ Will continue to see current Regular Season games
-                                  </div>
-                                )
-                              }
-                              return null
-                            })()}
-                          </div>
-                          <div className="border-t border-white/20 pt-2">
-                            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 cursor-pointer hover:bg-yellow-500/20 transition-colors" 
-                                 onClick={() => setEditUser({...editUser, is_admin: !editUser.is_admin})}>
-                              <div className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={editUser.is_admin}
-                                  onChange={(e) => {
-                                    console.log('Admin checkbox changed:', e.target.checked)
-                                    setEditUser({...editUser, is_admin: e.target.checked})
-                                  }}
-                                  className="mr-2 cursor-pointer"
-                                />
-                                <label className="text-xs text-yellow-200 font-medium cursor-pointer">
-                                  {editUser.is_admin ? '⭐ Remove Admin Access' : '⭐ Grant Admin Access'}
-                                </label>
-                              </div>
-                              <div className="text-xs text-yellow-100 mt-1">
-                                {editUser.is_admin ? 'Click to remove admin privileges' : 'Click to grant full system access'}
-                              </div>
-                            </div>
+                        <div>
+                          <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
+                          <select
+                            value={editUser.user_type}
+                            onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
+                            className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
+                          >
+                            <option value="registered">Registered</option>
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="tester">Tester</option>
+                            <option value="eliminated">Eliminated</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.user_type === 'tester'
+                            ? 'bg-purple-500/20 text-purple-200'
+                            : user.user_type === 'active'
+                            ? 'bg-green-500/20 text-green-200'
+                            : user.user_type === 'pending'
+                            ? 'bg-orange-500/20 text-orange-200'
+                            : user.user_type === 'registered'
+                            ? 'bg-yellow-500/20 text-yellow-200'
+                            : 'bg-red-500/20 text-red-200'
+                        }`}>
+                          {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : user.user_type === 'registered' ? 'Registered' : 'Eliminated'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {editingUser === user.id ? (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 cursor-pointer hover:bg-yellow-500/20 transition-colors" 
+                             onClick={() => setEditUser({...editUser, is_admin: !editUser.is_admin})}>
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={editUser.is_admin}
+                              onChange={(e) => {
+                                console.log('Admin checkbox changed:', e.target.checked)
+                                setEditUser({...editUser, is_admin: e.target.checked})
+                              }}
+                              className="mr-2 cursor-pointer"
+                            />
+                            <label className="text-xs text-yellow-200 font-medium cursor-pointer">
+                              {editUser.is_admin ? '⭐ Remove Admin Access' : '⭐ Grant Admin Access'}
+                            </label>
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.user_type === 'tester'
-                              ? 'bg-purple-500/20 text-purple-200'
-                              : user.user_type === 'active'
-                              ? 'bg-green-500/20 text-green-200'
-                              : user.user_type === 'pending'
-                              ? 'bg-orange-500/20 text-orange-200'
-                              : user.user_type === 'registered'
-                              ? 'bg-yellow-500/20 text-yellow-200'
-                              : 'bg-red-500/20 text-red-200'
-                          }`}>
-                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : user.user_type === 'registered' ? 'Registered' : 'Eliminated'}
-                          </span>
-                          <div className="text-xs text-blue-200 mt-1">
-                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'pending' ? 'Purchased, no selections' : user.user_type === 'registered' ? 'No picks yet' : 'No picks'}
-                          </div>
-                        </>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.is_admin
+                            ? 'bg-yellow-500/20 text-yellow-200'
+                            : 'bg-gray-500/20 text-gray-200'
+                        }`}>
+                          {user.is_admin ? '⭐ Admin' : 'User'}
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1070,30 +1061,11 @@ export default function AdminUsersPage() {
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
                             title="Cancel edit"
                           >
                             <X className="w-4 h-4" />
                             <span className="text-sm font-medium">Cancel</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleViewUserDetails(user.id)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
-                            title="View user details"
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span className="text-sm font-medium">View</span>
-                          </button>
-                          <button
-                            onClick={() => startEditUser(user)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
-                            title="Edit user"
-                          >
-                            <Edit className="w-4 h-4" />
-                            <span className="text-sm font-medium">Edit</span>
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
@@ -1104,6 +1076,15 @@ export default function AdminUsersPage() {
                             <span className="text-sm font-medium">Delete</span>
                           </button>
                         </div>
+                      ) : (
+                        <button
+                          onClick={() => handleViewUserDetails(user.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                          title="View/Edit user"
+                        >
+                          <Edit className="w-4 h-4" />
+                          <span className="text-sm font-medium">View/Edit</span>
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -1121,43 +1102,153 @@ export default function AdminUsersPage() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-white">
-                  User Details: {selectedUser.user.username || selectedUser.user.email}
+                  {modalEditMode ? 'Edit User' : 'User Details'}: {selectedUser.user.username || selectedUser.user.email}
                 </h3>
-                <p className="text-blue-200">Week {selectedUser.currentWeek} Picks & Information</p>
+                <p className="text-blue-200">
+                  {modalEditMode ? 'Modify user information' : `Week ${selectedUser.currentWeek} Picks & Information`}
+                </p>
               </div>
-              <button
-                onClick={closeUserDetails}
-                className="text-blue-200 hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {modalEditMode ? (
+                  <>
+                    <button
+                      onClick={handleModalUpdateUser}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Save</span>
+                    </button>
+                    <button
+                      onClick={() => setModalEditMode(false)}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Cancel</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setModalEditMode(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Edit</span>
+                  </button>
+                )}
+                <button
+                  onClick={closeUserDetails}
+                  className="text-blue-200 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {/* User Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="bg-white/5 rounded-lg p-4">
                 <h4 className="text-lg font-medium text-white mb-3">User Information</h4>
-                <div className="space-y-2 text-sm">
-                  <div><span className="text-blue-200">User ID:</span> <span className="text-gray-300 font-mono">{selectedUser.user.id}</span></div>
-                  <div><span className="text-blue-200">Name:</span> {selectedUser.user.first_name} {selectedUser.user.last_name}</div>
-                  <div><span className="text-blue-200">Email:</span> {selectedUser.user.email}</div>
-                  <div><span className="text-blue-200">Username:</span> {selectedUser.user.username || 'Not set'}</div>
-                  <div><span className="text-blue-200">Phone:</span> {formatPhoneNumber(selectedUser.user.phone)}</div>
-                  <div><span className="text-blue-200">User Type:</span> 
-                    <span className={`ml-2 px-2 py-1 text-xs rounded ${
-                      selectedUser.user.user_type === 'tester' ? 'bg-purple-500/20 text-purple-200' :
-                      selectedUser.user.user_type === 'active' ? 'bg-green-500/20 text-green-200' :
-                      selectedUser.user.user_type === 'pending' ? 'bg-orange-500/20 text-orange-200' :
-                      selectedUser.user.user_type === 'registered' ? 'bg-yellow-500/20 text-yellow-200' :
-                      'bg-red-500/20 text-red-200'
-                    }`}>
-                      {selectedUser.user.user_type}
-                    </span>
+                {modalEditMode ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={modalEditData.email}
+                        onChange={(e) => setModalEditData({...modalEditData, email: e.target.value})}
+                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-1">Username</label>
+                      <input
+                        type="text"
+                        value={modalEditData.username}
+                        onChange={(e) => setModalEditData({...modalEditData, username: e.target.value})}
+                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200 mb-1">First Name</label>
+                        <input
+                          type="text"
+                          value={modalEditData.first_name}
+                          onChange={(e) => setModalEditData({...modalEditData, first_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200 mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={modalEditData.last_name}
+                          onChange={(e) => setModalEditData({...modalEditData, last_name: e.target.value})}
+                          className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={modalEditData.phone}
+                        onChange={(e) => setModalEditData({...modalEditData, phone: e.target.value})}
+                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-1">User Type</label>
+                      <select
+                        value={modalEditData.user_type}
+                        onChange={(e) => setModalEditData({...modalEditData, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
+                        className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
+                      >
+                        <option value="registered">Registered</option>
+                        <option value="pending">Pending</option>
+                        <option value="active">Active</option>
+                        <option value="tester">Tester</option>
+                        <option value="eliminated">Eliminated</option>
+                      </select>
+                    </div>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 cursor-pointer hover:bg-yellow-500/20 transition-colors" 
+                         onClick={() => setModalEditData({...modalEditData, is_admin: !modalEditData.is_admin})}>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={modalEditData.is_admin}
+                          onChange={(e) => setModalEditData({...modalEditData, is_admin: e.target.checked})}
+                          className="mr-2 cursor-pointer"
+                        />
+                        <label className="text-sm text-yellow-200 font-medium cursor-pointer">
+                          {modalEditData.is_admin ? '⭐ Remove Admin Access' : '⭐ Grant Admin Access'}
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  {selectedUser.user.is_admin && (
-                    <div><span className="text-yellow-200">⭐ Admin User</span></div>
-                  )}
-                </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-blue-200">User ID:</span> <span className="text-gray-300 font-mono">{selectedUser.user.id}</span></div>
+                    <div><span className="text-blue-200">Name:</span> {selectedUser.user.first_name} {selectedUser.user.last_name}</div>
+                    <div><span className="text-blue-200">Email:</span> {selectedUser.user.email}</div>
+                    <div><span className="text-blue-200">Username:</span> {selectedUser.user.username || 'Not set'}</div>
+                    <div><span className="text-blue-200">Phone:</span> {formatPhoneNumber(selectedUser.user.phone)}</div>
+                    <div><span className="text-blue-200">User Type:</span> 
+                      <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                        selectedUser.user.user_type === 'tester' ? 'bg-purple-500/20 text-purple-200' :
+                        selectedUser.user.user_type === 'active' ? 'bg-green-500/20 text-green-200' :
+                        selectedUser.user.user_type === 'pending' ? 'bg-orange-500/20 text-orange-200' :
+                        selectedUser.user.user_type === 'registered' ? 'bg-yellow-500/20 text-yellow-200' :
+                        'bg-red-500/20 text-red-200'
+                      }`}>
+                        {selectedUser.user.user_type}
+                      </span>
+                    </div>
+                    {selectedUser.user.is_admin && (
+                      <div><span className="text-yellow-200">⭐ Admin User</span></div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="bg-white/5 rounded-lg p-4">
