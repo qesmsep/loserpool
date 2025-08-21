@@ -59,7 +59,7 @@ export async function GET() {
     // Calculate stats for each user
     const usersWithStats = usersData?.map(user => {
       const userPurchases = user.purchases || []
-      const userPicks = picks?.filter(p => p.user_id === user.id) || []
+      const userPicks = picks?.filter((p: any) => p.user_id === user.id) || []
       
       const totalPurchased = userPurchases
         .filter((p: { status: string }) => p.status === 'completed')
