@@ -1,205 +1,78 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { requireAuth } from '@/lib/auth'
-import { getWeekColumnName } from '@/lib/week-utils'
-import { updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // Verify user is authenticated
-    const user = await requireAuth()
+    const { userId, matchupId, teamPicked, picksCount } = await request.json()
+
+    if (!userId || !matchupId || !teamPicked || !picksCount) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
     const supabase = await createServerSupabaseClient()
 
-    // Parse request body
-    const { matchupId, teamName, pickNameIds } = await request.json()
+    // Use the new season detection system to get user's default week
+    const { getUserDefaultWeek } = await import('@/lib/season-detection')
+    const userDefaultWeek = await getUserDefaultWeek(userId)
 
-    // Validate required fields
-    if (!matchupId || !teamName || !pickNameIds) {
-      return NextResponse.json(
-        { error: 'Missing required fields: matchupId, teamName, pickNameIds' },
-        { status: 400 }
-      )
-    }
+    // Check if user has enough picks available
+    const { data: purchases } = await supabase
+      .from('purchases')
+      .select('picks_count')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
 
-    // Ensure pickNameIds is an array
-    const pickNames = Array.isArray(pickNameIds) ? pickNameIds : [pickNameIds]
+    const totalPicksPurchased = purchases?.reduce((sum, purchase) => sum + purchase.picks_count, 0) || 0
 
-    if (pickNames.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one pick must be selected' },
-        { status: 400 }
-      )
-    }
-
-    // Verify the matchup exists
-    const { data: matchup, error: matchupError } = await supabase
-      .from('matchups')
-      .select('id, week, away_team, home_team')
-      .eq('id', matchupId)
-      .single()
-
-    if (matchupError || !matchup) {
-      return NextResponse.json(
-        { error: 'Invalid matchup' },
-        { status: 400 }
-      )
-    }
-
-    // Verify the team name is valid for this matchup
-    if (teamName !== matchup.away_team && teamName !== matchup.home_team) {
-      return NextResponse.json(
-        { error: 'Invalid team for this matchup' },
-        { status: 400 }
-      )
-    }
-
-    // Get user's default week
-    const { data: userData } = await supabase
-      .from('users')
-      .select('user_type, is_admin, default_week')
-      .eq('id', user.id)
-      .single()
-
-    let userDefaultWeek: number
-    if (userData?.default_week) {
-      userDefaultWeek = userData.default_week
-    } else {
-      userDefaultWeek = 1
-      if (userData?.is_admin || userData?.user_type === 'tester') {
-        userDefaultWeek = 3
-      }
-    }
-
-    console.log('Debug - Allocate API:', {
-      userId: user.id,
-      userType: userData?.user_type,
-      userDefaultWeek,
-      matchupWeek: matchup.week,
-      matchupId: matchupId,
-      teamName
-    })
-
-    // For now, allow allocation regardless of matchup week
-    // The week column will be determined by the user's default week
-    console.log('Debug - Allowing allocation:', { 
-      matchupWeek: matchup.week, 
-      userDefaultWeek,
-      matchupId: matchupId
-    })
-
-    // Check if the game has already started (picks are locked)
-    const { data: matchupData } = await supabase
-      .from('matchups')
-      .select('game_time')
-      .eq('id', matchupId)
-      .single()
-
-    if (matchupData && new Date(matchupData.game_time) < new Date()) {
-      return NextResponse.json(
-        { error: 'Game has already started. Picks are locked.' },
-        { status: 400 }
-      )
-    }
-
-    // Get current week column using centralized logic
-    const weekColumn = getWeekColumnName(userDefaultWeek)
-
-    // Allocate or reallocate picks to the current week
-    for (const pickName of pickNames) {
-      // Find the existing pick (whether allocated or not)
-      const { data: existingPick } = await supabase
-        .from('picks')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .eq('pick_name', pickName)
-        .limit(1)
-
-      if (existingPick && existingPick.length > 0) {
-        const pick = existingPick[0]
-        
-        // Check if the pick has been eliminated - eliminated picks cannot be reallocated
-        if (pick.status === 'eliminated') {
-          return NextResponse.json(
-            { error: `Pick "${pickName}" has been eliminated and cannot be reallocated` },
-            { status: 400 }
-          )
-        }
-        
-              // Update the pick status to active (for both new allocations and reallocations)
-      const { error: updateError } = await supabase
-        .from('picks')
-        .update({
-          status: 'active'
-          })
-          .eq('id', pick.id)
-
-        if (updateError) {
-          console.error('Error updating pick status:', updateError)
-          return NextResponse.json(
-            { error: 'Failed to allocate picks' },
-            { status: 500 }
-          )
-        }
-
-        // Update the specific week column (this will overwrite any existing allocation)
-        const { error: weekUpdateError } = await supabase
-          .rpc('assign_pick_to_week', {
-            p_pick_id: pick.id,
-            p_week_column: weekColumn,
-            p_matchup_id: matchupId,
-            p_team_picked: teamName
-          })
-
-        if (weekUpdateError) {
-          console.error('Error updating week column:', weekUpdateError)
-          return NextResponse.json(
-            { error: 'Failed to allocate picks' },
-            { status: 500 }
-          )
-        }
-      }
-    }
-
-    // Get the updated picks
-    const { data: newPicks, error: selectError } = await supabase
+    // Get user's current picks
+    const { data: currentPicks } = await supabase
       .from('picks')
-      .select(`
-        id,
-        pick_name,
-        picks_count,
-        status,
-        ${weekColumn}
-      `)
-      .eq('user_id', user.id)
-      .in('pick_name', pickNames)
-      .not(weekColumn, 'is', null)
+      .select('picks_count')
+      .eq('user_id', userId)
 
-    if (selectError) {
-      console.error('Error selecting updated picks:', selectError)
+    const totalPicksUsed = currentPicks?.reduce((sum, pick) => sum + pick.picks_count, 0) || 0
+    const picksAvailable = totalPicksPurchased - totalPicksUsed
+
+    if (picksCount > picksAvailable) {
       return NextResponse.json(
-        { error: 'Failed to get updated picks' },
+        { error: 'Not enough picks available' },
+        { status: 400 }
+      )
+    }
+
+    // Create the pick
+    const { data: pick, error } = await supabase
+      .from('picks')
+      .insert({
+        user_id: userId,
+        matchup_id: matchupId,
+        team_picked: teamPicked,
+        picks_count: picksCount,
+        status: 'active'
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating pick:', error)
+      return NextResponse.json(
+        { error: 'Failed to create pick' },
         { status: 500 }
       )
     }
 
-    const pickCount = pickNames.length
-
-    // Update user type based on picks status
-    try {
-      await updateUserTypeBasedOnPicks(user.id)
-    } catch (error) {
-      console.error('Error updating user type:', error)
-      // Don't fail the request if user type update fails
-    }
-
     return NextResponse.json({
       success: true,
-      picks: newPicks,
-      message: `${pickCount} pick${pickCount !== 1 ? 's' : ''} allocated/reallocated to ${teamName}: ${pickNames.join(', ')}`
+      pick,
+      picksRemaining: picksAvailable - picksCount,
+      userDefaultWeek
     })
 
   } catch (error) {
-    console.error('Error in allocate picks API:', error)
+    console.error('Error in picks allocation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

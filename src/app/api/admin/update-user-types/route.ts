@@ -1,152 +1,53 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     // Verify admin access
     await requireAdmin()
+    
+    const { userIds, newType } = await request.json()
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return NextResponse.json(
+        { error: 'User IDs array is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!newType || !['registered', 'active', 'tester', 'eliminated', 'pending'].includes(newType)) {
+      return NextResponse.json(
+        { error: 'Valid user type is required' },
+        { status: 400 }
+      )
+    }
+
     const supabase = await createServerSupabaseClient()
 
-    // Get all users
-    const { data: users, error: usersError } = await supabase
+    // Update all users in the array
+    const { data, error } = await supabase
       .from('users')
-      .select('id, user_type, is_admin')
+      .update({ user_type: newType })
+      .in('id', userIds)
+      .select('id, email, user_type')
 
-    if (usersError) {
-      console.error('Error fetching users:', usersError)
+    if (error) {
+      console.error('Error updating user types:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch users' },
+        { error: 'Failed to update user types' },
         { status: 500 }
       )
     }
 
-    const results = []
-    
-    // Update user types for each user
-    for (const user of users || []) {
-      try {
-        // Skip testers
-        if (user.is_admin || user.user_type === 'tester') {
-          results.push({
-            userId: user.id,
-            oldType: user.user_type,
-            newType: user.user_type,
-            status: 'skipped (tester)'
-          })
-          continue
-        }
-
-        // Get current picks for this user
-        const { data: picks } = await supabase
-          .from('picks')
-          .select('status')
-          .eq('user_id', user.id)
-
-        // Get completed purchases for this user
-        const { data: purchases } = await supabase
-          .from('purchases')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('status', 'completed')
-
-        let newType = user.user_type
-
-        if (!picks || picks.length === 0) {
-          // No picks - should be 'registered' if no purchases, 'active' if has purchases
-          newType = purchases && purchases.length > 0 ? 'active' : 'registered'
-        } else {
-          // Has picks - check if any are active
-          const hasActivePicks = picks.some(pick => pick.status === 'active')
-          
-          if (hasActivePicks) {
-            // Has active picks - user is active
-            newType = 'active'
-          } else {
-            // Has picks but none are active - user is eliminated
-            newType = 'eliminated'
-          }
-        }
-
-        // Update user type if it changed
-        if (newType !== user.user_type) {
-          // Prepare update data
-          const updateData: { user_type: string; default_week?: number | null } = { 
-            user_type: newType 
-          }
-          
-          // If transitioning from tester to active, calculate new default_week
-          if (user.user_type === 'tester' && newType === 'active') {
-            // Get current week from global settings
-            const { data: currentWeekSetting } = await supabase
-              .from('global_settings')
-              .select('value')
-              .eq('key', 'current_week')
-              .single()
-            
-            const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
-            updateData.default_week = currentWeek
-          }
-          
-          const { error: updateError } = await supabase
-            .from('users')
-            .update(updateData)
-            .eq('id', user.id)
-
-          if (updateError) {
-            results.push({
-              userId: user.id,
-              oldType: user.user_type,
-              newType: newType,
-              status: 'error',
-              error: updateError.message
-            })
-          } else {
-            results.push({
-              userId: user.id,
-              oldType: user.user_type,
-              newType: newType,
-              status: 'updated',
-              defaultWeekCleared: user.user_type === 'tester' && newType === 'active'
-            })
-          }
-        } else {
-          results.push({
-            userId: user.id,
-            oldType: user.user_type,
-            newType: newType,
-            status: 'no change needed'
-          })
-        }
-      } catch (error) {
-        results.push({
-          userId: user.id,
-          oldType: user.user_type,
-          newType: 'unknown',
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        })
-      }
-    }
-
-    // Get summary statistics
-    const summary = {
-      total: results.length,
-      updated: results.filter(r => r.status === 'updated').length,
-      skipped: results.filter(r => r.status === 'skipped (tester)').length,
-      noChange: results.filter(r => r.status === 'no change needed').length,
-      errors: results.filter(r => r.status === 'error').length
-    }
-
     return NextResponse.json({
-      message: 'User types updated successfully',
-      summary,
-      results,
-      timestamp: new Date().toISOString()
+      success: true,
+      updatedUsers: data,
+      message: `Updated ${data.length} users to ${newType}`
     })
 
   } catch (error) {
-    console.error('Error updating user types:', error)
+    console.error('Error in update user types API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

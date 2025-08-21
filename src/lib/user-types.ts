@@ -1,16 +1,22 @@
+/**
+ * Server-side user type utilities
+ */
+
 import { createServerSupabaseClient } from './supabase-server'
 
-export type UserType = 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
-
-export interface UserWithType {
+export interface User {
   id: string
   email: string
-  username: string | null
+  username?: string
+  first_name?: string
+  last_name?: string
   is_admin: boolean
   user_type: UserType
-  default_week: number
   created_at: string
+  updated_at: string
 }
+
+export type UserType = 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
 
 /**
  * Check if a user is a tester (can buy picks for $0 and test the system)
@@ -27,12 +33,12 @@ export async function isUserTester(userId: string): Promise<boolean> {
   // Check user_type first - if explicitly set to non-tester, respect that
   if (user?.user_type && user.user_type !== 'tester') {
     return false
+  } else if (user?.is_admin) {
+    // Admins are testers by default, unless explicitly set to another type
+    return true
+  } else {
+    return user?.user_type === 'tester'
   }
-  
-  // Admins are testers by default, unless explicitly set to another type
-  if (user?.is_admin) return true
-  
-  return user?.user_type === 'tester'
 }
 
 /**
@@ -104,77 +110,6 @@ export async function canAccessPreseason(userId: string): Promise<boolean> {
 }
 
 /**
- * Get the default week a user should see
- * - Testers: Week 3 (preseason week 3) until 8/26/25, then current week
- * - Everyone else: Current week of regular season (dynamic)
- */
-export async function getUserDefaultWeek(userId: string): Promise<number> {
-  const supabase = await createServerSupabaseClient()
-  
-  const { data: user } = await supabase
-    .from('users')
-    .select('user_type, is_admin, default_week')
-    .eq('id', userId)
-    .single()
-
-  // If user has a default_week set (and it's not null), use it
-  if (user?.default_week !== null && user?.default_week !== undefined) {
-    console.log('🔍 DEBUG: Using existing default_week:', user.default_week)
-    return user.default_week
-  }
-
-  // If default_week is NULL, we need to recalculate it
-  console.log('🔍 DEBUG: default_week is NULL, recalculating...')
-
-  // Check if user is a tester
-  const isTester = user?.is_admin || user?.user_type === 'tester'
-  
-  // Get current week from global settings
-  const { data: currentWeekSetting } = await supabase
-    .from('global_settings')
-    .select('value')
-    .eq('key', 'current_week')
-    .single()
-  
-  const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
-  
-  if (isTester) {
-    // Check if we're past the preseason cutoff date (8/26/25)
-    const preseasonCutoff = new Date('2025-08-26')
-    const now = new Date()
-    
-    if (now >= preseasonCutoff) {
-      // After 8/26/25, testers see current week like everyone else
-      return currentWeek
-    } else {
-      // Before 8/26/25, testers see preseason week 3
-      return 3
-    }
-  } else {
-    // Non-testers always see the current week of regular season
-    return currentWeek
-  }
-}
-
-/**
- * Get the minimum week a user can access
- * - Testers: Can access all weeks (including preseason)
- * - Active/Eliminated/Registered users: Can only access week 1 and beyond (regular season)
- */
-export async function getMinimumAccessibleWeek(userId: string): Promise<number> {
-  const isTester = await isUserTester(userId)
-  return isTester ? 0 : 1 // 0 = preseason, 1 = regular season week 1
-}
-
-/**
- * Check if a specific week is accessible to a user
- */
-export async function canAccessWeek(userId: string, week: number): Promise<boolean> {
-  const minWeek = await getMinimumAccessibleWeek(userId)
-  return week >= minWeek
-}
-
-/**
  * Get user type for display purposes
  */
 export function getUserTypeDisplay(userType: UserType): string {
@@ -200,15 +135,15 @@ export function getUserTypeDisplay(userType: UserType): string {
 export function getUserTypeDescription(userType: UserType): string {
   switch (userType) {
     case 'registered':
-      return 'Has account, but no picks purchased / can see Week 1 of Regular season'
+      return 'Has account, but no picks purchased / can see Regular Season games'
     case 'active':
-      return 'has purchased picks available to pick / can see Week 1 of Regular Season'
+      return 'Has purchased picks available to pick / can see Regular Season games'
     case 'tester':
-      return 'a Registered User with ability to purchase picks for $0 / Can see Week 3 of PreSeason'
+      return 'A Registered User with ability to purchase picks for $0 / Can see Preseason games (until 8/26/25)'
     case 'eliminated':
-      return 'has purchased tickets but all picks have been Eliminated / can see what Active Users see'
+      return 'Has purchased tickets but all picks have been Eliminated / can see what Active Users see'
     case 'pending':
-      return 'has purchased picks but has not made any selections yet / can see Week 1 of Regular Season'
+      return 'Account is pending approval'
     default:
       return 'Unknown user type'
   }
@@ -342,61 +277,55 @@ export async function updateUserDefaultWeek(userId: string, week: number): Promi
 }
 
 /**
- * Update user type based on current picks status
- * This function should be called when picks are updated to ensure user types are correct
+ * Update user type based on picks status
+ * This function is used to automatically update user types based on their picks
  */
 export async function updateUserTypeBasedOnPicks(userId: string): Promise<void> {
   const supabase = await createServerSupabaseClient()
   
-  // Get current user type and admin status
-  const { data: user } = await supabase
-    .from('users')
-    .select('user_type, is_admin')
-    .eq('id', userId)
-    .single()
-
-  // Don't update testers
-  if (user?.is_admin || user?.user_type === 'tester') {
-    return
-  }
-
-  // Check if user has any picks
+  // Get user's picks
   const { data: picks } = await supabase
     .from('picks')
     .select('status')
     .eq('user_id', userId)
 
-  // Check if user has completed purchases
+  // Get user's completed purchases
   const { data: purchases } = await supabase
     .from('purchases')
     .select('id')
     .eq('user_id', userId)
     .eq('status', 'completed')
 
+  let newType: UserType = 'registered'
+
   if (!picks || picks.length === 0) {
-    // No picks - should be 'registered' if no purchases, 'pending' if has purchases
-    const newType = purchases && purchases.length > 0 ? 'pending' : 'registered'
-    await supabase
-      .from('users')
-      .update({ user_type: newType })
-      .eq('id', userId)
+    // No picks - should be 'registered' if no purchases, 'active' if has purchases
+    newType = purchases && purchases.length > 0 ? 'active' : 'registered'
   } else {
     // Has picks - check if any are active
     const hasActivePicks = picks.some(pick => pick.status === 'active')
     
     if (hasActivePicks) {
       // Has active picks - user is active
-      await supabase
-        .from('users')
-        .update({ user_type: 'active' })
-        .eq('id', userId)
+      newType = 'active'
     } else {
       // Has picks but none are active - user is eliminated
-      await supabase
-        .from('users')
-        .update({ user_type: 'eliminated' })
-        .eq('id', userId)
+      newType = 'eliminated'
     }
+  }
+
+  // Update user type if it changed
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('user_type')
+    .eq('id', userId)
+    .single()
+
+  if (currentUser && currentUser.user_type !== newType) {
+    await supabase
+      .from('users')
+      .update({ user_type: newType })
+      .eq('id', userId)
   }
 }
 
