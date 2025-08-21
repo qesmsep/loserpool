@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { espnService, ESPNGame } from '@/lib/espn-service'
+import { updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
 
 
     // Create a map of ESPN games by team matchup for easy lookup
-    const espnGameMap = new Map<string, any>()
+    const espnGameMap = new Map<string, { status: string; away_score: number | null; home_score: number | null; last_api_update: string; quarter_info: string | null; broadcast_info: string | null }>()
     allEspnGames.forEach(game => {
       const convertedGame = espnService.convertToMatchupFormat(game)
       if (convertedGame) {
@@ -200,7 +201,19 @@ export async function POST(request: NextRequest) {
                  broadcastInfo !== matchup.broadcast_info
 
                if (needsUpdate) {
-                 const updateData: any = {
+                 const updateData: {
+                   status: string;
+                   away_score: number | null;
+                   home_score: number | null;
+                   quarter_info: string | null;
+                   broadcast_info: string | null;
+                   updated_at: string;
+                   last_api_update: string;
+                   winner?: string;
+                   temperature?: number | null;
+                   wind_speed?: number | null;
+                   weather_forecast?: string | null;
+                 } = {
                    status: newStatus,
                    away_score: awayScore,
                    home_score: homeScore,
@@ -421,13 +434,24 @@ async function updatePickStatuses(matchupId: string, winner: string) {
     }
 
     console.log(`Successfully updated ${picksForThisMatchup.length} picks for matchup ${matchupId}`)
+    
+    // Update user types for all users who had picks in this matchup
+    const userIds = [...new Set(picksForThisMatchup.map(pick => pick.user_id))]
+    for (const userId of userIds) {
+      try {
+        await updateUserTypeBasedOnPicks(userId)
+      } catch (error) {
+        console.error(`Error updating user type for user ${userId}:`, error)
+        // Don't fail the entire process if one user type update fails
+      }
+    }
   } catch (error) {
     console.error(`Error updating pick statuses for matchup ${matchupId}:`, error)
   }
 }
 
 // Function to process pick status updates for all final games that haven't been processed yet
-async function processFinalGamePickUpdates(supabase: any, matchups: any[]) {
+async function processFinalGamePickUpdates(supabase: ReturnType<typeof createServiceRoleClient>, matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string }[]) {
   const finalGames = matchups.filter(m => m.status === 'final');
   console.log(`Found ${finalGames.length} final games to process pick updates for.`);
 

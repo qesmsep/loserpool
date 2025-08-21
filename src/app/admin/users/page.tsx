@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Users, Mail, Calendar, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react'
+import { Users, Mail, Calendar, Plus, Edit, Trash2, X, Check } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface User {
@@ -14,7 +14,7 @@ interface User {
   last_name: string | null
   phone: string | null
   is_admin: boolean
-  user_type: 'registered' | 'active' | 'tester' | 'eliminated'
+  user_type: 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   created_at: string
   totalPurchased: number
   activePicks: number
@@ -62,7 +62,7 @@ export default function AdminUsersPage() {
     last_name: '',
     phone: '',
     is_admin: false,
-    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated',
+    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending',
     temporaryPassword: ''
   })
 
@@ -73,9 +73,46 @@ export default function AdminUsersPage() {
     last_name: '',
     phone: '',
     is_admin: false,
-    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated'
+    user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   })
   const [picksToAdd, setPicksToAdd] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    userType: 'all' as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
+  })
+
+  // Filter users based on search term and filters
+  const filteredUsers = users.filter(user => {
+    // Text search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch = (
+        user.email?.toLowerCase().includes(searchLower) ||
+        user.username?.toLowerCase().includes(searchLower) ||
+        user.first_name?.toLowerCase().includes(searchLower) ||
+        user.last_name?.toLowerCase().includes(searchLower) ||
+        user.phone?.toLowerCase().includes(searchLower)
+      )
+      if (!matchesSearch) return false
+    }
+
+    // User type filter
+    if (filters.userType !== 'all' && user.user_type !== filters.userType) {
+      return false
+    }
+
+    return true
+  })
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('')
+    setFilters({
+      userType: 'all'
+    })
+  }
 
   // Check authentication and admin status
   useEffect(() => {
@@ -499,7 +536,7 @@ export default function AdminUsersPage() {
                   <label className="block text-sm font-medium text-white mb-1">User Type</label>
                   <select
                     value={newUser.user_type}
-                    onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated'})}
+                                                  onChange={(e) => setNewUser({...newUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
                     className="w-full px-3 py-2 border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white"
                   >
                     <option value="registered">Registered (No Picks Yet)</option>
@@ -534,8 +571,60 @@ export default function AdminUsersPage() {
         {/* Users Table */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="px-6 py-4 border-b border-white/20">
-            <h2 className="text-xl font-semibold text-white">All Users</h2>
-            <p className="text-blue-100">Complete user list with stats</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">All Users</h2>
+                <p className="text-blue-100">Complete user list with stats</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64 px-4 py-2 pl-10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/10 text-white placeholder-blue-200"
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="text-sm text-blue-200">
+                  {filteredUsers.length} of {users.length} users
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* User Type Filter */}
+          <div className="px-6 py-4 border-b border-white/20 bg-white/5">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-blue-200">Filter by User Type:</label>
+                <select
+                  value={filters.userType}
+                  onChange={(e) => setFilters({...filters, userType: e.target.value as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
+                  className="px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="registered">Registered</option>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="eliminated">Eliminated</option>
+                  <option value="tester">Tester</option>
+                </select>
+              </div>
+
+              {/* Clear Filters Button */}
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+              >
+                Clear Filter
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/20">
@@ -562,7 +651,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white/5 divide-y divide-white/20">
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id} className={editingUser === user.id ? 'bg-blue-500/10' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {editingUser === user.id ? (
@@ -700,10 +789,11 @@ export default function AdminUsersPage() {
                             <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
                             <select
                               value={editUser.user_type}
-                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated'})}
+                              onChange={(e) => setEditUser({...editUser, user_type: e.target.value as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
                               className="w-full px-2 py-1 text-sm border border-white/30 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white/10 text-white"
                             >
                               <option value="registered">Registered (No Picks Yet)</option>
+                              <option value="pending">Pending (Purchased, No Selections)</option>
                               <option value="active">Active (Normal Pool)</option>
                               <option value="tester">Tester ($0 Picks)</option>
                               <option value="eliminated">Eliminated (No Picks)</option>
@@ -739,14 +829,16 @@ export default function AdminUsersPage() {
                               ? 'bg-purple-500/20 text-purple-200'
                               : user.user_type === 'active'
                               ? 'bg-green-500/20 text-green-200'
+                              : user.user_type === 'pending'
+                              ? 'bg-orange-500/20 text-orange-200'
                               : user.user_type === 'registered'
                               ? 'bg-yellow-500/20 text-yellow-200'
                               : 'bg-red-500/20 text-red-200'
                           }`}>
-                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'registered' ? 'Registered' : 'Eliminated'}
+                            {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : user.user_type === 'registered' ? 'Registered' : 'Eliminated'}
                           </span>
                           <div className="text-xs text-blue-200 mt-1">
-                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'registered' ? 'No picks yet' : 'No picks'}
+                            {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'pending' ? 'Purchased, no selections' : user.user_type === 'registered' ? 'No picks yet' : 'No picks'}
                           </div>
                         </>
                       )}

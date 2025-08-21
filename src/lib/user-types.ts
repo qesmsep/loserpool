@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from './supabase-server'
 
-export type UserType = 'registered' | 'active' | 'tester' | 'eliminated'
+export type UserType = 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
 
 export interface UserWithType {
   id: string
@@ -57,7 +57,7 @@ export async function isUserRegistered(userId: string): Promise<boolean> {
     .eq('id', userId)
     .single()
 
-  return user?.user_type === 'active'
+  return user?.user_type === 'registered'
 }
 
 /**
@@ -73,6 +73,21 @@ export async function isUserEliminated(userId: string): Promise<boolean> {
     .single()
 
   return user?.user_type === 'eliminated'
+}
+
+/**
+ * Check if a user is pending (has purchased picks but hasn't made selections yet)
+ */
+export async function isUserPending(userId: string): Promise<boolean> {
+  const supabase = await createServerSupabaseClient()
+  
+  const { data: user } = await supabase
+    .from('users')
+    .select('user_type')
+    .eq('id', userId)
+    .single()
+
+  return user?.user_type === 'pending'
 }
 
 /**
@@ -138,6 +153,8 @@ export function getUserTypeDisplay(userType: UserType): string {
       return 'Tester'
     case 'eliminated':
       return 'Eliminated'
+    case 'pending':
+      return 'Pending'
     default:
       return 'Unknown'
   }
@@ -156,6 +173,8 @@ export function getUserTypeDescription(userType: UserType): string {
       return 'a Registered User with ability to purchase picks for $0 / Can see Week 3 of PreSeason'
     case 'eliminated':
       return 'has purchased tickets but all picks have been Eliminated / can see what Active Users see'
+    case 'pending':
+      return 'has purchased picks but has not made any selections yet / can see Week 1 of Regular Season'
     default:
       return 'Unknown user type'
   }
@@ -163,11 +182,11 @@ export function getUserTypeDescription(userType: UserType): string {
 
 /**
  * Check if a user can make purchases
- * Testers can buy picks for $0, active users pay normal price, registered users can buy, eliminated users cannot buy
+ * Testers can buy picks for $0, active users pay normal price, registered users can buy, pending users can buy, eliminated users cannot buy
  */
 export async function canMakePurchase(userId: string): Promise<boolean> {
   const userType = await getUserType(userId)
-  return userType === 'active' || userType === 'tester' || userType === 'registered'
+  return userType === 'active' || userType === 'tester' || userType === 'registered' || userType === 'pending'
 }
 
 /**
@@ -239,8 +258,8 @@ export async function updateUserTypeBasedOnPicks(userId: string): Promise<void> 
     .eq('status', 'completed')
 
   if (!picks || picks.length === 0) {
-    // No picks - should be 'registered' if no purchases, 'active' if has purchases
-    const newType = purchases && purchases.length > 0 ? 'active' : 'registered'
+    // No picks - should be 'registered' if no purchases, 'pending' if has purchases
+    const newType = purchases && purchases.length > 0 ? 'pending' : 'registered'
     await supabase
       .from('users')
       .update({ user_type: newType })
@@ -266,6 +285,19 @@ export async function updateUserTypeBasedOnPicks(userId: string): Promise<void> 
 }
 
 /**
+ * Update user type to pending when purchase is completed but no picks have been made yet
+ */
+export async function updateUserTypeToPending(userId: string): Promise<void> {
+  const supabase = await createServerSupabaseClient()
+  
+  await supabase
+    .from('users')
+    .update({ user_type: 'pending' })
+    .eq('id', userId)
+    .eq('user_type', 'registered')
+}
+
+/**
  * Update user type to active when purchase is completed
  */
 export async function updateUserTypeToActive(userId: string): Promise<void> {
@@ -275,7 +307,7 @@ export async function updateUserTypeToActive(userId: string): Promise<void> {
     .from('users')
     .update({ user_type: 'active' })
     .eq('id', userId)
-    .eq('user_type', 'registered')
+    .in('user_type', ['registered', 'pending'])
 }
 
 /**
@@ -288,7 +320,7 @@ export async function updateUserTypeToEliminated(userId: string): Promise<void> 
     .from('users')
     .update({ user_type: 'eliminated' })
     .eq('id', userId)
-    .eq('user_type', 'active')
+    .in('user_type', ['active', 'pending'])
 }
 
 

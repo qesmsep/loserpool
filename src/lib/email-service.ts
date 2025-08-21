@@ -18,8 +18,8 @@ export interface EmailResult {
 
 // Email service configuration
 const EMAIL_CONFIG = {
-  provider: process.env.EMAIL_PROVIDER || 'console', // 'console', 'supabase', 'resend', 'sendgrid'
-  fromEmail: process.env.FROM_EMAIL || 'noreply@loserpool.app',
+  provider: process.env.EMAIL_PROVIDER || 'resend', // Default to resend since you're using it
+  fromEmail: process.env.FROM_EMAIL || 'noreply@loserpool.com', // Update this to your actual domain
   apiKey: process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY, // Support both EMAIL_API_KEY and RESEND_API_KEY
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
-import { updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST() {
   try {
@@ -178,7 +177,7 @@ export async function GET() {
       .not('user_type', 'eq', 'tester')
 
     const usersToUpdate = usersNeedingUpdates?.map(user => {
-      const hasActivePicks = user.picks.some((pick: any) => pick.status === 'active')
+      const hasActivePicks = user.picks.some((pick: { status: string }) => pick.status === 'active')
       const hasAnyPicks = user.picks.length > 0
       
       let suggestedType = user.user_type
@@ -196,7 +195,7 @@ export async function GET() {
         currentType: user.user_type,
         suggestedType,
         needsUpdate: suggestedType !== user.user_type,
-        activePicks: user.picks.filter((pick: any) => pick.status === 'active').length,
+        activePicks: user.picks.filter((pick: { status: string }) => pick.status === 'active').length,
         totalPicks: user.picks.length
       }
     }) || []

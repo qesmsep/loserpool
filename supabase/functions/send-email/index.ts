@@ -33,13 +33,13 @@ async function sendEmailViaResend(emailData: EmailRequest): Promise<EmailRespons
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: emailData.from || 'noreply@loserpool.com',
-        to: recipients,
-        subject: emailData.subject,
-        html: emailData.html,
-        text: emailData.text,
-      }),
+              body: JSON.stringify({
+          from: emailData.from || 'noreply@loserpool.com', // Update this to your actual domain
+          to: recipients,
+          subject: emailData.subject,
+          html: emailData.html,
+          text: emailData.text,
+        }),
     })
 
     const result = await response.json()

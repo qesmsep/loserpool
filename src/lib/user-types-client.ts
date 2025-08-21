@@ -1,4 +1,4 @@
-export type UserType = 'registered' | 'active' | 'tester' | 'eliminated'
+export type UserType = 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
 
 export interface UserWithType {
   id: string
@@ -23,6 +23,8 @@ export function getUserTypeDisplay(userType: UserType | 'regular'): string {
       return 'Registered'
     case 'eliminated':
       return 'Eliminated'
+    case 'pending':
+      return 'Pending'
     case 'regular':
       return 'Regular Player'
     default:

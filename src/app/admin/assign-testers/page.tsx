@@ -13,7 +13,7 @@ interface User {
   first_name: string | null
   last_name: string | null
   is_admin: boolean
-  user_type: 'active' | 'tester' | 'eliminated'
+  user_type: 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   created_at: string
 }
 
@@ -243,12 +243,14 @@ export default function AssignTestersPage() {
                           ? 'bg-purple-500/20 text-purple-200'
                           : user.user_type === 'active'
                           ? 'bg-green-500/20 text-green-200'
+                          : user.user_type === 'pending'
+                          ? 'bg-orange-500/20 text-orange-200'
                           : 'bg-red-500/20 text-red-200'
                       }`}>
-                        {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : 'Eliminated'}
+                        {user.user_type === 'tester' ? 'Tester' : user.user_type === 'active' ? 'Active' : user.user_type === 'pending' ? 'Pending' : 'Eliminated'}
                       </span>
                       <div className="text-xs text-blue-200 mt-1">
-                        {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : 'No picks'}
+                        {user.user_type === 'tester' ? '$0 picks' : user.user_type === 'active' ? 'Normal price' : user.user_type === 'pending' ? 'Purchased, no selections' : 'No picks'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

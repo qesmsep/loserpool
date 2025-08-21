@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/auth'
 import { getWeekColumnName } from '@/lib/week-utils'
+import { updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST(request: Request) {
   try {
@@ -182,6 +183,14 @@ export async function POST(request: Request) {
     }
 
     const pickCount = pickNames.length
+
+    // Update user type based on picks status
+    try {
+      await updateUserTypeBasedOnPicks(user.id)
+    } catch (error) {
+      console.error('Error updating user type:', error)
+      // Don't fail the request if user type update fails
+    }
 
     return NextResponse.json({
       success: true,

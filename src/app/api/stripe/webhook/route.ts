@@ -159,11 +159,11 @@ export async function POST(request: NextRequest) {
           console.log('🎯 Picks count:', purchase.picks_count)
           console.log('💰 Amount paid:', purchase.amount_paid)
           
-          // Update user type to 'active' when purchase is completed
-          console.log('🔄 Step 3: Updating user type to active')
+          // Update user type to 'pending' when purchase is completed (user hasn't made selections yet)
+          console.log('🔄 Step 3: Updating user type to pending')
           const { error: userUpdateError } = await supabase
             .from('users')
-            .update({ user_type: 'active' })
+            .update({ user_type: 'pending' })
             .eq('id', purchase.user_id)
             .eq('user_type', 'registered')
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { isUserTester } from '@/lib/user-types'
+import { isUserTester, updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +86,14 @@ export async function POST(request: NextRequest) {
     if (picksError) {
       console.error('Error creating pick records:', picksError)
       return NextResponse.json({ error: picksError.message }, { status: 400 })
+    }
+
+    // Update user type based on picks status
+    try {
+      await updateUserTypeBasedOnPicks(userId)
+    } catch (error) {
+      console.error('Error updating user type:', error)
+      // Don't fail the request if user type update fails
     }
 
     const priceMessage = userIsTester ? 'free' : `$${(totalAmount / 100).toFixed(2)}`

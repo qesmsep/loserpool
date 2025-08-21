@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 // Import the sendEmail function directly
+import { Resend } from 'resend'
+
 async function sendEmailDirect(emailData: {
   to: string
   subject: string
   htmlBody: string
 }) {
-  const { Resend } = require('resend')
   const resend = new Resend(process.env.RESEND_API_KEY)
   
   const { data, error } = await resend.emails.send({
