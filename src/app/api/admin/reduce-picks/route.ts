@@ -66,6 +66,7 @@ export async function POST(request: Request) {
               status: 'eliminated'
             })
             .eq('id', pick.id)
+            .then()
         )
       } else {
         // Just reduce the picks count
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
             .from('picks')
             .update({ picks_count: newPicksCount })
             .eq('id', pick.id)
+            .then()
         )
       }
 
