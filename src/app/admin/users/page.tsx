@@ -212,6 +212,12 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Find the original user data to detect changes
+      const originalUser = users.find(u => u.id === userId)
+      if (!originalUser) {
+        throw new Error('Original user data not found')
+      }
+      
       const updateData = {
         email: editUser.email,
         username: editUser.username || null,
@@ -222,9 +228,14 @@ export default function AdminUsersPage() {
         user_type: editUser.user_type
       }
       
+      // Check if user type changed from tester to active
+      const userTypeChanged = originalUser.user_type !== editUser.user_type
+      const isTesterToActive = originalUser.user_type === 'tester' && editUser.user_type === 'active'
+      
       console.log('Updating user with data:', updateData)
       console.log('User ID:', userId)
-      console.log('Edit user state:', editUser)
+      console.log('User type changed:', userTypeChanged)
+      console.log('Tester to Active transition:', isTesterToActive)
       
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
@@ -240,7 +251,15 @@ export default function AdminUsersPage() {
         throw new Error(result.error || 'Failed to update user')
       }
 
-      setSuccess('User updated successfully')
+      // Show appropriate success message
+      if (isTesterToActive) {
+        setSuccess(`User updated successfully! User type changed from Tester to Active. Default view will now show current Regular Season games.`)
+      } else if (userTypeChanged) {
+        setSuccess(`User updated successfully! User type changed from ${originalUser.user_type} to ${editUser.user_type}.`)
+      } else {
+        setSuccess('User updated successfully')
+      }
+      
       setEditingUser(null)
       loadUsers()
     } catch (error) {
@@ -248,6 +267,8 @@ export default function AdminUsersPage() {
       setError(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
+
+
 
   const handleAddPicks = async (userId: string) => {
     try {
@@ -798,6 +819,44 @@ export default function AdminUsersPage() {
                               <option value="tester">Tester ($0 Picks)</option>
                               <option value="eliminated">Eliminated (No Picks)</option>
                             </select>
+                            {/* Show helpful info about user type changes */}
+                            {(() => {
+                              const originalUser = users.find(u => u.id === editingUser)
+                              if (!originalUser || originalUser.user_type === editUser.user_type) return null
+                              
+                              if (originalUser.user_type === 'tester' && editUser.user_type !== 'tester') {
+                                return (
+                                  <div className="mt-1 p-2 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-200">
+                                    ✅ Will automatically switch from Preseason Week 3 to current Regular Season games
+                                  </div>
+                                )
+                              } else if (editUser.user_type === 'tester') {
+                                // Check if we're past the preseason cutoff
+                                const preseasonCutoff = new Date('2025-08-26')
+                                const now = new Date()
+                                
+                                if (now >= preseasonCutoff) {
+                                  return (
+                                    <div className="mt-1 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs text-purple-200">
+                                      ✅ Will automatically switch to current Regular Season games ($0 picks)
+                                    </div>
+                                  )
+                                } else {
+                                  return (
+                                    <div className="mt-1 p-2 bg-purple-500/10 border border-purple-500/20 rounded text-xs text-purple-200">
+                                      ✅ Will automatically switch to Preseason Week 3 games ($0 picks)
+                                    </div>
+                                  )
+                                }
+                              } else if (originalUser.user_type !== 'tester' && editUser.user_type !== 'tester') {
+                                return (
+                                  <div className="mt-1 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-200">
+                                    ✅ Will continue to see current Regular Season games
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()}
                           </div>
                           <div className="border-t border-white/20 pt-2">
                             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 cursor-pointer hover:bg-yellow-500/20 transition-colors" 

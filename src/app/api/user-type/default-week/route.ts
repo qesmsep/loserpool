@@ -37,9 +37,35 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Otherwise calculate based on user type
+    // Check if user is a tester
     const isTester = user.is_admin || user.user_type === 'tester'
-    const defaultWeek = isTester ? 3 : 1 // 3 = preseason week 3, 1 = regular season week 1
+    
+    // Get current week from global settings
+    const { data: currentWeekSetting } = await supabase
+      .from('global_settings')
+      .select('value')
+      .eq('key', 'current_week')
+      .single()
+    
+    const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
+    
+    let defaultWeek: number
+    if (isTester) {
+      // Check if we're past the preseason cutoff date (8/26/25)
+      const preseasonCutoff = new Date('2025-08-26')
+      const now = new Date()
+      
+      if (now >= preseasonCutoff) {
+        // After 8/26/25, testers see current week like everyone else
+        defaultWeek = currentWeek
+      } else {
+        // Before 8/26/25, testers see preseason week 3
+        defaultWeek = 3
+      }
+    } else {
+      // Non-testers always see the current week of regular season
+      defaultWeek = currentWeek
+    }
 
     return NextResponse.json({
       success: true,

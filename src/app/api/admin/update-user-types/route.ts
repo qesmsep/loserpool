@@ -70,9 +70,19 @@ export async function POST() {
 
         // Update user type if it changed
         if (newType !== user.user_type) {
+          // Prepare update data
+          const updateData: { user_type: string; default_week?: number | null } = { 
+            user_type: newType 
+          }
+          
+          // If transitioning from tester to active, clear default_week to force recalculation
+          if (user.user_type === 'tester' && newType === 'active') {
+            updateData.default_week = null
+          }
+          
           const { error: updateError } = await supabase
             .from('users')
-            .update({ user_type: newType })
+            .update(updateData)
             .eq('id', user.id)
 
           if (updateError) {
@@ -88,7 +98,8 @@ export async function POST() {
               userId: user.id,
               oldType: user.user_type,
               newType: newType,
-              status: 'updated'
+              status: 'updated',
+              defaultWeekCleared: user.user_type === 'tester' && newType === 'active'
             })
           }
         } else {

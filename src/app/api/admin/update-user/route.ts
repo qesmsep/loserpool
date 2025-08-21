@@ -37,10 +37,17 @@ export async function POST(request: Request) {
     console.log('Existing user data:', existingUser)
     console.log('About to update with data:', updateData)
     
+    // Check if transitioning from tester to active and clear default_week
+    const finalUpdateData = { ...updateData }
+    if (existingUser.user_type === 'tester' && updateData.user_type === 'active') {
+      finalUpdateData.default_week = null
+      console.log('Transitioning from tester to active - clearing default_week')
+    }
+    
     // Update the user using service role client
     const { data, error } = await supabaseAdmin
       .from('users')
-      .update(updateData)
+      .update(finalUpdateData)
       .eq('id', userId)
       .select()
     
