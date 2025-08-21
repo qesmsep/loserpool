@@ -88,23 +88,9 @@ export default function PicksPage() {
       console.log('🔍 DEBUG: Picks page - user is tester:', userIsTester)
       setIsTester(userIsTester)
       
-      // Determine the season type based on user type and week
-      let seasonFilter = ''
-      
-      if (userIsTester) {
-        // Testers see preseason games
-        if (userDefaultWeek === 0) seasonFilter = 'PRE0'
-        else if (userDefaultWeek === 1) seasonFilter = 'PRE1'
-        else if (userDefaultWeek === 2) seasonFilter = 'PRE2'
-        else if (userDefaultWeek === 3) seasonFilter = 'PRE3'
-        else seasonFilter = 'REG1' // fallback
-      } else {
-        // Non-testers see regular season games
-        if (userDefaultWeek === 1) seasonFilter = 'REG1'
-        else if (userDefaultWeek === 2) seasonFilter = 'REG2'
-        else if (userDefaultWeek === 3) seasonFilter = 'REG3'
-        else seasonFilter = 'REG1' // fallback
-      }
+      // Use the new season detection system
+      const { getUserSeasonFilter } = await import('@/lib/season-detection')
+      const seasonFilter = await getUserSeasonFilter(user.id)
       
       setSeasonFilter(seasonFilter)
       

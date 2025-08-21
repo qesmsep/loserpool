@@ -474,24 +474,9 @@ export default function DashboardPage() {
   } catch (error) {
     console.error('Error loading matchup data:', error)
     // Fallback to database - get current week games only
-    // Determine the season type based on user type and week
-    const isTester = await isUserTester(user.id)
-    let seasonFilter = ''
-    
-    if (isTester) {
-      // Testers see preseason games
-      if (week === 0) seasonFilter = 'PRE0'
-      else if (week === 1) seasonFilter = 'PRE1'
-      else if (week === 2) seasonFilter = 'PRE2'
-      else if (week === 3) seasonFilter = 'PRE3'
-      else seasonFilter = 'REG1' // fallback
-    } else {
-      // Non-testers see regular season games
-      if (week === 1) seasonFilter = 'REG1'
-      else if (week === 2) seasonFilter = 'REG2'
-      else if (week === 3) seasonFilter = 'REG3'
-      else seasonFilter = 'REG1' // fallback
-    }
+    // Use the new season detection system
+    const { getUserSeasonFilter } = await import('@/lib/season-detection')
+    const seasonFilter = await getUserSeasonFilter(user.id)
     
     const { data: dbMatchupsData } = await supabase
       .from('matchups')
