@@ -105,6 +105,7 @@ export default function PickSelectionPopup({
         const sortedPicks = (data.availablePicks || []).sort((a: PickName, b: PickName) => 
           a.name.localeCompare(b.name)
         )
+        console.log('📋 Available picks fetched:', sortedPicks)
         setAvailablePicks(sortedPicks)
       } else {
         setError(data.error || 'Failed to fetch available picks')
@@ -120,12 +121,13 @@ export default function PickSelectionPopup({
 
 
   const handlePickToggle = (pickId: string) => {
+    console.log('🔄 Toggle pick:', pickId)
     setSelectedPickIds(prev => {
-      if (prev.includes(pickId)) {
-        return prev.filter(id => id !== pickId)
-      } else {
-        return [...prev, pickId]
-      }
+      const newSelection = prev.includes(pickId) 
+        ? prev.filter(id => id !== pickId)
+        : [...prev, pickId]
+      console.log('🔄 Selected picks updated:', newSelection)
+      return newSelection
     })
   }
 
@@ -224,7 +226,7 @@ export default function PickSelectionPopup({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              console.log('Team button clicked!', { selectedPickIds: selectedPickIds.length, loading })
+              console.log('Team button clicked!', { selectedPickIds, selectedPickIdsLength: selectedPickIds.length, loading })
               if (selectedPickIds.length > 0 && !loading) {
                 console.log('Calling handleAllocate...')
                 handleAllocate()

@@ -48,8 +48,9 @@ export function getWeekColumnNameFromSeasonInfo(seasonInfo: { currentSeason: str
     // Tester in preseason - use preseason column
     return `pre${seasonInfo.currentWeek}_team_matchup_id`
   } else {
-    // Regular season or non-tester - use regular season column
-    return `reg${seasonInfo.currentWeek}_team_matchup_id`
+    // Non-testers use regular season week - if in preseason, use week 1, otherwise use current week
+    const weekNumber = seasonInfo.isPreseason ? 1 : seasonInfo.currentWeek
+    return `reg${weekNumber}_team_matchup_id`
   }
 }
 

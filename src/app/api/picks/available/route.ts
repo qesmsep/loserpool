@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/auth'
+import { getCurrentSeasonInfo } from '@/lib/season-detection'
+import { isUserTester } from '@/lib/user-types'
+import { getWeekColumnNameFromSeasonInfo } from '@/lib/week-utils'
 
 // Type for pick data with dynamic week columns
 type PickData = {
@@ -15,25 +18,18 @@ export async function GET() {
     const user = await requireAuth()
     const supabase = await createServerSupabaseClient()
 
-    // Get current week
-    const { data: settings } = await supabase
-      .from('global_settings')
-      .select('key, value')
-      .in('key', ['current_week'])
-
-    const weekSetting = settings?.find(s => s.key === 'current_week')
-    const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
-
-    // Get all picks that have a pick_name (both allocated and unallocated)
-    // Get current week column - determine the correct prefix based on current week
-    let weekColumn: string
-    if (currentWeek <= 3) {
-      weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 20) {
-      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
-    } else {
-      weekColumn = `post${currentWeek - 20}_team_matchup_id`
-    }
+    const seasonInfo = await getCurrentSeasonInfo()
+    const isTester = await isUserTester(user.id)
+    const weekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
+    const currentWeek = seasonInfo.currentWeek
+    
+    console.log('🔍 Available API Debug:', {
+      userId: user.id,
+      isTester,
+      seasonInfo,
+      weekColumn,
+      currentWeek
+    })
     
     const { data: allPicksData } = await supabase
       .from('picks')
@@ -46,11 +42,11 @@ export async function GET() {
       .not('pick_name', 'is', null)
       .neq('status', 'eliminated') as { data: PickData[] | null }
 
-    // Get all matchups for the current week to map team_matchup_id to team names
+    // Get all matchups for the current season to map team_matchup_id to team names
     const { data: matchupsData } = await supabase
       .from('matchups')
-      .select('id, away_team, home_team')
-      .eq('week', currentWeek)
+      .select('id, away_team, home_team, season')
+      .eq('season', seasonInfo.seasonDisplay)
 
     // Create a mapping of team_matchup_id to team name
     const teamMatchupMapping: { [key: string]: string } = {}
@@ -76,6 +72,15 @@ export async function GET() {
         matchupInfo: null
       }
     }) || []
+
+    console.log('🔍 Available picks result:', {
+      allPicksDataCount: allPicksData?.length || 0,
+      matchupsDataCount: matchupsData?.length || 0,
+      availablePicksCount: availablePicks.length,
+      weekColumn,
+      seasonDisplay: seasonInfo.seasonDisplay,
+      availablePicks: availablePicks.map(p => ({ id: p.id, name: p.name, isAllocated: p.isAllocated, status: p.status }))
+    })
 
     return NextResponse.json({ 
       availablePicks,
