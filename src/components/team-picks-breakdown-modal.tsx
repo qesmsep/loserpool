@@ -50,7 +50,7 @@ interface TeamBreakdown {
   totalPicks: number
   activePicks: number
   eliminatedPicks: number
-  uniqueUsers: number
+  uniqueUsers: number | Set<string>
 }
 
 export default function TeamPicksBreakdownModal({
