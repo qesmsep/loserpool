@@ -93,7 +93,7 @@ export default function TeamPicksBreakdownModal({
       }
 
       breakdown[team].totalPicks += pick.picks_count
-      breakdown[team].uniqueUsers.add(pick.user_id)
+      (breakdown[team].uniqueUsers as Set<string>).add(pick.user_id)
 
       if (pick.status === 'active') {
         breakdown[team].activePicks += pick.picks_count
