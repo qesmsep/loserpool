@@ -588,7 +588,7 @@ export default function MatchupBox({
             showControls={canShowControls}
             venue={matchup.venue}
             score={matchup.away_score}
-            spread={matchup.away_spread}
+            spread={matchup.away_spread ?? undefined}
             gameStatus={matchup.status}
             isPickingAllowed={isPickingAllowed}
           />
@@ -641,7 +641,7 @@ export default function MatchupBox({
             showControls={canShowControls}
             venue={matchup.venue}
             score={matchup.home_score}
-            spread={matchup.home_spread}
+            spread={matchup.home_spread ?? undefined}
             gameStatus={matchup.status}
             isPickingAllowed={isPickingAllowed}
           />
