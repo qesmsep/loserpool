@@ -80,7 +80,7 @@ export default function TeamPicksBreakdownModal({
     const breakdown: { [team: string]: TeamBreakdown } = {}
 
     picks.forEach(pick => {
-      const team = getTeamFromMatchupId((pick as Record<string, unknown>)[currentWeekColumn])
+      const team = getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)
       
       if (!breakdown[team]) {
         breakdown[team] = {
