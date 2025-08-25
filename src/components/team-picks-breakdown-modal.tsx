@@ -59,8 +59,6 @@ export default function TeamPicksBreakdownModal({
 }: TeamPicksBreakdownModalProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'eliminated'>('all')
 
-  if (!isOpen) return null
-
   const getCurrentWeekColumn = (): string => {
     // This should match the logic from the API
     return 'reg1_team_matchup_id' // For week 1
@@ -76,6 +74,8 @@ export default function TeamPicksBreakdownModal({
   }
 
   const teamBreakdown = useMemo(() => {
+    if (!isOpen) return []
+    
     const currentWeekColumn = getCurrentWeekColumn()
     const breakdown: { [team: string]: TeamBreakdown } = {}
 
@@ -113,7 +113,9 @@ export default function TeamPicksBreakdownModal({
         if (activeTab === 'active') return b.activePicks - a.activePicks
         return b.eliminatedPicks - a.eliminatedPicks
       })
-  }, [picks, activeTab])
+  }, [picks, activeTab, isOpen])
+
+  if (!isOpen) return null
 
   const getDisplayPicks = (team: TeamBreakdown) => {
     if (activeTab === 'all') return team.totalPicks
