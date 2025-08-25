@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/auth'
 
 export async function GET(request: Request) {
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     }
 
     // Get all matchups for the current week to map team_matchup_id to team names
-    let { data: matchupsData } = await supabaseAdmin
+    const { data: matchupsData } = await supabaseAdmin
       .from('matchups')
       .select('id, away_team, home_team, away_score, home_score, game_time, status')
       .eq('week', currentWeek)
