@@ -134,8 +134,8 @@ export default function AdminPage() {
     loadData()
   }, [user, authLoading])
 
-  const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
-  const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
+  const totalRevenue = purchases?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount_paid, 0) || 0
+  const totalPicksPurchased = purchases?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.picks_count, 0) || 0
   const activePicks = picks?.filter(p => p.status === 'active') || []
   const eliminatedPicks = picks?.filter(p => p.status === 'eliminated') || []
 

@@ -183,13 +183,14 @@ export default function AdminStatsModal({
 
               <div className="bg-white/5 border border-white/20 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-white mb-3">Data Sources</h3>
-                <div className="space-y-2 text-sm text-blue-200">
-                  <p>• Active picks: Filtered from picks table where status = 'active'</p>
-                  <p>• Eliminated picks: Filtered from picks table where status = 'eliminated'</p>
-                  <p>• Total users: Count from users table</p>
-                  <p>• Revenue: Sum of amount_paid from completed purchases</p>
-                  <p>• Current week column: {currentWeekColumn}</p>
-                </div>
+                                 <div className="space-y-2 text-sm text-blue-200">
+                   <p>• Active picks: Filtered from picks table where status = 'active'</p>
+                   <p>• Eliminated picks: Filtered from picks table where status = 'eliminated'</p>
+                   <p>• Total users: Count from users table</p>
+                   <p>• Revenue: Sum of amount_paid from purchases where status = 'completed'</p>
+                   <p>• Picks purchased: Sum of picks_count from purchases where status = 'completed'</p>
+                   <p>• Current week column: {currentWeekColumn}</p>
+                 </div>
               </div>
             </div>
           )}
