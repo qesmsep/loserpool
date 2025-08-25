@@ -8,20 +8,36 @@ export async function GET() {
     await requireAdmin()
     const supabaseAdmin = createServiceRoleClient()
 
-    // Get all picks
-    const { data: picks, error: picksError } = await supabaseAdmin
-      .from('picks')
-      .select('*')
-      .order('created_at', { ascending: false })
+    // Get all picks using pagination to ensure we get every record
+    let allPicks: any[] = []
+    let hasMore = true
+    let from = 0
+    const pageSize = 1000
 
-    if (picksError) {
-      console.error('Error fetching picks:', picksError)
-      return NextResponse.json({ error: 'Failed to fetch picks' }, { status: 500 })
+    while (hasMore) {
+      const { data: picks, error: picksError } = await supabaseAdmin
+        .from('picks')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (picksError) {
+        console.error('Error fetching picks:', picksError)
+        return NextResponse.json({ error: 'Failed to fetch picks' }, { status: 500 })
+      }
+
+      if (picks && picks.length > 0) {
+        allPicks = allPicks.concat(picks)
+        from += pageSize
+        hasMore = picks.length === pageSize
+      } else {
+        hasMore = false
+      }
     }
 
     return NextResponse.json({
-      picks: picks || [],
-      count: picks?.length || 0
+      picks: allPicks,
+      count: allPicks.length
     })
 
   } catch (error) {
