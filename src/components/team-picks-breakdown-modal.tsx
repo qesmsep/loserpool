@@ -50,7 +50,7 @@ interface TeamBreakdown {
   totalPicks: number
   activePicks: number
   eliminatedPicks: number
-  uniqueUsers: number | Set<string>
+  uniqueUsers: number
 }
 
 export default function TeamPicksBreakdownModal({
@@ -88,23 +88,33 @@ export default function TeamPicksBreakdownModal({
           totalPicks: 0,
           activePicks: 0,
           eliminatedPicks: 0,
-          uniqueUsers: new Set()
+          uniqueUsers: 0
         }
       }
 
-      breakdown[team].totalPicks += pick.picks_count
-      (breakdown[team].uniqueUsers as Set<string>).add(pick.user_id)
+      const pickCount = pick.picks_count || 0
+      breakdown[team].totalPicks += pickCount
 
       if (pick.status === 'active') {
-        breakdown[team].activePicks += pick.picks_count
+        breakdown[team].activePicks += pickCount
       } else if (pick.status === 'eliminated') {
-        breakdown[team].eliminatedPicks += pick.picks_count
+        breakdown[team].eliminatedPicks += pickCount
       }
     })
 
-    // Convert uniqueUsers Set to count
-    Object.values(breakdown).forEach(team => {
-      team.uniqueUsers = (team.uniqueUsers as Set<string>).size
+    // Calculate unique users per team
+    const teamUsers: { [team: string]: Set<string> } = {}
+    picks.forEach(pick => {
+      const team = getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)
+      if (!teamUsers[team]) {
+        teamUsers[team] = new Set()
+      }
+      teamUsers[team].add(pick.user_id)
+    })
+
+    // Set unique user counts
+    Object.keys(breakdown).forEach(team => {
+      breakdown[team].uniqueUsers = teamUsers[team]?.size || 0
     })
 
     return Object.values(breakdown)
@@ -134,8 +144,6 @@ export default function TeamPicksBreakdownModal({
             <X className="w-6 h-6" />
           </button>
         </div>
-
-
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
@@ -178,9 +186,9 @@ export default function TeamPicksBreakdownModal({
             <div className="bg-white/5 border border-white/20 rounded-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Team Breakdown</h3>
-                                 <p className="text-sm text-blue-200">
-                   Sorted by total picks (most to least)
-                 </p>
+                <p className="text-sm text-blue-200">
+                  Sorted by total picks (most to least)
+                </p>
               </div>
               
               <div className="overflow-x-auto">
@@ -193,13 +201,12 @@ export default function TeamPicksBreakdownModal({
                       <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
                         Team
                       </th>
-                                             <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                         Total Picks
-                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                        Total Picks
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
                         Unique Users
                       </th>
-                      
                     </tr>
                   </thead>
                   <tbody className="bg-white/5 divide-y divide-white/20">
@@ -208,23 +215,23 @@ export default function TeamPicksBreakdownModal({
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-white">#{index + 1}</span>
                         </td>
-                                                 <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="flex items-center">
-                             <div 
-                               className="w-4 h-4 rounded-full mr-3"
-                               style={{ backgroundColor: getTeamColors(team.team).primary }}
-                             ></div>
-                             <span className="text-sm font-semibold text-white">{team.team}</span>
-                           </div>
-                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div 
+                              className="w-4 h-4 rounded-full mr-3"
+                              style={{ backgroundColor: getTeamColors(team.team).primary }}
+                            ></div>
+                            <span className="text-sm font-semibold text-white">{team.team}</span>
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`text-lg font-bold ${getStatusColor()}`}>
                             {getDisplayPicks(team)}
                           </span>
                         </td>
-                                                 <td className="px-6 py-4 whitespace-nowrap">
-                           <span className="text-sm text-white">{team.uniqueUsers}</span>
-                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-white">{team.uniqueUsers}</span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -248,3 +255,4 @@ export default function TeamPicksBreakdownModal({
     </div>
   )
 }
+
