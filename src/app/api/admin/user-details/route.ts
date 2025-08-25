@@ -52,6 +52,14 @@ export async function GET(request: Request) {
     } else {
       weekColumn = `post${currentWeek - 20}_team_matchup_id`
     }
+    
+    // Fix: For regular season weeks 1-17, we need to use reg1_team_matchup_id through reg17_team_matchup_id
+    // The current calculation is wrong for weeks 1-3
+    if (currentWeek >= 1 && currentWeek <= 17) {
+      weekColumn = `reg${currentWeek}_team_matchup_id`
+    }
+    
+    console.log('🔍 DEBUG: Current week:', currentWeek, 'Week column:', weekColumn)
 
     // Get user's picks for current week (both allocated and unallocated)
     const { data: picks, error: picksError } = await supabaseAdmin
@@ -66,10 +74,12 @@ export async function GET(request: Request) {
     }
 
     // Get all matchups for the current week to map team_matchup_id to team names
-    const { data: matchupsData } = await supabaseAdmin
+    let { data: matchupsData } = await supabaseAdmin
       .from('matchups')
       .select('id, away_team, home_team, away_score, home_score, game_time, status')
       .eq('week', currentWeek)
+    
+
 
     // Create a mapping of team_matchup_id to team name and matchup info
     const matchupMapping: { [key: string]: {
@@ -102,12 +112,16 @@ export async function GET(request: Request) {
         isHome: true
       }
     })
+    
+
 
     // Map picks to include team and matchup information
     const picksWithDetails = picks?.map(pick => {
       const teamMatchupId = (pick as Record<string, unknown>)[weekColumn]
       const matchupInfo = teamMatchupId ? matchupMapping[teamMatchupId as string] : null
       const hasTeamSelected = teamMatchupId !== null && teamMatchupId !== undefined
+      
+
       
       return {
         id: pick.id,

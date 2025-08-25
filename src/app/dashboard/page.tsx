@@ -67,6 +67,13 @@ function getFullTeamName(teamName: string): string {
 
 // Helper function to get the team that caused elimination for eliminated picks
 function getEliminatedTeamName(pick: Pick): string | null {
+  // For eliminated picks, we should show the team that was picked (which caused the elimination)
+  // The team_picked field should contain the team name that was selected
+  if (pick.team_picked) {
+    return pick.team_picked
+  }
+  
+  // Fallback: try to extract from week columns if team_picked is not available
   const weekColumns = [
     'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
     'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
@@ -87,6 +94,52 @@ function getEliminatedTeamName(pick: Pick): string | null {
     }
   }
   return null
+}
+
+// Helper function to get elimination details for eliminated picks
+function getEliminationDetails(pick: Pick, matchups: Matchup[]): {
+  week: string
+  chosenTeam: string
+  opponent: string
+  score: string
+  gameTime: string
+} | null {
+  if (pick.status !== 'eliminated' || !pick.matchup_id) {
+    return null
+  }
+  
+  // Find the matchup that caused the elimination
+  const matchup = matchups.find(m => m.id === pick.matchup_id)
+  if (!matchup) {
+    return null
+  }
+  
+  const chosenTeam = pick.team_picked || getEliminatedTeamName(pick) || 'Unknown'
+  const opponent = chosenTeam === matchup.away_team ? matchup.home_team : matchup.away_team
+  
+  // Format score
+  let score = 'TBD'
+  if (matchup.away_score !== null && matchup.home_score !== null) {
+    score = `${matchup.away_score} - ${matchup.home_score}`
+  }
+  
+  // Format week
+  const week = matchup.week <= 0 ? `Preseason Week ${Math.abs(matchup.week) + 1}` : `Week ${matchup.week}`
+  
+  // Format game time
+  const gameTime = new Date(matchup.game_time).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  })
+  
+  return {
+    week,
+    chosenTeam,
+    opponent,
+    score,
+    gameTime
+  }
 }
 
 // Function to calculate dynamic pick status based on game results
@@ -241,6 +294,13 @@ interface Pick {
   pick_name?: string
   matchup_id?: string
   team_picked?: string
+  eliminationDetails?: {
+    week: string
+    chosenTeam: string
+    opponent: string
+    score: string
+    gameTime: string
+  }
   // Week columns will be added dynamically
   [key: string]: unknown
 }
@@ -416,6 +476,10 @@ export default function DashboardPage() {
   // Get current week matchups from database via API
   let matchupsData: Matchup[] = []
   
+  // Get season filter for fallback
+  const { getUserSeasonFilter } = await import('@/lib/season-detection-client')
+  const seasonFilter = await getUserSeasonFilter(user.id)
+  
   try {
     // Fetch current week matchups
     const currentWeekResponse = await fetch(`/api/matchups?userId=${user.id}`)
@@ -452,9 +516,6 @@ export default function DashboardPage() {
   } catch (error) {
     console.error('Error loading matchup data:', error)
     // Fallback to database - get current week games only
-                 // Use the client-side season detection system
-             const { getUserSeasonFilter } = await import('@/lib/season-detection-client')
-             const seasonFilter = await getUserSeasonFilter(user.id)
     
     const { data: dbMatchupsData } = await supabase
       .from('matchups')
@@ -508,6 +569,14 @@ export default function DashboardPage() {
       console.log('Debug: All picks query result:', { allUserPicksForWeek, picksError })
       console.log('Debug: Looking for picks in column:', userDefaultWeekColumn)
       
+      // Get all matchups for the user's picks (for elimination details)
+      const { data: allMatchups } = await supabase
+        .from('matchups')
+        .select('*')
+        .eq('season', seasonFilter)
+        .order('week', { ascending: true })
+        .order('game_time', { ascending: true })
+      
       // Transform picks to work with the new table structure - show picks for user's default week
       const userPicksData: Pick[] = allUserPicksForWeek?.map(pick => {
         // Check if this pick is allocated to the user's default week
@@ -537,6 +606,14 @@ export default function DashboardPage() {
           matchupId
         })
         
+        // Get elimination details if the pick is eliminated
+        const eliminationDetails = pick.status === 'eliminated' && matchupId ? 
+          getEliminationDetails({
+            ...pick,
+            matchup_id: matchupId,
+            team_picked: teamName
+          } as Pick, allMatchups || []) : undefined
+        
         // Return ALL picks - the status will determine how they're displayed
         return {
           id: pick.id,
@@ -546,6 +623,7 @@ export default function DashboardPage() {
           pick_name: pick.pick_name,
           matchup_id: matchupId,
           team_picked: teamName,
+          eliminationDetails,
           created_at: pick.created_at,
           updated_at: pick.updated_at
         } as Pick
@@ -984,17 +1062,23 @@ export default function DashboardPage() {
                           // Calculate dynamic status based on game results
                           const pickStatus = calculatePickStatus(pick, matchups)
                           
-                          // Get team colors if team is selected
-                          const teamColors = teamName ? getTeamColors(teamName) : null
+                          // Get team colors if team is selected (gray out eliminated picks)
+                          const teamColors = pick.status === 'eliminated' ? null : (teamName ? getTeamColors(teamName) : null)
                           
                           // Format team display name
                           let teamDisplayName = 'NOT PICKED YET'
                           
                           if (pick.status === 'eliminated') {
-                            // For eliminated picks, show the team that caused elimination
-                            const eliminatedTeam = getEliminatedTeamName(pick)
-                            if (eliminatedTeam) {
-                              teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                            // For eliminated picks, show elimination details
+                            if (pick.eliminationDetails) {
+                              teamDisplayName = `${getFullTeamName(pick.eliminationDetails.chosenTeam)} vs ${getFullTeamName(pick.eliminationDetails.opponent)}`
+                            } else {
+                              const eliminatedTeam = getEliminatedTeamName(pick)
+                              if (eliminatedTeam) {
+                                teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                              } else {
+                                teamDisplayName = 'ELIMINATED'
+                              }
                             }
                           } else if (teamName) {
                             teamDisplayName = `${getFullTeamName(teamName)} to LOSE`
@@ -1003,12 +1087,20 @@ export default function DashboardPage() {
                           return (
                             <div 
                               key={pick.id} 
-                              className="group border border-white/10 rounded-lg p-2 hover:opacity-90 transition-all relative overflow-hidden"
+                              className={`group border rounded-lg p-2 transition-all relative overflow-hidden ${
+                                pick.status === 'eliminated' 
+                                  ? 'border-gray-500/30 bg-gray-600/20 opacity-60' 
+                                  : 'border-white/10 hover:opacity-90'
+                              }`}
                               style={{
-                                background: teamColors 
-                                  ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
-                                  : 'rgba(255, 255, 255, 0.05)',
-                                borderColor: teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
+                                background: pick.status === 'eliminated' 
+                                  ? 'rgba(75, 85, 99, 0.2)' // gray-600/20
+                                  : teamColors 
+                                    ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
+                                    : 'rgba(255, 255, 255, 0.05)',
+                                borderColor: pick.status === 'eliminated' 
+                                  ? 'rgba(107, 114, 128, 0.3)' // gray-500/30
+                                  : teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
                               }}
                             >
                               {/* Team color accent line */}
@@ -1108,17 +1200,23 @@ export default function DashboardPage() {
                           // Calculate dynamic status based on game results
                           const pickStatus = calculatePickStatus(pick, matchups)
                           
-                          // Get team colors if team is selected
-                          const teamColors = teamName ? getTeamColors(teamName) : null
+                          // Get team colors if team is selected (gray out eliminated picks)
+                          const teamColors = pick.status === 'eliminated' ? null : (teamName ? getTeamColors(teamName) : null)
                           
                           // Format team display name
                           let teamDisplayName = 'NOT PICKED YET'
                           
                           if (pick.status === 'eliminated') {
-                            // For eliminated picks, show the team that caused elimination
-                            const eliminatedTeam = getEliminatedTeamName(pick)
-                            if (eliminatedTeam) {
-                              teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                            // For eliminated picks, show elimination details
+                            if (pick.eliminationDetails) {
+                              teamDisplayName = `${getFullTeamName(pick.eliminationDetails.chosenTeam)} vs ${getFullTeamName(pick.eliminationDetails.opponent)}`
+                            } else {
+                              const eliminatedTeam = getEliminatedTeamName(pick)
+                              if (eliminatedTeam) {
+                                teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                              } else {
+                                teamDisplayName = 'ELIMINATED'
+                              }
                             }
                           } else if (teamName) {
                             teamDisplayName = `${getFullTeamName(teamName)} to LOSE`
@@ -1127,12 +1225,20 @@ export default function DashboardPage() {
                           return (
                             <div 
                               key={pick.id} 
-                              className="group border border-white/10 rounded-lg p-2 hover:opacity-90 transition-all relative overflow-hidden"
+                              className={`group border rounded-lg p-2 transition-all relative overflow-hidden ${
+                                pick.status === 'eliminated' 
+                                  ? 'border-gray-500/30 bg-gray-600/20 opacity-60' 
+                                  : 'border-white/10 hover:opacity-90'
+                              }`}
                               style={{
-                                background: teamColors 
-                                  ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
-                                  : 'rgba(255, 255, 255, 0.05)',
-                                borderColor: teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
+                                background: pick.status === 'eliminated' 
+                                  ? 'rgba(75, 85, 99, 0.2)' // gray-600/20
+                                  : teamColors 
+                                    ? `linear-gradient(135deg, ${teamColors.primary}20, ${teamColors.secondary}20)`
+                                    : 'rgba(255, 255, 255, 0.05)',
+                                borderColor: pick.status === 'eliminated' 
+                                  ? 'rgba(107, 114, 128, 0.3)' // gray-500/30
+                                  : teamColors ? `${teamColors.primary}40` : 'rgba(255, 255, 255, 0.1)'
                               }}
                             >
                               {/* Team color accent line */}

@@ -93,25 +93,6 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        {eliminatedPicks > 0 && (
-          <div className="mb-8 bg-yellow-500/20 backdrop-blur-sm rounded-lg border border-yellow-500/30 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-yellow-200 mb-2">Quick Reset</h3>
-                <p className="text-yellow-100">Bring all eliminated picks back to life</p>
-              </div>
-              <Link
-                href="/admin/settings/reset"
-                className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset Picks
-              </Link>
-            </div>
-          </div>
-        )}
-
         {/* Admin Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link
