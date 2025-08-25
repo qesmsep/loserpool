@@ -293,15 +293,14 @@ export default function AdminPage() {
       </div>
 
       {/* Stats Modal */}
-      <AdminStatsModal
-        isOpen={showStatsModal}
-        onClose={() => setShowStatsModal(false)}
-        activePicks={activePicks}
-        eliminatedPicks={eliminatedPicks}
-        users={users}
-        totalPicksPurchased={totalPicksPurchased}
-        totalRevenue={totalRevenue}
-      />
+              <AdminStatsModal
+          isOpen={showStatsModal}
+          onClose={() => setShowStatsModal(false)}
+          activePicks={activePicks}
+          eliminatedPicks={eliminatedPicks}
+          users={users}
+          totalRevenue={totalRevenue}
+        />
 
       {/* Team Breakdown Modal */}
       <TeamPicksBreakdownModal

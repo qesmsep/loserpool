@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { X, TrendingDown, Users } from 'lucide-react'
 import { getTeamColors } from '@/lib/team-logos'
 
@@ -117,7 +117,7 @@ export default function TeamPicksBreakdownModal({
     return team.totalPicks
   }
 
-  const getStatusColor = (team: TeamBreakdown) => {
+  const getStatusColor = () => {
     return 'text-white'
   }
 
@@ -218,7 +218,7 @@ export default function TeamPicksBreakdownModal({
                            </div>
                          </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`text-lg font-bold ${getStatusColor(team)}`}>
+                          <span className={`text-lg font-bold ${getStatusColor()}`}>
                             {getDisplayPicks(team)}
                           </span>
                         </td>
