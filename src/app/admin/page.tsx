@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Settings, Users, Calendar, Trophy, RotateCcw } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 import AdminStatsModal from '@/components/admin-stats-modal'
+import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
 import { useAuth } from '@/components/auth-provider'
 
 interface Pick {
@@ -69,6 +70,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [showStatsModal, setShowStatsModal] = useState(false)
+  const [showTeamBreakdownModal, setShowTeamBreakdownModal] = useState(false)
 
   useEffect(() => {
     // Check if user is authenticated and is admin
@@ -245,6 +247,14 @@ export default function AdminPage() {
             <h3 className="text-lg font-semibold text-white mb-2">Pool Settings</h3>
             <p className="text-blue-200">Configure pool rules and dates</p>
           </Link>
+
+          <button
+            onClick={() => setShowTeamBreakdownModal(true)}
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors cursor-pointer text-left"
+          >
+            <h3 className="text-lg font-semibold text-white mb-2">Team Picks Breakdown</h3>
+            <p className="text-blue-200">View teams picked to lose and pick counts</p>
+          </button>
         </div>
 
         {/* Recent Purchases */}
@@ -291,6 +301,13 @@ export default function AdminPage() {
         users={users}
         totalPicksPurchased={totalPicksPurchased}
         totalRevenue={totalRevenue}
+      />
+
+      {/* Team Breakdown Modal */}
+      <TeamPicksBreakdownModal
+        isOpen={showTeamBreakdownModal}
+        onClose={() => setShowTeamBreakdownModal(false)}
+        picks={picks}
       />
     </div>
   )
