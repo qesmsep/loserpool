@@ -52,7 +52,7 @@ interface AdminStatsModalProps {
   activePicks: Pick[]
   eliminatedPicks: Pick[]
   users: User[]
-  totalPicksPurchased: number
+
   totalRevenue: number
 }
 
@@ -62,7 +62,7 @@ export default function AdminStatsModal({
   activePicks,
   eliminatedPicks,
   users,
-  totalPicksPurchased,
+
   totalRevenue
 }: AdminStatsModalProps) {
   const [activeTab, setActiveTab] = useState<'active' | 'eliminated' | 'summary'>('summary')
@@ -184,11 +184,11 @@ export default function AdminStatsModal({
               <div className="bg-white/5 border border-white/20 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-white mb-3">Data Sources</h3>
                                  <div className="space-y-2 text-sm text-blue-200">
-                   <p>• Active picks: Filtered from picks table where status = 'active'</p>
-                   <p>• Eliminated picks: Filtered from picks table where status = 'eliminated'</p>
+                                   <p>• Active picks: Filtered from picks table where status = &apos;active&apos;</p>
+                <p>• Eliminated picks: Filtered from picks table where status = &apos;eliminated&apos;</p>
                    <p>• Total users: Count from users table</p>
-                   <p>• Revenue: Sum of amount_paid from purchases where status = 'completed'</p>
-                   <p>• Picks purchased: Sum of picks_count from purchases where status = 'completed'</p>
+                                   <p>• Revenue: Sum of amount_paid from purchases where status = &apos;completed&apos;</p>
+                <p>• Picks purchased: Sum of picks_count from purchases where status = &apos;completed&apos;</p>
                    <p>• Current week column: {currentWeekColumn}</p>
                  </div>
               </div>
@@ -213,7 +213,7 @@ export default function AdminStatsModal({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
-                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as any)[currentWeekColumn])}</p>
+                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as Record<string, unknown>)[currentWeekColumn])}</p>
                         </div>
                         <div>
                           <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>
@@ -245,7 +245,7 @@ export default function AdminStatsModal({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
-                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as any)[currentWeekColumn])}</p>
+                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as Record<string, unknown>)[currentWeekColumn])}</p>
                         </div>
                         <div>
                           <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>

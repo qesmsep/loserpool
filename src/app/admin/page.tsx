@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Settings, Users, Calendar, Trophy, RotateCcw } from 'lucide-react'
+import { Settings, Users, Calendar, Trophy } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 import AdminStatsModal from '@/components/admin-stats-modal'
 import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
