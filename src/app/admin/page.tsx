@@ -1,32 +1,155 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Settings, Users, Calendar, Trophy, RotateCcw } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
+import AdminStatsModal from '@/components/admin-stats-modal'
+import { useAuth } from '@/components/auth-provider'
 
-export default async function AdminPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
-  const serviceClient = createServiceRoleClient()
+interface Pick {
+  id: string
+  user_id: string
+  pick_name: string
+  status: string
+  picks_count: number
+  created_at: string
+  updated_at: string
+  reg1_team_matchup_id?: string
+  reg2_team_matchup_id?: string
+  reg3_team_matchup_id?: string
+  reg4_team_matchup_id?: string
+  reg5_team_matchup_id?: string
+  reg6_team_matchup_id?: string
+  reg7_team_matchup_id?: string
+  reg8_team_matchup_id?: string
+  reg9_team_matchup_id?: string
+  reg10_team_matchup_id?: string
+  reg11_team_matchup_id?: string
+  reg12_team_matchup_id?: string
+  reg13_team_matchup_id?: string
+  reg14_team_matchup_id?: string
+  reg15_team_matchup_id?: string
+  reg16_team_matchup_id?: string
+  reg17_team_matchup_id?: string
+  reg18_team_matchup_id?: string
+  pre1_team_matchup_id?: string
+  pre2_team_matchup_id?: string
+  pre3_team_matchup_id?: string
+  post1_team_matchup_id?: string
+  post2_team_matchup_id?: string
+  post3_team_matchup_id?: string
+  post4_team_matchup_id?: string
+}
 
-  // Get pool statistics using service role client to bypass RLS
-  const { count: totalUsers } = await serviceClient
-    .from('users')
-    .select('*', { count: 'exact', head: true })
+interface User {
+  id: string
+  email: string
+  username: string | null
+  first_name: string | null
+  last_name: string | null
+}
 
-  const { data: purchases } = await supabase
-    .from('purchases')
-    .select('*')
-    .eq('status', 'completed')
+interface Purchase {
+  id: string
+  user_id: string
+  amount_paid: number
+  picks_count: number
+  status: string
+  created_at: string
+}
 
-  const { data: picks } = await supabase
-    .from('picks')
-    .select('*')
+export default function AdminPage() {
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [picks, setPicks] = useState<Pick[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showStatsModal, setShowStatsModal] = useState(false)
+
+  useEffect(() => {
+    // Check if user is authenticated and is admin
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login')
+        return
+      }
+      
+      // Check if user is admin
+      const checkAdminStatus = async () => {
+        try {
+          const response = await fetch('/api/check-admin-users')
+          if (!response.ok) {
+            router.push('/dashboard')
+            return
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error)
+          router.push('/dashboard')
+          return
+        }
+      }
+      
+      checkAdminStatus()
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (authLoading || !user) return
+
+    const loadData = async () => {
+      try {
+        // Fetch all the data we need
+        const [usersResponse, purchasesResponse, picksResponse] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/admin/purchases'),
+          fetch('/api/admin/picks')
+        ])
+
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json()
+          setUsers(usersData.users || [])
+          setTotalUsers(usersData.users?.length || 0)
+        }
+
+        if (purchasesResponse.ok) {
+          const purchasesData = await purchasesResponse.json()
+          setPurchases(purchasesData.purchases || [])
+        }
+
+        if (picksResponse.ok) {
+          const picksData = await picksResponse.json()
+          setPicks(picksData.picks || [])
+        }
+      } catch (error) {
+        console.error('Error loading admin data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [user, authLoading])
 
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
-  const activePicks = picks?.filter(p => p.status === 'active').length || 0
-  const eliminatedPicks = picks?.filter(p => p.status === 'eliminated').length || 0
+  const activePicks = picks?.filter(p => p.status === 'active') || []
+  const eliminatedPicks = picks?.filter(p => p.status === 'eliminated') || []
+
+  if (authLoading || loading) {
+    return (
+      <div className="app-bg min-h-screen flex items-center justify-center">
+        <div className="text-white text-xl">Loading admin data...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="app-bg">
@@ -77,20 +200,24 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+          <button
+            onClick={() => setShowStatsModal(true)}
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors cursor-pointer"
+          >
             <div className="flex items-center">
               <div className="p-2 bg-orange-500/20 rounded-lg">
                 <Settings className="w-6 h-6 text-orange-200" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-orange-100">Active Picks</p>
-                <p className="text-2xl font-bold text-white">{activePicks}</p>
-                {eliminatedPicks > 0 && (
-                  <p className="text-sm text-red-300">({eliminatedPicks} eliminated)</p>
+                <p className="text-2xl font-bold text-white">{activePicks.length}</p>
+                {eliminatedPicks.length > 0 && (
+                  <p className="text-sm text-red-300">({eliminatedPicks.length} eliminated)</p>
                 )}
+                <p className="text-xs text-orange-200 mt-1">Click to view details</p>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Admin Actions */}
@@ -154,6 +281,17 @@ export default async function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Stats Modal */}
+      <AdminStatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        activePicks={activePicks}
+        eliminatedPicks={eliminatedPicks}
+        users={users}
+        totalPicksPurchased={totalPicksPurchased}
+        totalRevenue={totalRevenue}
+      />
     </div>
   )
 } 
