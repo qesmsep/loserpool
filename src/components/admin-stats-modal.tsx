@@ -213,7 +213,7 @@ export default function AdminStatsModal({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
-                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)}</p>
+                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)}</p>
                         </div>
                         <div>
                           <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>
@@ -245,7 +245,7 @@ export default function AdminStatsModal({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
-                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)}</p>
+                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)}</p>
                         </div>
                         <div>
                           <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>
