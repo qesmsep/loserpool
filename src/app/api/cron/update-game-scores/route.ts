@@ -170,6 +170,9 @@ export async function POST(request: NextRequest) {
         const lastUpdated = espnGame.last_api_update as string
         const quarterInfo = espnGame.quarter_info as string | null
         const broadcastInfo = espnGame.broadcast_info as string | null
+        const awaySpread = espnGame.away_spread as number | null
+        const homeSpread = espnGame.home_spread as number | null
+        const overUnder = espnGame.over_under as number | null
         
         // ESPN doesn't provide weather data, so we'll keep existing values
         const weather = matchup.weather_forecast
@@ -194,6 +197,9 @@ export async function POST(request: NextRequest) {
                  newStatus !== matchup.status ||
                  awayScore !== matchup.away_score ||
                  homeScore !== matchup.home_score ||
+                 awaySpread !== matchup.away_spread ||
+                 homeSpread !== matchup.home_spread ||
+                 overUnder !== matchup.over_under ||
                  temperature !== matchup.temperature ||
                  windSpeed !== matchup.wind_speed ||
                  weather !== matchup.weather_forecast ||
@@ -205,6 +211,9 @@ export async function POST(request: NextRequest) {
                    status: string;
                    away_score: number | null;
                    home_score: number | null;
+                   away_spread: number | null;
+                   home_spread: number | null;
+                   over_under: number | null;
                    quarter_info: string | null;
                    broadcast_info: string | null;
                    updated_at: string;
@@ -217,6 +226,9 @@ export async function POST(request: NextRequest) {
                    status: newStatus,
                    away_score: awayScore,
                    home_score: homeScore,
+                   away_spread: awaySpread,
+                   home_spread: homeSpread,
+                   over_under: overUnder,
                    quarter_info: quarterInfo,
                    broadcast_info: broadcastInfo,
                    updated_at: new Date().toISOString(),

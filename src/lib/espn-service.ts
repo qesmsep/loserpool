@@ -34,6 +34,9 @@ export interface ESPNGame {
         abbreviation: string
       }
       score: string
+      linescores?: Array<{
+        value: number
+      }>
     }>
     venue: {
       id: string
@@ -42,6 +45,23 @@ export interface ESPNGame {
     broadcasts?: Array<{
       market: string
       names: string[]
+    }>
+    odds?: Array<{
+      details: string
+      overUnder: number
+      spread: number
+      pointSpread: {
+        home: {
+          close: {
+            line: string
+          }
+        }
+        away: {
+          close: {
+            line: string
+          }
+        }
+      }
     }>
   }>
 }
@@ -165,6 +185,30 @@ export class ESPNService {
       }
     }
 
+    // Parse spreads from odds data
+    let awaySpread = null
+    let homeSpread = null
+    let overUnder = null
+    
+    if (competition.odds && competition.odds.length > 0) {
+      const odds = competition.odds[0]
+      if (odds.pointSpread && odds.pointSpread.home && odds.pointSpread.away) {
+        // Parse home spread (e.g., "-6.5" -> -6.5)
+        const homeLine = odds.pointSpread.home.close?.line
+        if (homeLine) {
+          homeSpread = parseFloat(homeLine)
+        }
+        
+        // Parse away spread (e.g., "+6.5" -> 6.5)
+        const awayLine = odds.pointSpread.away.close?.line
+        if (awayLine) {
+          awaySpread = parseFloat(awayLine)
+        }
+        
+        overUnder = odds.overUnder
+      }
+    }
+
     // Get quarter information
     const period = competition.status.period || 0
     const displayClock = competition.status.displayClock || ''
@@ -195,6 +239,9 @@ export class ESPNService {
       home_team: homeTeam.team.abbreviation,
       away_score: awayScore,
       home_score: homeScore,
+      away_spread: awaySpread,
+      home_spread: homeSpread,
+      over_under: overUnder,
       status: status,
       winner: winner,
       game_time: competition.date,

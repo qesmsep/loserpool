@@ -172,9 +172,9 @@ interface MatchupBoxProps {
     weather_forecast?: string
     temperature?: number
     wind_speed?: number
-    away_spread?: number
-    home_spread?: number
-    over_under?: number
+    away_spread?: number | null
+    home_spread?: number | null
+    over_under?: number | null
     quarter_info?: string
     broadcast_info?: string
   }
@@ -211,6 +211,7 @@ interface TeamCardProps {
   venue?: string
   score?: number | null
   spread?: number
+  gameStatus?: string
   isPickingAllowed?: boolean
 }
 
@@ -227,6 +228,7 @@ function TeamCard({
   venue,
   score,
   spread,
+  gameStatus = 'scheduled',
   isPickingAllowed = true
 }: TeamCardProps) {
 
@@ -363,18 +365,18 @@ function TeamCard({
                   {fullTeamName}
                 </div>
                 
-                {/* Right side - Score or Spread */}
-                <div className="text-right">
-                  {score !== null && score !== undefined ? (
-                    <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                      {score}
-                    </div>
-                  ) : spread !== null && spread !== undefined ? (
-                    <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-                      {spread > 0 ? `+${spread}` : spread}
-                    </div>
-                  ) : null}
+                            {/* Right side - Score or Spread */}
+            <div className="text-right">
+              {score !== null && score !== undefined && score !== 0 ? (
+                <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                  {score}
                 </div>
+              ) : (gameStatus === 'scheduled' && spread !== null && spread !== undefined) ? (
+                <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                  {spread > 0 ? `+${spread}` : spread}
+                </div>
+              ) : null}
+            </div>
               </div>
               
 
@@ -458,11 +460,11 @@ function TeamCard({
             
             {/* Right side - Score or Spread */}
             <div className="text-right">
-              {score !== null && score !== undefined ? (
+              {score !== null && score !== undefined && score !== 0 ? (
                 <div className="text-lg sm:text-xl font-mono font-bold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
                   {score}
                 </div>
-              ) : spread !== null && spread !== undefined ? (
+              ) : (gameStatus === 'scheduled' && spread !== null && spread !== undefined) ? (
                 <div className="text-sm font-mono text-white/80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
                   {spread > 0 ? `+${spread}` : spread}
                 </div>
@@ -587,6 +589,7 @@ export default function MatchupBox({
             venue={matchup.venue}
             score={matchup.away_score}
             spread={matchup.away_spread}
+            gameStatus={matchup.status}
             isPickingAllowed={isPickingAllowed}
           />
         </div>
@@ -639,6 +642,7 @@ export default function MatchupBox({
             venue={matchup.venue}
             score={matchup.home_score}
             spread={matchup.home_spread}
+            gameStatus={matchup.status}
             isPickingAllowed={isPickingAllowed}
           />
         </div>
