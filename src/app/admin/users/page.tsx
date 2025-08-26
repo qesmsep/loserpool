@@ -175,6 +175,7 @@ export default function AdminUsersPage() {
   })
   const [picksToAdd, setPicksToAdd] = useState(0)
   const [picksToReduce, setPicksToReduce] = useState(0)
+  const [modalPicksToAdd, setModalPicksToAdd] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   
   // Enhanced filter states
@@ -579,6 +580,9 @@ export default function AdminUsersPage() {
         user_type: userDetails.user.user_type
       })
       setModalEditMode(false)
+      
+      // Reset picks management state
+      setModalPicksToAdd(0)
     } catch (error) {
       console.error('Error loading user details:', error)
       setError(`Failed to load user details: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -631,6 +635,48 @@ export default function AdminUsersPage() {
       setError(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
+
+  const handleModalAddPicks = async () => {
+    if (!selectedUser) return
+    
+    try {
+      setError('')
+      
+      if (modalPicksToAdd <= 0) {
+        setError('Please enter a valid number of picks')
+        return
+      }
+
+      const response = await fetch('/api/admin/add-picks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userId: selectedUser.user.id, 
+          picksCount: modalPicksToAdd 
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to add picks')
+      }
+
+      setSuccess(`${modalPicksToAdd} picks added successfully`)
+      setModalPicksToAdd(0)
+      
+      // Refresh the user details
+      await handleViewUserDetails(selectedUser.user.id)
+      loadUsers()
+    } catch (error) {
+      console.error('Error adding picks:', error)
+      setError(`Failed to add picks: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+
 
   if (authLoading || loading) {
     return (
@@ -1530,7 +1576,7 @@ export default function AdminUsersPage() {
 
               <div className="bg-white/5 rounded-lg p-4">
                 <h4 className="text-lg font-medium text-white mb-3">Pick Statistics</h4>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm mb-4">
                   <div className="flex items-center">
                     <Trophy className="w-4 h-4 text-green-300 mr-2" />
                     <span className="text-blue-200">Active Picks:</span> 
@@ -1550,6 +1596,33 @@ export default function AdminUsersPage() {
                     <Clock className="w-4 h-4 text-purple-300 mr-2" />
                     <span className="text-blue-200">Current Week:</span> 
                     <span className="ml-2 text-purple-300 font-medium">{selectedUser.currentWeek}</span>
+                  </div>
+                </div>
+
+                {/* Picks Management Section */}
+                <div className="border-t border-white/20 pt-4">
+                  <h5 className="text-md font-medium text-white mb-3">Manage Picks</h5>
+                  
+                  {/* Add Picks */}
+                  <div>
+                    <label className="block text-sm font-medium text-green-200 mb-2">Add Picks</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={modalPicksToAdd}
+                        onChange={(e) => setModalPicksToAdd(parseInt(e.target.value) || 0)}
+                        className="flex-1 px-3 py-2 text-sm border border-white/30 rounded focus:outline-none focus:ring-2 focus:ring-green-500 bg-white/10 text-white"
+                        placeholder="Number of picks"
+                      />
+                      <button
+                        onClick={handleModalAddPicks}
+                        disabled={modalPicksToAdd <= 0}
+                        className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
