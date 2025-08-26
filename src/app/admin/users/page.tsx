@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Users, Mail, Calendar, Plus, Edit, Trash2, X, Check, Eye, Clock, Trophy, AlertTriangle } from 'lucide-react'
+import { Users, Mail, Calendar, Plus, Edit, Trash2, X, Check, Eye, Clock, Trophy, AlertTriangle, Download, Filter } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface User {
@@ -82,6 +82,54 @@ const formatPhoneNumber = (phone: string | null): string => {
   return phone
 }
 
+// Export to CSV function
+const exportToCSV = (users: User[], filterName: string) => {
+  const headers = [
+    'ID',
+    'Email',
+    'Username',
+    'First Name',
+    'Last Name',
+    'Phone',
+    'User Type',
+    'Is Admin',
+    'Total Purchased',
+    'Active Picks',
+    'Eliminated Picks',
+    'Is Eliminated',
+    'Created At'
+  ]
+
+  const csvContent = [
+    headers.join(','),
+    ...users.map(user => [
+      user.id,
+      `"${user.email}"`,
+      `"${user.username || ''}"`,
+      `"${user.first_name || ''}"`,
+      `"${user.last_name || ''}"`,
+      `"${formatPhoneNumber(user.phone)}"`,
+      user.user_type,
+      user.is_admin ? 'Yes' : 'No',
+      user.totalPurchased,
+      user.activePicks,
+      user.eliminatedPicks,
+      user.isEliminated ? 'Yes' : 'No',
+      new Date(user.created_at).toLocaleDateString()
+    ].join(','))
+  ].join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `users_${filterName}_${new Date().toISOString().split('T')[0]}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,7 +147,6 @@ export default function AdminUsersPage() {
     is_admin: false,
     user_type: 'registered' as 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   })
-
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -130,9 +177,12 @@ export default function AdminUsersPage() {
   const [picksToReduce, setPicksToReduce] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   
-  // Filter states
+  // Enhanced filter states
   const [filters, setFilters] = useState({
-    userType: 'all' as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
+    userType: 'all' as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending',
+    purchaseStatus: 'all' as 'all' | 'no_purchases' | 'has_purchases' | 'has_picks_left',
+    adminStatus: 'all' as 'all' | 'admin' | 'non_admin',
+    eliminationStatus: 'all' as 'all' | 'eliminated' | 'active'
   })
 
   // Filter users based on search term and filters
@@ -155,16 +205,73 @@ export default function AdminUsersPage() {
       return false
     }
 
+    // Purchase status filter
+    if (filters.purchaseStatus !== 'all') {
+      switch (filters.purchaseStatus) {
+        case 'no_purchases':
+          if (user.totalPurchased > 0) return false
+          break
+        case 'has_purchases':
+          if (user.totalPurchased === 0) return false
+          break
+        case 'has_picks_left':
+          if (user.activePicks === 0) return false
+          break
+      }
+    }
+
+    // Admin status filter
+    if (filters.adminStatus !== 'all') {
+      if (filters.adminStatus === 'admin' && !user.is_admin) return false
+      if (filters.adminStatus === 'non_admin' && user.is_admin) return false
+    }
+
+    // Elimination status filter
+    if (filters.eliminationStatus !== 'all') {
+      if (filters.eliminationStatus === 'eliminated' && !user.isEliminated) return false
+      if (filters.eliminationStatus === 'active' && user.isEliminated) return false
+    }
+
     return true
   })
+
+  // Get filter description for export
+  const getFilterDescription = () => {
+    const descriptions = []
+    
+    if (filters.userType !== 'all') {
+      descriptions.push(`User Type: ${filters.userType}`)
+    }
+    if (filters.purchaseStatus !== 'all') {
+      const purchaseLabels = {
+        'no_purchases': 'No Purchases',
+        'has_purchases': 'Has Purchases',
+        'has_picks_left': 'Has Picks Left'
+      }
+      descriptions.push(`Purchase Status: ${purchaseLabels[filters.purchaseStatus]}`)
+    }
+    if (filters.adminStatus !== 'all') {
+      descriptions.push(`Admin Status: ${filters.adminStatus === 'admin' ? 'Admin Only' : 'Non-Admin Only'}`)
+    }
+    if (filters.eliminationStatus !== 'all') {
+      descriptions.push(`Elimination Status: ${filters.eliminationStatus === 'eliminated' ? 'Eliminated' : 'Active'}`)
+    }
+    
+    return descriptions.length > 0 ? descriptions.join('_') : 'all_users'
+  }
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('')
     setFilters({
-      userType: 'all'
+      userType: 'all',
+      purchaseStatus: 'all',
+      adminStatus: 'all',
+      eliminationStatus: 'all'
     })
   }
+
+
 
   // Check authentication and admin status
   useEffect(() => {
@@ -787,34 +894,204 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          {/* User Type Filter */}
-          <div className="px-6 py-4 border-b border-white/20 bg-white/5">
-            <div className="flex items-center space-x-4">
+          {/* Quick Filters */}
+          <div className="px-6 py-3 border-b border-white/20 bg-white/5">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-blue-200">Filter by User Type:</label>
-                <select
-                  value={filters.userType}
-                  onChange={(e) => setFilters({...filters, userType: e.target.value as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
-                  className="px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="registered">Registered</option>
-                  <option value="pending">Pending</option>
-                  <option value="active">Active</option>
-                  <option value="eliminated">Eliminated</option>
-                  <option value="tester">Tester</option>
-                </select>
+                <Filter className="w-4 h-4 text-blue-200" />
+                <h3 className="text-sm font-medium text-blue-200">Quick Filters</h3>
               </div>
-
-              {/* Clear Filters Button */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => exportToCSV(filteredUsers, getFilterDescription())}
+                  className="flex items-center px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  title="Export filtered users to CSV"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
               <button
-                onClick={clearFilters}
-                className="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'no_purchases',
+                  adminStatus: 'all',
+                  eliminationStatus: 'all'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.purchaseStatus === 'no_purchases' && filters.userType === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
               >
-                Clear Filter
+                No Purchases ({users.filter(u => u.totalPurchased === 0).length})
+              </button>
+              
+              <button
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'has_picks_left',
+                  adminStatus: 'all',
+                  eliminationStatus: 'all'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.purchaseStatus === 'has_picks_left' && filters.userType === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Has Picks Left ({users.filter(u => u.activePicks > 0).length})
+              </button>
+              
+              <button
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'all',
+                  adminStatus: 'all',
+                  eliminationStatus: 'eliminated'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.eliminationStatus === 'eliminated' && filters.purchaseStatus === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Eliminated ({users.filter(u => u.isEliminated).length})
+              </button>
+              
+              <button
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'all',
+                  adminStatus: 'admin',
+                  eliminationStatus: 'all'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.adminStatus === 'admin' && filters.purchaseStatus === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Admin Users ({users.filter(u => u.is_admin).length})
+              </button>
+              
+              <button
+                onClick={() => setFilters({
+                  userType: 'registered',
+                  purchaseStatus: 'all',
+                  adminStatus: 'all',
+                  eliminationStatus: 'all'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.userType === 'registered' && filters.purchaseStatus === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Registered Only ({users.filter(u => u.user_type === 'registered').length})
               </button>
             </div>
           </div>
+
+          {/* Advanced Filters */}
+          <div className="px-6 py-4 border-b border-white/20 bg-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4 text-blue-200" />
+                <h3 className="text-sm font-medium text-blue-200">Advanced Filters</h3>
+              </div>
+            </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* User Type Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
+              <select
+                value={filters.userType}
+                onChange={(e) => setFilters({...filters, userType: e.target.value as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                <option value="registered">Registered</option>
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="eliminated">Eliminated</option>
+                <option value="tester">Tester</option>
+              </select>
+            </div>
+
+            {/* Purchase Status Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">Purchase Status</label>
+              <select
+                value={filters.purchaseStatus}
+                onChange={(e) => setFilters({...filters, purchaseStatus: e.target.value as 'all' | 'no_purchases' | 'has_purchases' | 'has_picks_left'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Purchase Status</option>
+                <option value="no_purchases">No Purchases</option>
+                <option value="has_purchases">Has Purchases</option>
+                <option value="has_picks_left">Has Picks Left</option>
+              </select>
+            </div>
+
+            {/* Admin Status Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">Admin Status</label>
+              <select
+                value={filters.adminStatus}
+                onChange={(e) => setFilters({...filters, adminStatus: e.target.value as 'all' | 'admin' | 'non_admin'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Users</option>
+                <option value="admin">Admin Only</option>
+                <option value="non_admin">Non-Admin Only</option>
+              </select>
+            </div>
+
+            {/* Elimination Status Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">Elimination Status</label>
+              <select
+                value={filters.eliminationStatus}
+                onChange={(e) => setFilters({...filters, eliminationStatus: e.target.value as 'all' | 'eliminated' | 'active'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="eliminated">Eliminated</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Filter Summary */}
+          <div className="mt-3 text-xs text-blue-200">
+            Showing {filteredUsers.length} of {users.length} users
+            {filters.userType !== 'all' && <span className="ml-2">• Type: {filters.userType}</span>}
+            {filters.purchaseStatus !== 'all' && (
+              <span className="ml-2">• Purchase: {
+                filters.purchaseStatus === 'no_purchases' ? 'No Purchases' :
+                filters.purchaseStatus === 'has_purchases' ? 'Has Purchases' :
+                'Has Picks Left'
+              }</span>
+            )}
+            {filters.adminStatus !== 'all' && (
+              <span className="ml-2">• Admin: {filters.adminStatus === 'admin' ? 'Admin Only' : 'Non-Admin Only'}</span>
+            )}
+            {filters.eliminationStatus !== 'all' && (
+              <span className="ml-2">• Status: {filters.eliminationStatus === 'eliminated' ? 'Eliminated' : 'Active'}</span>
+            )}
+          </div>
+        </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/20">
               <thead className="bg-white/5">
