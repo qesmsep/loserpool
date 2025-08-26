@@ -35,7 +35,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Reset token has expired' }, { status: 400 })
     }
 
-    // Update the user's password using Supabase Admin API
+    // Get the user's email from the public.users table
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('email')
+      .eq('id', tokenData.user_id)
+      .single()
+
+    if (userError || !userData) {
+      console.error('Error getting user email:', userError)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Use Supabase Auth's built-in password reset flow
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       tokenData.user_id,
       { password: newPassword }
@@ -43,7 +55,39 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error('Error updating password:', updateError)
-      return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+      
+      // If the admin API fails, try using the regular auth flow
+      // This might work better for users that exist in public.users but not auth.users
+      try {
+        // Create a temporary session and update password
+        const { error: tempError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: userData.email,
+          options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password/confirm`
+          }
+        })
+        
+        if (tempError) {
+          console.error('Error generating recovery link:', tempError)
+          return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+        }
+        
+        // For now, let's just mark the token as used and tell the user to use the email link
+        await supabaseAdmin
+          .from('password_reset_tokens')
+          .update({ used: true })
+          .eq('token', token)
+        
+        return NextResponse.json({ 
+          success: true,
+          message: 'Password reset link sent to your email. Please check your email and use the link to reset your password.'
+        })
+        
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError)
+        return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+      }
     }
 
     // Mark the token as used

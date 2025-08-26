@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 
 export default function ResetPasswordPage() {
@@ -11,7 +9,6 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,19 +62,19 @@ export default function ResetPasswordPage() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
-            <p className="text-gray-600 mb-6">
-              We've sent a password reset link to <strong>{email}</strong>
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                <strong>Next steps:</strong>
+                          <p className="text-gray-600 mb-6">
+                We&apos;ve sent a password reset link to <strong>{email}</strong>
               </p>
-              <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                <li>• Check your email inbox</li>
-                <li>• Click the "Reset Password" link in the email</li>
-                <li>• Set your new password</li>
-              </ul>
-            </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>Next steps:</strong>
+                </p>
+                <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                  <li>• Check your email inbox</li>
+                  <li>• Click the &quot;Reset Password&quot; link in the email</li>
+                  <li>• Set your new password</li>
+                </ul>
+              </div>
             <div className="space-y-3">
               <Link
                 href="/login"
@@ -155,7 +152,7 @@ export default function ResetPasswordPage() {
 
         <div className="mt-6 text-center">
           <p className="text-gray-600 text-sm">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-blue-600 hover:text-blue-500">
               Sign up
             </Link>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Users, Mail, Calendar, Plus, Edit, Trash2, X, Check, Eye, Clock, Trophy, AlertTriangle, Download, Filter } from 'lucide-react'
+import { Users, Mail, Calendar, Plus, Edit, Trash2, X, Check, Clock, Trophy, AlertTriangle, Download, Filter } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 
 interface User {

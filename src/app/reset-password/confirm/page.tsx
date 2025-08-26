@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 
 export default function ResetPasswordConfirmPage() {
