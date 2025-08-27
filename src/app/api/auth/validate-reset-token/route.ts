@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const { token } = await request.json()
     
     if (!token) {
-      return NextResponse.json({ error: 'Token is required' }, { status: 400 })
+      return NextResponse.json({ valid: false, error: 'Token is required' }, { status: 400 })
     }
 
     const supabaseAdmin = createServiceRoleClient()
@@ -20,10 +20,7 @@ export async function POST(request: Request) {
       .single()
 
     if (tokenError || !tokenData) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: 'Invalid or expired reset token' 
-      })
+      return NextResponse.json({ valid: false, error: 'Invalid or expired token' })
     }
 
     // Check if token has expired
@@ -31,36 +28,13 @@ export async function POST(request: Request) {
     const expiresAt = new Date(tokenData.expires_at)
     
     if (now > expiresAt) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: 'Reset token has expired' 
-      })
+      return NextResponse.json({ valid: false, error: 'Token has expired' })
     }
 
-    // Get user information
-    const { data: user, error: userError } = await supabaseAdmin.auth.admin.getUserById(tokenData.user_id)
-    
-    if (userError || !user.user) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: 'User not found' 
-      })
-    }
-
-    return NextResponse.json({ 
-      valid: true,
-      user: {
-        id: user.user.id,
-        email: user.user.email
-      },
-      token: tokenData.token
-    })
+    return NextResponse.json({ valid: true, userId: tokenData.user_id })
 
   } catch (error) {
     console.error('Token validation error:', error)
-    return NextResponse.json({ 
-      valid: false, 
-      error: 'Failed to validate token' 
-    })
+    return NextResponse.json({ valid: false, error: 'Internal server error' }, { status: 500 })
   }
 }
