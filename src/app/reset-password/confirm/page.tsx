@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 function ResetPasswordConfirmContent() {
   const [newPassword, setNewPassword] = useState('')
@@ -18,40 +19,31 @@ function ResetPasswordConfirmContent() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const checkToken = async () => {
+    const checkSession = async () => {
       try {
-        const token = searchParams.get('token')
+        // Check if we have a valid session from the reset link
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (!token) {
+        if (error) {
+          console.error('Session check error:', error)
           router.push('/reset-password')
           return
         }
 
-        // Validate the token
-        const response = await fetch('/api/auth/validate-reset-token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ token })
-        })
-
-        const result = await response.json()
-
-        if (response.ok && result.valid) {
+        if (session?.user) {
           setIsValidSession(true)
         } else {
-          console.error('Invalid or expired token:', result.error)
-          router.push('/reset-password?error=invalid_token')
+          // No session, redirect to reset request page
+          router.push('/reset-password')
         }
       } catch (error) {
-        console.error('Error checking token:', error)
+        console.error('Error checking session:', error)
         router.push('/reset-password')
       }
     }
 
-    checkToken()
-  }, [router, searchParams])
+    checkSession()
+  }, [router])
 
   const handlePasswordReset = async () => {
     if (newPassword !== confirmPassword) {
@@ -68,31 +60,19 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
-      const token = searchParams.get('token')
-      
-      if (!token) {
-        throw new Error('No reset token found')
-      }
-
-      // Call API to reset password with token
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          token,
-          newPassword 
-        })
+      // Update the password using Supabase's built-in method
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to reset password')
+      if (error) {
+        throw new Error(error.message)
       }
 
       setSuccess(true)
+      
+      // Sign out to clear any existing session
+      await supabase.auth.signOut()
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -131,11 +111,10 @@ function ResetPasswordConfirmContent() {
             </p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-green-800 mb-2">
-                <strong>Important:</strong> If you&apos;re currently logged in, please:
+                <strong>Important:</strong> You have been signed out. Please:
               </p>
               <ul className="text-sm text-green-700 space-y-1">
-                <li>• Sign out completely</li>
-                <li>• Clear your browser cache</li>
+                <li>• Go to the login page</li>
                 <li>• Sign in with your new password</li>
               </ul>
             </div>
