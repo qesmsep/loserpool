@@ -168,7 +168,44 @@ function ResetPasswordConfirmContent() {
         console.log('🔍 User status:', userStatus)
         
         if (!userStatus.authUser) {
-          throw new Error('User account not found in auth system')
+          console.log('⚠️ User not found in auth system, but exists in session')
+          console.log('🔍 Public user data:', userStatus.publicUser)
+          
+          // If user exists in public.users but not auth.users, we need to create the auth user
+          if (userStatus.publicUser) {
+            console.log('🔄 Creating auth user from public user data...')
+            
+            // Try to create the auth user using the admin API
+            const createAuthUserResponse = await fetch('/api/auth/create-auth-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: session.user.email,
+                password: newPassword,
+                userId: userStatus.publicUser.id
+              })
+            })
+            
+            if (createAuthUserResponse.ok) {
+              console.log('✅ Auth user created successfully')
+              setSuccess(true)
+              
+              // Sign out to clear any existing session
+              await supabase.auth.signOut()
+              
+              // Redirect to login after 3 seconds
+              setTimeout(() => {
+                router.push('/login')
+              }, 3000)
+              return
+            } else {
+              const createError = await createAuthUserResponse.json()
+              console.error('❌ Failed to create auth user:', createError)
+              throw new Error('Failed to create user account in auth system')
+            }
+          } else {
+            throw new Error('User account not found in auth system')
+          }
         }
       }
       
