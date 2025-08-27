@@ -24,8 +24,17 @@ function ResetPasswordConfirmContent() {
       try {
         setIsChecking(true)
         
+        // Wait a moment for Supabase to process the reset link
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
         // Check if we have a valid session from the reset link
         const { data: { session }, error } = await supabase.auth.getSession()
+        
+        console.log('🔍 Session check result:', { 
+          hasSession: !!session, 
+          hasUser: !!session?.user,
+          userEmail: session?.user?.email 
+        })
         
         if (error) {
           console.error('Session check error:', error)
@@ -46,6 +55,12 @@ function ResetPasswordConfirmContent() {
         const refreshToken = searchParams.get('refresh_token')
         const type = searchParams.get('type')
         
+        // Log all search params to see what we're actually getting
+        const allParams: Record<string, string | null> = {}
+        searchParams.forEach((value, key) => {
+          allParams[key] = value ? '***HIDDEN***' : null
+        })
+        console.log('🔍 All URL params:', allParams)
         console.log('🔍 URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type })
         
         if (accessToken && refreshToken && type === 'recovery') {
@@ -74,11 +89,12 @@ function ResetPasswordConfirmContent() {
         
         // If we get here, no valid session or tokens
         console.log('❌ No valid session or recovery tokens found')
+        console.log('🔍 Current URL:', window.location.href)
         setError('Invalid or expired reset link. Please request a new password reset.')
         setIsChecking(false)
         
       } catch (error) {
-        console.error('❌ Error checking session:', error)
+        console.error('Error checking session:', error)
         setError('An error occurred. Please try again.')
         setIsChecking(false)
       }
@@ -102,19 +118,15 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
-      console.log('🔄 Updating password...')
-      
       // Update the password using Supabase's built-in method
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       })
 
       if (error) {
-        console.error('❌ Password update error:', error)
         throw new Error(error.message)
       }
 
-      console.log('✅ Password updated successfully')
       setSuccess(true)
       
       // Sign out to clear any existing session
@@ -125,7 +137,7 @@ function ResetPasswordConfirmContent() {
         router.push('/login')
       }, 3000)
     } catch (error) {
-      console.error('❌ Error resetting password:', error)
+      console.error('Error resetting password:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset password')
     } finally {
       setLoading(false)
