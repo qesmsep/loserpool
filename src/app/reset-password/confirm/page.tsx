@@ -155,18 +155,56 @@ function ResetPasswordConfirmContent() {
       
       console.log('✅ User session confirmed:', session.user.email)
       
-      // Update the password using Supabase's built-in method
+      // Check user account status first
+      console.log('🔍 Checking user account status...')
+      const userStatusResponse = await fetch('/api/auth/debug-user-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session.user.email })
+      })
+      
+      if (userStatusResponse.ok) {
+        const userStatus = await userStatusResponse.json()
+        console.log('🔍 User status:', userStatus)
+        
+        if (!userStatus.authUser) {
+          throw new Error('User account not found in auth system')
+        }
+      }
+      
+      // Try the password update
+      console.log('🔄 Attempting password update...')
       const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       })
 
       if (error) {
         console.error('❌ Password update error:', error)
-        throw new Error(error.message)
+        
+        // If it's a password storage error, try a different approach
+        if (error.message.includes('password storage')) {
+          console.log('🔄 Trying alternative password update method...')
+          
+          // Try updating with additional user data
+          const { data: altData, error: altError } = await supabase.auth.updateUser({
+            password: newPassword,
+            data: { updated_at: new Date().toISOString() }
+          })
+          
+          if (altError) {
+            console.error('❌ Alternative password update also failed:', altError)
+            throw new Error(`Password update failed: ${altError.message}`)
+          }
+          
+          console.log('✅ Alternative password update successful:', altData)
+          setSuccess(true)
+        } else {
+          throw new Error(error.message)
+        }
+      } else {
+        console.log('✅ Password updated successfully:', data)
+        setSuccess(true)
       }
-
-      console.log('✅ Password updated successfully:', data)
-      setSuccess(true)
       
       // Sign out to clear any existing session
       await supabase.auth.signOut()
