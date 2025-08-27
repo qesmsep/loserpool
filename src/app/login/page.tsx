@@ -1,132 +1,179 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [retryCount] = useState(0)
+  const [cooldown, setCooldown] = useState(false)
   const router = useRouter()
+
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (cooldown) {
+      setError('Please wait a moment before trying again')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // Sign in with retry logic
+      let signInError = null
+      
+      for (let attempt = 0; attempt <= retryCount; attempt++) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push('/dashboard')
+        if (error) {
+          if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+            if (attempt < retryCount) {
+              // Wait with exponential backoff
+              const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000)
+              await delay(waitTime)
+              continue
+            } else {
+              setError('Too many login attempts. Please wait a few minutes before trying again.')
+              setCooldown(true)
+              setTimeout(() => setCooldown(false), 60000) // 1 minute cooldown
+              setLoading(false)
+              return
+            }
+          } else {
+            signInError = error
+            break
+          }
+        } else {
+          // Wait a moment for the session to be properly set
+          await delay(1000)
+          
+          // Verify the session was set
+          const { data: { session } } = await supabase.auth.getSession()
+          console.log('Login successful, session:', !!session)
+          
+          router.push('/dashboard')
+          return
+        }
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      setError('An unexpected error occurred')
-    } finally {
+
+      if (signInError) {
+        setError(getErrorMessage(signInError.message))
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
   }
 
+  const getErrorMessage = (error: string) => {
+    if (error.includes('429') || error.includes('Too Many Requests')) {
+      return 'Too many login attempts. Please wait a few minutes before trying again.'
+    }
+    if (error.includes('Invalid login credentials')) {
+      return 'Invalid email or password. Please check your credentials and try again.'
+    }
+    if (error.includes('Email not confirmed')) {
+      return 'Please check your email and click the confirmation link before signing in. If you haven\'t received the email, check your spam folder.'
+    }
+    if (error.includes('User not found')) {
+      return 'No account found with this email address. Please sign up instead.'
+    }
+    return error
+  }
+
   return (
-    <div className="app-bg flex items-center justify-center min-h-screen">
+    <div className="app-bg flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-gray-900">Sign In</h1>
+          <p className="text-gray-800 mt-2">Welcome back to The Loser Pool</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
+              {getErrorMessage(error)}
+              {error.includes('Email not confirmed') && (
+                <div className="mt-3">
+                  <Link href="/confirm-email" className="text-blue-600 hover:text-blue-500 text-sm underline">
+                    Need help with email confirmation?
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {cooldown && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+              Please wait a moment before trying again.
             </div>
           )}
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
-              Email Address
+              Email
             </label>
-            <div className="relative">
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="Enter your email address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600 pl-10"
-              />
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            </div>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={cooldown}
+              placeholder="Enter your email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 placeholder-gray-600"
+            />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Enter your password"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600 pl-10 pr-10"
-              />
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900">
+                Password
+              </label>
+              <Link
+                href="/reset-password"
+                className="text-sm text-blue-600 hover:text-blue-500"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+                Forgot password?
+              </Link>
             </div>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={cooldown}
+              placeholder="Enter your password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 placeholder-gray-600"
+            />
           </div>
 
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={loading || cooldown}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center space-y-4">
-          <div>
-            <Link
-              href="/magic-link"
-              className="text-blue-600 hover:text-blue-500"
-            >
-              Sign in with Magic Link
-            </Link>
-          </div>
-          
-          <div>
-            <Link
-              href="/change-password"
-              className="text-blue-600 hover:text-blue-500"
-            >
-              Change Password
-            </Link>
-          </div>
-        </div>
-
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-gray-800">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-blue-600 hover:text-blue-500">
               Sign up
