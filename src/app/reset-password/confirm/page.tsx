@@ -149,104 +149,46 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
-      console.log('🔄 Starting password update...')
+      console.log('🔄 Starting SIMPLE password update...')
       
-      // First, let's check the current session
+      // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      if (sessionError) {
-        console.error('❌ Session error before update:', sessionError)
-        throw new Error('Session error: ' + sessionError.message)
-      }
-      
-      if (!session?.user) {
-        console.error('❌ No user in session')
-        throw new Error('No user session found')
+      if (sessionError || !session?.user) {
+        throw new Error('No valid session found')
       }
       
       console.log('✅ User session confirmed:', session.user.email)
       
-      // Try the simple password update first (this should work with recovery tokens)
-      console.log('🔄 Attempting password update with current session...')
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword
-      })
-
-      if (error) {
-        console.error('❌ Password update error:', error)
-        
-        // If the simple update fails, try refreshing the session first
-        console.log('🔄 Trying to refresh session before password update...')
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-        
-        if (refreshError) {
-          console.error('❌ Session refresh error:', refreshError)
-          throw new Error('Failed to refresh session: ' + refreshError.message)
-        }
-        
-        console.log('✅ Session refreshed, trying password update again...')
-        const { data: retryData, error: retryError } = await supabase.auth.updateUser({
+      // Use the SIMPLE direct approach - just call the admin API directly
+      console.log('🔄 Using direct admin API approach...')
+      const response = await fetch('/api/auth/simple-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: session.user.email,
           password: newPassword
         })
-        
-        if (retryError) {
-          console.error('❌ Password update still failed after refresh:', retryError)
-          
-          // Try admin API as final fallback
-          console.log('🔄 Trying admin API as final fallback...')
-          
-          // First, test the password update
-          const testResponse = await fetch('/api/auth/test-password-update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: session.user.email,
-              password: newPassword
-            })
-          })
-          
-          if (testResponse.ok) {
-            console.log('✅ Password updated via test endpoint')
-            setSuccess(true)
-          } else {
-            const testError = await testResponse.json()
-            console.error('❌ Test endpoint failed:', testError)
-            
-            // Try the original admin API as last resort
-            const adminResponse = await fetch('/api/auth/update-password-admin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                email: session.user.email,
-                password: newPassword
-              })
-            })
-            
-            if (adminResponse.ok) {
-              console.log('✅ Password updated via admin API')
-              setSuccess(true)
-            } else {
-              const adminError = await adminResponse.json()
-              console.error('❌ Admin API also failed:', adminError)
-              throw new Error('All password update methods failed. Please contact support.')
-            }
-          }
-        } else {
-          console.log('✅ Password updated successfully after refresh:', retryData)
-          setSuccess(true)
-        }
-      } else {
-        console.log('✅ Password updated successfully:', data)
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        console.log('✅ Password reset successful!')
         setSuccess(true)
+        
+        // Sign out to clear any existing session
+        await supabase.auth.signOut()
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          router.push('/login')
+        }, 3000)
+      } else {
+        console.error('❌ Password reset failed:', result)
+        throw new Error(result.error || 'Password reset failed')
       }
       
-      // Sign out to clear any existing session
-      await supabase.auth.signOut()
-      
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        router.push('/login')
-      }, 3000)
     } catch (error) {
       console.error('❌ Error resetting password:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset password')
