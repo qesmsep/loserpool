@@ -46,9 +46,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Update the user's password using Supabase Auth Admin API
+    // Find the user in auth.users by email
+    const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    
+    if (listError) {
+      console.error('Error listing auth users:', listError)
+      return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+    }
+
+    const authUser = authUsers.users.find(user => user.email === userData.email)
+    
+    if (!authUser) {
+      console.error('User not found in auth.users:', userData.email)
+      return NextResponse.json({ error: 'User account not found' }, { status: 404 })
+    }
+
+    // Update the user's password using their auth.users ID
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      tokenData.user_id,
+      authUser.id,
       { password: newPassword }
     )
 
@@ -67,6 +82,8 @@ export async function POST(request: Request) {
       console.error('Error marking token as used:', markUsedError)
       // Don't fail the request if we can't mark the token as used
     }
+
+    console.log('✅ Password updated successfully for user:', userData.email)
 
     return NextResponse.json({ 
       success: true, 
