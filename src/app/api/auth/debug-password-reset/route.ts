@@ -13,21 +13,27 @@ export async function POST(request: Request) {
 
     console.log('🔍 Debug password reset for email:', email)
 
-    // Check if user exists in public.users
-    const { data: publicUser, error: publicError } = await supabaseAdmin
+    // Check if user exists in public.users (get all matches)
+    const { data: publicUsers, error: publicError } = await supabaseAdmin
       .from('users')
-      .select('id, email')
+      .select('id, email, created_at, updated_at')
       .eq('email', email)
-      .single()
 
-    if (publicError || !publicUser) {
+    if (publicError) {
+      return NextResponse.json({ 
+        error: 'Error querying public.users',
+        publicError: publicError.message 
+      }, { status: 500 })
+    }
+
+    if (!publicUsers || publicUsers.length === 0) {
       return NextResponse.json({ 
         error: 'User not found in public.users',
-        publicError: publicError?.message 
+        email: email
       }, { status: 404 })
     }
 
-    console.log('✅ Found in public.users:', publicUser)
+    console.log('✅ Found in public.users:', publicUsers)
 
     // Check if user exists in auth.users
     const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
@@ -39,80 +45,34 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    const authUser = authUsers.users.find(user => user.email === email)
+    const matchingAuthUsers = authUsers.users.filter(user => user.email === email)
     
-    if (!authUser) {
-      return NextResponse.json({ 
-        error: 'User not found in auth.users',
-        publicUser: publicUser,
-        authUsersCount: authUsers.users.length
-      }, { status: 404 })
-    }
-
-    console.log('✅ Found in auth.users:', {
-      id: authUser.id,
-      email: authUser.email,
-      created_at: authUser.created_at,
-      updated_at: authUser.updated_at
-    })
-
-    // Try to update the password with a test password
-    const testPassword = 'TestPassword123!'
-    
-    const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      authUser.id,
-      { password: testPassword }
-    )
-
-    if (updateError) {
-      return NextResponse.json({ 
-        error: 'Failed to update password',
-        updateError: updateError.message,
-        authUser: {
-          id: authUser.id,
-          email: authUser.email
-        }
-      }, { status: 500 })
-    }
-
-    console.log('✅ Password update result:', {
-      userId: updateResult.user?.id,
-      email: updateResult.user?.email,
-      updatedAt: updateResult.user?.updated_at
-    })
-
-    // Verify the update by getting the user again
-    const { data: verifyUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(authUser.id)
-    
-    if (verifyError) {
-      return NextResponse.json({ 
-        error: 'Failed to verify password update',
-        verifyError: verifyError.message
-      }, { status: 500 })
-    }
+    console.log('✅ Found in auth.users:', matchingAuthUsers.map(u => ({
+      id: u.id,
+      email: u.email,
+      created_at: u.created_at,
+      updated_at: u.updated_at
+    })))
 
     return NextResponse.json({ 
       success: true,
-      message: 'Password reset debug completed',
-      publicUser: publicUser,
-      authUser: {
-        id: authUser.id,
-        email: authUser.email,
-        created_at: authUser.created_at,
-        updated_at: authUser.updated_at
+      message: 'Debug password reset analysis completed',
+      email: email,
+      publicUsers: publicUsers,
+      authUsers: matchingAuthUsers.map(u => ({
+        id: u.id,
+        email: u.email,
+        created_at: u.created_at,
+        updated_at: u.updated_at
+      })),
+      summary: {
+        publicUsersCount: publicUsers.length,
+        authUsersCount: matchingAuthUsers.length,
+        hasMultiplePublicUsers: publicUsers.length > 1,
+        hasMultipleAuthUsers: matchingAuthUsers.length > 1,
+        hasMatchingUsers: publicUsers.length > 0 && matchingAuthUsers.length > 0
       },
-      updateResult: {
-        userId: updateResult.user?.id,
-        email: updateResult.user?.email,
-        updatedAt: updateResult.user?.updated_at
-      },
-      verifyUser: {
-        id: verifyUser.user?.id,
-        email: verifyUser.user?.email,
-        updatedAt: verifyUser.user?.updated_at
-      },
-      testPassword: testPassword,
-      note: 'Check the server logs for detailed information'
+      note: 'Multiple users with the same email can cause password reset issues. Consider cleaning up duplicate accounts.'
     })
 
   } catch (error) {
