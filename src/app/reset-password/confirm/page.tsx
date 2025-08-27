@@ -138,15 +138,34 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
+      console.log('🔄 Starting password update...')
+      
+      // First, let's check the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('❌ Session error before update:', sessionError)
+        throw new Error('Session error: ' + sessionError.message)
+      }
+      
+      if (!session?.user) {
+        console.error('❌ No user in session')
+        throw new Error('No user session found')
+      }
+      
+      console.log('✅ User session confirmed:', session.user.email)
+      
       // Update the password using Supabase's built-in method
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       })
 
       if (error) {
+        console.error('❌ Password update error:', error)
         throw new Error(error.message)
       }
 
+      console.log('✅ Password updated successfully:', data)
       setSuccess(true)
       
       // Sign out to clear any existing session
@@ -157,7 +176,7 @@ function ResetPasswordConfirmContent() {
         router.push('/login')
       }, 3000)
     } catch (error) {
-      console.error('Error resetting password:', error)
+      console.error('❌ Error resetting password:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset password')
     } finally {
       setLoading(false)
