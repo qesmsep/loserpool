@@ -54,22 +54,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
     }
 
-    const authUser = authUsers.users.find(user => user.email === userData.email)
+    let authUser = authUsers.users.find(user => user.email === userData.email)
     
+    // If user doesn't exist in auth.users, create them
     if (!authUser) {
-      console.error('User not found in auth.users:', userData.email)
-      return NextResponse.json({ error: 'User account not found' }, { status: 404 })
-    }
+      console.log('User not found in auth.users, creating new auth user:', userData.email)
+      
+      const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: newPassword,
+        email_confirm: true
+      })
 
-    // Update the user's password using their auth.users ID
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      authUser.id,
-      { password: newPassword }
-    )
+      if (createError) {
+        console.error('Error creating auth user:', createError)
+        return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 })
+      }
 
-    if (updateError) {
-      console.error('Error updating password:', updateError)
-      return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+      authUser = newAuthUser.user
+      console.log('✅ Created new auth user:', authUser.id)
+    } else {
+      // Update the existing user's password
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        authUser.id,
+        { password: newPassword }
+      )
+
+      if (updateError) {
+        console.error('Error updating password:', updateError)
+        return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+      }
     }
 
     // Mark the token as used
