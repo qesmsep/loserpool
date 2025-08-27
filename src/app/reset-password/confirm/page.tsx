@@ -55,21 +55,41 @@ function ResetPasswordConfirmContent() {
         const refreshToken = searchParams.get('refresh_token')
         const type = searchParams.get('type')
         
+        // Also check URL fragment for tokens (Supabase puts them there)
+        let fragmentTokens: Record<string, string> = {}
+        if (typeof window !== 'undefined') {
+          const fragment = window.location.hash.substring(1) // Remove the #
+          if (fragment) {
+            fragmentTokens = Object.fromEntries(
+              fragment.split('&').map(pair => {
+                const [key, value] = pair.split('=')
+                return [key, decodeURIComponent(value)]
+              })
+            )
+          }
+        }
+        
         // Log all search params to see what we're actually getting
         const allParams: Record<string, string | null> = {}
         searchParams.forEach((value, key) => {
           allParams[key] = value ? '***HIDDEN***' : null
         })
         console.log('🔍 All URL params:', allParams)
+        console.log('🔍 Fragment tokens:', Object.keys(fragmentTokens))
         console.log('🔍 URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type })
         
-        if (accessToken && refreshToken && type === 'recovery') {
+        // Use tokens from fragment if available, otherwise from search params
+        const finalAccessToken = fragmentTokens.access_token || accessToken
+        const finalRefreshToken = fragmentTokens.refresh_token || refreshToken
+        const finalType = fragmentTokens.type || type
+        
+        if (finalAccessToken && finalRefreshToken && finalType === 'recovery') {
           console.log('🔄 Setting session from recovery tokens...')
           
           // Set the session manually from recovery tokens
           const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
+            access_token: finalAccessToken,
+            refresh_token: finalRefreshToken
           })
           
           if (setSessionError) {
