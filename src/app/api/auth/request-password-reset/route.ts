@@ -11,9 +11,9 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createServiceRoleClient()
 
-    // Use Supabase's built-in password reset - it handles everything
+    // Use Supabase's built-in password reset with the correct redirect URL
     const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://loserpool.vercel.app'}/reset-password/confirm`
+      redirectTo: 'https://www.loserpool.app/reset-password/confirm'
     })
 
     if (error) {
