@@ -29,11 +29,33 @@ export async function POST(request: NextRequest) {
     const user = users.users.find(u => u.email === email)
     
     if (!user) {
-      console.log('❌ User not found in auth system')
+      console.log('❌ User not found in auth system, attempting to create...')
+      
+      // Try to create the user in auth system
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true
+      })
+
+      if (createError) {
+        console.error('❌ Error creating user:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create user in auth system',
+          details: createError.message,
+          code: createError.status
+        }, { status: 500 })
+      }
+
+      console.log('✅ User created successfully in auth system')
       return NextResponse.json({ 
-        error: 'User not found in auth system',
-        userCount: users.users.length
-      }, { status: 404 })
+        success: true,
+        message: 'User created with password successfully',
+        user: {
+          id: createData.user?.id,
+          email: createData.user?.email
+        }
+      })
     }
 
     console.log('✅ Found user:', {
