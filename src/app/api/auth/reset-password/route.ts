@@ -46,7 +46,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Find the user in auth.users by email
+    console.log('🔍 Processing password reset for user:', userData.email)
+
+    // Try to find the user in auth.users by email
     const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
     
     if (listError) {
@@ -56,24 +58,55 @@ export async function POST(request: Request) {
 
     let authUser = authUsers.users.find(user => user.email === userData.email)
     
-    // If user doesn't exist in auth.users, create them
     if (!authUser) {
-      console.log('User not found in auth.users, creating new auth user:', userData.email)
+      console.log('User not found in auth.users, attempting to create:', userData.email)
       
-      const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: userData.email,
-        password: newPassword,
-        email_confirm: true
-      })
+      try {
+        // Try to create the user in auth.users
+        const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: userData.email,
+          password: newPassword,
+          email_confirm: true
+        })
 
-      if (createError) {
-        console.error('Error creating auth user:', createError)
+        if (createError) {
+          console.error('Error creating auth user:', createError)
+          
+          // If creation fails, try to use Supabase's built-in password reset
+          console.log('Attempting fallback to Supabase built-in reset...')
+          const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(userData.email, {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://loserpool.vercel.app'}/reset-password/confirm`
+          })
+
+          if (resetError) {
+            console.error('Fallback reset also failed:', resetError)
+            return NextResponse.json({ 
+              error: 'Unable to reset password. Please contact support.',
+              details: 'User account exists but cannot be updated automatically.'
+            }, { status: 500 })
+          }
+
+          // Mark token as used since we sent a reset email
+          await supabaseAdmin
+            .from('password_reset_tokens')
+            .update({ used: true })
+            .eq('token', token)
+
+          return NextResponse.json({ 
+            success: true,
+            message: 'A password reset link has been sent to your email. Please check your inbox and use the link to reset your password.'
+          })
+        }
+
+        authUser = newAuthUser.user
+        console.log('✅ Created new auth user:', authUser.id)
+      } catch (createError) {
+        console.error('Unexpected error creating auth user:', createError)
         return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 })
       }
-
-      authUser = newAuthUser.user
-      console.log('✅ Created new auth user:', authUser.id)
     } else {
+      console.log('Found existing auth user, updating password:', authUser.id)
+      
       // Update the existing user's password
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         authUser.id,
