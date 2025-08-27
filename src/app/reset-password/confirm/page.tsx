@@ -194,7 +194,9 @@ function ResetPasswordConfirmContent() {
           
           // Try admin API as final fallback
           console.log('🔄 Trying admin API as final fallback...')
-          const adminResponse = await fetch('/api/auth/update-password-admin', {
+          
+          // First, test the password update
+          const testResponse = await fetch('/api/auth/test-password-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -203,13 +205,31 @@ function ResetPasswordConfirmContent() {
             })
           })
           
-          if (adminResponse.ok) {
-            console.log('✅ Password updated via admin API')
+          if (testResponse.ok) {
+            console.log('✅ Password updated via test endpoint')
             setSuccess(true)
           } else {
-            const adminError = await adminResponse.json()
-            console.error('❌ Admin API also failed:', adminError)
-            throw new Error('All password update methods failed. Please contact support.')
+            const testError = await testResponse.json()
+            console.error('❌ Test endpoint failed:', testError)
+            
+            // Try the original admin API as last resort
+            const adminResponse = await fetch('/api/auth/update-password-admin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: session.user.email,
+                password: newPassword
+              })
+            })
+            
+            if (adminResponse.ok) {
+              console.log('✅ Password updated via admin API')
+              setSuccess(true)
+            } else {
+              const adminError = await adminResponse.json()
+              console.error('❌ Admin API also failed:', adminError)
+              throw new Error('All password update methods failed. Please contact support.')
+            }
           }
         } else {
           console.log('✅ Password updated successfully after refresh:', retryData)
