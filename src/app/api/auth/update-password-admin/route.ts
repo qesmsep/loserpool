@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    console.log('🔍 Found', users.users.length, 'users in auth system')
+    
     const user = users.users.find(u => u.email === email)
     
     if (user) {
@@ -50,9 +52,9 @@ export async function POST(request: NextRequest) {
         message: 'Password updated successfully'
       })
     } else {
-      console.log('⚠️ User not found in auth system, creating new user...')
+      console.log('⚠️ User not found in auth system, attempting to create...')
       
-      // Create new user with the password
+      // Try to create new user with the password
       const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -61,6 +63,46 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         console.error('❌ Error creating user:', createError)
+        
+        // If the error is that user already exists, try to find them again
+        if (createError.message.includes('already been registered')) {
+          console.log('🔄 User already exists, trying to find them again...')
+          
+          // Try a more comprehensive search
+          const allUsers = users.users
+          const matchingUsers = allUsers.filter(u => 
+            u.email?.toLowerCase() === email.toLowerCase() ||
+            u.email_confirmed_at !== null // Include confirmed users
+          )
+          
+          console.log('🔍 Found', matchingUsers.length, 'potential matching users')
+          
+          if (matchingUsers.length > 0) {
+            const targetUser = matchingUsers[0]
+            console.log('✅ Found user, updating password:', targetUser.id)
+            
+            // Update the found user's password
+            const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+              targetUser.id,
+              { password }
+            )
+
+            if (updateError) {
+              console.error('❌ Error updating password for found user:', updateError)
+              return NextResponse.json({ 
+                error: 'Failed to update password',
+                details: updateError.message 
+              }, { status: 500 })
+            }
+
+            console.log('✅ Password updated successfully for found user')
+            return NextResponse.json({ 
+              success: true,
+              message: 'Password updated successfully'
+            })
+          }
+        }
+        
         return NextResponse.json({ 
           error: 'Failed to create user',
           details: createError.message 
