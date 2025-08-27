@@ -15,35 +15,60 @@ function ResetPasswordConfirmContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [isValidSession, setIsValidSession] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const checkSession = async () => {
       try {
+        setIsChecking(true)
+        
         // Check if we have a valid session from the reset link
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
           console.error('Session check error:', error)
-          router.push('/reset-password')
+          setError('Invalid or expired reset link. Please request a new password reset.')
+          setIsChecking(false)
           return
         }
 
         if (session?.user) {
           setIsValidSession(true)
+          setIsChecking(false)
         } else {
-          // No session, redirect to reset request page
-          router.push('/reset-password')
+          // Check if we have access_token in URL params (from Supabase redirect)
+          const accessToken = searchParams.get('access_token')
+          const refreshToken = searchParams.get('refresh_token')
+          
+          if (accessToken && refreshToken) {
+            // Set the session manually
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            })
+            
+            if (setSessionError) {
+              console.error('Error setting session:', setSessionError)
+              setError('Invalid reset link. Please request a new password reset.')
+            } else {
+              setIsValidSession(true)
+            }
+          } else {
+            setError('Invalid or expired reset link. Please request a new password reset.')
+          }
+          setIsChecking(false)
         }
       } catch (error) {
         console.error('Error checking session:', error)
-        router.push('/reset-password')
+        setError('An error occurred. Please try again.')
+        setIsChecking(false)
       }
     }
 
     checkSession()
-  }, [router])
+  }, [router, searchParams])
 
   const handlePasswordReset = async () => {
     if (newPassword !== confirmPassword) {
@@ -86,12 +111,44 @@ function ResetPasswordConfirmContent() {
     }
   }
 
-  if (!isValidSession) {
+  if (isChecking) {
     return (
       <div className="app-bg flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
           <p className="mt-4 text-blue-200">Verifying reset link...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isValidSession) {
+    return (
+      <div className="app-bg flex items-center justify-center min-h-screen">
+        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+              <Lock className="h-6 w-6 text-red-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Reset Link</h1>
+            <p className="text-gray-600 mb-6">
+              {error || 'This reset link is invalid or has expired. Please request a new password reset.'}
+            </p>
+            <Link
+              href="/reset-password"
+              className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Request New Reset Link
+            </Link>
+            <div className="mt-4">
+              <Link
+                href="/login"
+                className="text-blue-600 hover:text-blue-500"
+              >
+                Back to Login
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     )
