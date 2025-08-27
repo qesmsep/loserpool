@@ -134,6 +134,17 @@ function ResetPasswordConfirmContent() {
       return
     }
 
+    // Additional password validation
+    const hasUpperCase = /[A-Z]/.test(newPassword)
+    const hasLowerCase = /[a-z]/.test(newPassword)
+    const hasNumbers = /\d/.test(newPassword)
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -180,11 +191,30 @@ function ResetPasswordConfirmContent() {
         
         if (retryError) {
           console.error('❌ Password update still failed after refresh:', retryError)
-          throw new Error('Password update failed: ' + retryError.message)
+          
+          // Try admin API as final fallback
+          console.log('🔄 Trying admin API as final fallback...')
+          const adminResponse = await fetch('/api/auth/update-password-admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: session.user.email,
+              password: newPassword
+            })
+          })
+          
+          if (adminResponse.ok) {
+            console.log('✅ Password updated via admin API')
+            setSuccess(true)
+          } else {
+            const adminError = await adminResponse.json()
+            console.error('❌ Admin API also failed:', adminError)
+            throw new Error('All password update methods failed. Please contact support.')
+          }
+        } else {
+          console.log('✅ Password updated successfully after refresh:', retryData)
+          setSuccess(true)
         }
-        
-        console.log('✅ Password updated successfully after refresh:', retryData)
-        setSuccess(true)
       } else {
         console.log('✅ Password updated successfully:', data)
         setSuccess(true)
@@ -358,7 +388,10 @@ function ResetPasswordConfirmContent() {
             </p>
             <ul className="text-sm text-blue-700 mt-2 space-y-1">
               <li>• At least 8 characters long</li>
-              <li>• Use a combination of letters, numbers, and symbols</li>
+              <li>• At least one uppercase letter (A-Z)</li>
+              <li>• At least one lowercase letter (a-z)</li>
+              <li>• At least one number (0-9)</li>
+              <li>• At least one special character (!@#$%^&*)</li>
             </ul>
           </div>
 
