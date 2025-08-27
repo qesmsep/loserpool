@@ -155,90 +155,8 @@ function ResetPasswordConfirmContent() {
       
       console.log('✅ User session confirmed:', session.user.email)
       
-      // Check user account status first
-      console.log('🔍 Checking user account status...')
-      const userStatusResponse = await fetch('/api/auth/debug-user-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session.user.email })
-      })
-      
-      if (userStatusResponse.ok) {
-        const userStatus = await userStatusResponse.json()
-        console.log('🔍 User status:', userStatus)
-        
-        if (!userStatus.authUser) {
-          console.log('⚠️ User not found in auth system, but exists in session')
-          console.log('🔍 Public user data:', userStatus.publicUser)
-          
-          // If user exists in public.users but not auth.users, we need to create the auth user
-          if (userStatus.publicUser) {
-            console.log('🔄 Creating auth user from public user data...')
-            
-            // Try to create the auth user using the admin API
-            const createAuthUserResponse = await fetch('/api/auth/create-auth-user', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                email: session.user.email,
-                password: newPassword,
-                userId: userStatus.publicUser.id
-              })
-            })
-            
-            if (createAuthUserResponse.ok) {
-              console.log('✅ Auth user created successfully')
-              setSuccess(true)
-              
-              // Sign out to clear any existing session
-              await supabase.auth.signOut()
-              
-              // Redirect to login after 3 seconds
-              setTimeout(() => {
-                router.push('/login')
-              }, 3000)
-              return
-            } else {
-              const createError = await createAuthUserResponse.json()
-              console.error('❌ Failed to create auth user:', createError)
-              
-              // Try alternative approach: update password via admin API
-              console.log('🔄 Trying alternative approach: update password via admin API...')
-              const updatePasswordResponse = await fetch('/api/auth/update-password-admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  email: session.user.email,
-                  password: newPassword
-                })
-              })
-              
-              if (updatePasswordResponse.ok) {
-                console.log('✅ Password updated via admin API')
-                setSuccess(true)
-                
-                // Sign out to clear any existing session
-                await supabase.auth.signOut()
-                
-                // Redirect to login after 3 seconds
-                setTimeout(() => {
-                  router.push('/login')
-                }, 3000)
-                return
-              } else {
-                const updateError = await updatePasswordResponse.json()
-                console.error('❌ Failed to update password via admin API:', updateError)
-                throw new Error('Failed to update password: ' + (updateError.details || updateError.error))
-              }
-            }
-          } else {
-            throw new Error('User account not found in auth system')
-          }
-        }
-      }
-      
-      // Try the password update
-      console.log('🔄 Attempting password update...')
+      // Try the simple password update first (this should work with recovery tokens)
+      console.log('🔄 Attempting password update with current session...')
       const { data, error } = await supabase.auth.updateUser({
         password: newPassword
       })
@@ -246,26 +164,27 @@ function ResetPasswordConfirmContent() {
       if (error) {
         console.error('❌ Password update error:', error)
         
-        // If it's a password storage error, try a different approach
-        if (error.message.includes('password storage')) {
-          console.log('🔄 Trying alternative password update method...')
-          
-          // Try updating with additional user data
-          const { data: altData, error: altError } = await supabase.auth.updateUser({
-            password: newPassword,
-            data: { updated_at: new Date().toISOString() }
-          })
-          
-          if (altError) {
-            console.error('❌ Alternative password update also failed:', altError)
-            throw new Error(`Password update failed: ${altError.message}`)
-          }
-          
-          console.log('✅ Alternative password update successful:', altData)
-          setSuccess(true)
-        } else {
-          throw new Error(error.message)
+        // If the simple update fails, try refreshing the session first
+        console.log('🔄 Trying to refresh session before password update...')
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (refreshError) {
+          console.error('❌ Session refresh error:', refreshError)
+          throw new Error('Failed to refresh session: ' + refreshError.message)
         }
+        
+        console.log('✅ Session refreshed, trying password update again...')
+        const { data: retryData, error: retryError } = await supabase.auth.updateUser({
+          password: newPassword
+        })
+        
+        if (retryError) {
+          console.error('❌ Password update still failed after refresh:', retryError)
+          throw new Error('Password update failed: ' + retryError.message)
+        }
+        
+        console.log('✅ Password updated successfully after refresh:', retryData)
+        setSuccess(true)
       } else {
         console.log('✅ Password updated successfully:', data)
         setSuccess(true)
