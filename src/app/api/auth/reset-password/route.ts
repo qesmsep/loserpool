@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       console.log('Found existing auth user, updating password:', authUser.id)
       
       // Update the existing user's password
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         authUser.id,
         { password: newPassword }
       )
@@ -116,6 +116,21 @@ export async function POST(request: Request) {
       if (updateError) {
         console.error('Error updating password:', updateError)
         return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+      }
+
+      console.log('✅ Password update result:', {
+        userId: updateResult.user?.id,
+        email: updateResult.user?.email,
+        updatedAt: updateResult.user?.updated_at
+      })
+
+      // Verify the password was actually updated by checking the user again
+      const { data: verifyUser, error: verifyError } = await supabaseAdmin.auth.admin.getUserById(authUser.id)
+      
+      if (verifyError) {
+        console.error('Error verifying password update:', verifyError)
+      } else {
+        console.log('✅ Password update verified for user:', verifyUser.user?.email)
       }
     }
 
@@ -130,11 +145,12 @@ export async function POST(request: Request) {
       // Don't fail the request if we can't mark the token as used
     }
 
-    console.log('✅ Password updated successfully for user:', userData.email)
+    console.log('✅ Password reset completed successfully for user:', userData.email)
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Password updated successfully' 
+      message: 'Password updated successfully. You can now log in with your new password.',
+      note: 'If you still cannot log in, please try logging out and back in, or clear your browser cache.'
     })
 
   } catch (error) {

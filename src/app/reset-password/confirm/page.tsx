@@ -130,7 +130,17 @@ function ResetPasswordConfirmContent() {
               Your password has been successfully reset. You can now sign in with your new password.
             </p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-green-800">
+              <p className="text-sm text-green-800 mb-2">
+                <strong>Important:</strong> If you're currently logged in, please:
+              </p>
+              <ul className="text-sm text-green-700 space-y-1">
+                <li>• Sign out completely</li>
+                <li>• Clear your browser cache</li>
+                <li>• Sign in with your new password</li>
+              </ul>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
                 <strong>Redirecting to login page...</strong>
               </p>
             </div>
