@@ -201,7 +201,35 @@ function ResetPasswordConfirmContent() {
             } else {
               const createError = await createAuthUserResponse.json()
               console.error('❌ Failed to create auth user:', createError)
-              throw new Error('Failed to create user account in auth system')
+              
+              // Try alternative approach: update password via admin API
+              console.log('🔄 Trying alternative approach: update password via admin API...')
+              const updatePasswordResponse = await fetch('/api/auth/update-password-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  email: session.user.email,
+                  password: newPassword
+                })
+              })
+              
+              if (updatePasswordResponse.ok) {
+                console.log('✅ Password updated via admin API')
+                setSuccess(true)
+                
+                // Sign out to clear any existing session
+                await supabase.auth.signOut()
+                
+                // Redirect to login after 3 seconds
+                setTimeout(() => {
+                  router.push('/login')
+                }, 3000)
+                return
+              } else {
+                const updateError = await updatePasswordResponse.json()
+                console.error('❌ Failed to update password via admin API:', updateError)
+                throw new Error('Failed to update password: ' + (updateError.details || updateError.error))
+              }
             }
           } else {
             throw new Error('User account not found in auth system')
