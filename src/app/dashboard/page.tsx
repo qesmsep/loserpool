@@ -921,34 +921,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Buy Picks Banner - Full Width */}
-        {shouldShowOnboarding && (
-          <div className="bg-gradient-to-r from-green-600/20 to-blue-600/20 border border-green-500/30 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-500/20 rounded-lg">
-                  <ShoppingCart className="w-6 h-6 sm:w-8 sm:h-8 text-green-300" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-white mb-1">Ready to Join the Loser Pool?</h2>
-                  <p className="text-sm sm:text-base text-green-100">
-                    {picksRemaining < 10 
-                      ? `You have ${picksRemaining} picks. Get more to increase your chances!` 
-                      : 'Get started with the most exciting NFL survivor pool around!'
-                    }
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowOnboarding(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Buy Picks & Learn More</span>
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Mobile-Optimized Grid for Navigation Cards - HIDDEN */}
         {/* 
