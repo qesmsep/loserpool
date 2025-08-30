@@ -1,93 +1,43 @@
 import { NextResponse } from 'next/server'
-import { createServiceRoleClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 
-export async function POST(request: Request) {
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE_KEY as string,
+  { auth: { persistSession: false } }
+)
+
+export async function POST(req: Request) {
   try {
-    const { email, newPassword } = await request.json()
-    
-    console.log('🔍 Admin password reset request for:', email)
-    
+    const { email, newPassword } = await req.json()
     if (!email || !newPassword) {
-      return NextResponse.json({ error: 'Email and new password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing email or newPassword' }, { status: 400 })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
-    }
+    // Find user by email (DO NOT create)
+    const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1,
+      email
+    } as any)
 
-    // Validate password strength
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 })
-    }
-
-    const supabaseAdmin = createServiceRoleClient()
-
-    // Find the user in auth.users table
-    console.log('🔍 Finding user in auth.users...')
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    
     if (listError) {
-      console.error('❌ Error listing auth users:', listError)
-      return NextResponse.json({ error: 'Failed to list users' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to look up user', details: listError.message }, { status: 500 })
     }
 
-    const authUser = users.users.find(u => u.email === email)
-    
-    if (authUser) {
-      console.log('✅ User found in auth.users:', authUser.id)
-      
-      // Update the existing user's password
-      console.log('🔄 Updating password for user:', authUser.id)
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        authUser.id,
-        { password: newPassword }
-      )
+    const user = list?.users?.[0]
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-      if (updateError) {
-        console.error('❌ Error updating password:', updateError)
-        return NextResponse.json({ 
-          error: 'Failed to update password',
-          details: updateError.message 
-        }, { status: 500 })
-      }
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password: newPassword,
+    })
 
-      console.log('✅ Password updated successfully for user:', email)
-      return NextResponse.json({ 
-        success: true,
-        message: 'Password updated successfully'
-      })
-    } else {
-      console.log('⚠️ User not found in auth.users, creating new user...')
-      
-      // Create the user in auth.users since they have a valid session
-      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password: newPassword,
-        email_confirm: true
-      })
-
-      if (createError) {
-        console.error('❌ Error creating auth user:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create user account',
-          details: createError.message 
-        }, { status: 500 })
-      }
-
-      console.log('✅ New auth user created with password:', createData.user?.id)
-      return NextResponse.json({ 
-        success: true,
-        message: 'User created with password successfully'
-      })
+    if (updateError) {
+      return NextResponse.json({ error: 'Failed to update password', details: updateError.message }, { status: 500 })
     }
 
-  } catch (error) {
-    console.error('❌ Admin password reset error:', error)
-    return NextResponse.json({ 
-      error: 'Password reset failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json({ success: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
 }

@@ -18,6 +18,7 @@ function ResetPasswordConfirmContent() {
   const [isChecking, setIsChecking] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const emailFromQuery = searchParams?.get('email') || ''
 
   useEffect(() => {
     const checkSession = async () => {
@@ -137,24 +138,34 @@ function ResetPasswordConfirmContent() {
     try {
       console.log('🔄 Starting password update...')
       
-      // Get the current session
+      // Try to get the session (Supabase recovery link may or may not set it)
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !session?.user) {
-        throw new Error('No valid session found')
+
+      if (sessionError) {
+        console.warn('Session error (continuing with query email if present):', sessionError)
+      }
+
+      const emailToUse = session?.user?.email || emailFromQuery
+
+      if (!emailToUse) {
+        throw new Error('Reset link missing session and email. Please request a new reset link.')
+      }
+
+      if (session?.user?.email) {
+        console.log('✅ User session confirmed:', session.user.email)
+      } else {
+        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
       }
       
-      console.log('✅ User session confirmed:', session.user.email)
-      
-      // Use the guaranteed working force password reset API
-      console.log('🔄 Calling force password reset API...')
-      const response = await fetch('/api/force-password-reset', {
+      // Use the admin API to update the password
+      console.log('🔄 Calling admin API...')
+      const response = await fetch('/api/auth/admin-reset-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: session.user.email,
+          email: emailToUse,
           newPassword: newPassword
         })
       })

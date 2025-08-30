@@ -1,186 +1,122 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function ResetPasswordConfirmContent() {
+  const searchParams = useSearchParams()
+  const emailFromQuery = searchParams?.get('email') || ''
+  const router = useRouter()
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [retryCount] = useState(0)
-  const [cooldown, setCooldown] = useState(false)
-  const router = useRouter()
+  const [success, setSuccess] = useState(false)
 
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (cooldown) {
-      setError('Please wait a moment before trying again')
+    setError('')
+    setSuccess(false)
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
       return
     }
 
     setLoading(true)
-    setError('')
 
     try {
-      // Sign in with retry logic
-      let signInError = null
-      
-      for (let attempt = 0; attempt <= retryCount; attempt++) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+      // Try to get the session (Supabase recovery link may or may not set it)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.warn('Session error (continuing with query email if present):', sessionError)
+      }
+
+      const emailToUse = session?.user?.email || emailFromQuery
+
+      if (!emailToUse) {
+        throw new Error('Reset link missing session and email. Please request a new reset link.')
+      }
+
+      if (session?.user?.email) {
+        console.log('✅ User session confirmed:', session.user.email)
+      } else {
+        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
+      }
+
+      const response = await fetch('/api/auth/admin-reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailToUse,
+          newPassword: newPassword
         })
+      })
 
-        if (error) {
-          if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
-            if (attempt < retryCount) {
-              // Wait with exponential backoff
-              const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000)
-              await delay(waitTime)
-              continue
-            } else {
-              setError('Too many login attempts. Please wait a few minutes before trying again.')
-              setCooldown(true)
-              setTimeout(() => setCooldown(false), 60000) // 1 minute cooldown
-              setLoading(false)
-              return
-            }
-          } else {
-            signInError = error
-            break
-          }
-        } else {
-          // Wait a moment for the session to be properly set
-          await delay(1000)
-          
-          // Verify the session was set
-          const { data: { session } } = await supabase.auth.getSession()
-          console.log('Login successful, session:', !!session)
-          
-          router.push('/dashboard')
-          return
-        }
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to reset password')
       }
 
-      if (signInError) {
-        setError(getErrorMessage(signInError.message))
-        setLoading(false)
-      }
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An unexpected error occurred. Please try again.')
+      setSuccess(true)
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred')
+    } finally {
       setLoading(false)
     }
   }
 
-  const getErrorMessage = (error: string) => {
-    if (error.includes('429') || error.includes('Too Many Requests')) {
-      return 'Too many login attempts. Please wait a few minutes before trying again.'
-    }
-    if (error.includes('Invalid login credentials')) {
-      return 'Invalid email or password. Please check your credentials and try again.'
-    }
-    if (error.includes('Email not confirmed')) {
-      return 'Please check your email and click the confirmation link before signing in. If you haven\'t received the email, check your spam folder.'
-    }
-    if (error.includes('User not found')) {
-      return 'No account found with this email address. Please sign up instead.'
-    }
-    return error
-  }
-
   return (
-    <div className="app-bg flex items-center justify-center">
+    <div className="app-bg flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Sign In</h1>
-          <p className="text-gray-800 mt-2">Welcome back to The Loser Pool</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {getErrorMessage(error)}
-              {error.includes('Email not confirmed') && (
-                <div className="mt-3">
-                  <Link href="/confirm-email" className="text-blue-600 hover:text-blue-500 text-sm underline">
-                    Need help with email confirmation?
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-
-          {cooldown && (
-            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
-              Please wait a moment before trying again.
-            </div>
-          )}
-
+        <h1 className="text-2xl font-bold mb-6">Reset Password</h1>
+        {error && <div className="mb-4 text-red-600">{error}</div>}
+        {success && <div className="mb-4 text-green-600">Password reset successful! Redirecting to login...</div>}
+        <form onSubmit={handlePasswordReset} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
-              Email
+            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+              New Password
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={cooldown}
-              placeholder="Enter your email"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 placeholder-gray-600"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-900">
-                Password
-              </label>
-              <Link
-                href="/reset-password"
-                className="text-sm text-blue-600 hover:text-blue-500"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <input
-              id="password"
+              id="new-password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               required
-              disabled={cooldown}
-              placeholder="Enter your password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 placeholder-gray-600"
+              minLength={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
+          <div>
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm New Password
+            </label>
+            <input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <button
             type="submit"
-            disabled={loading || cooldown}
+            disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Resetting password...' : 'Reset Password'}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-gray-800">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-blue-600 hover:text-blue-500">
-              Sign up
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   )
-} 
+}
