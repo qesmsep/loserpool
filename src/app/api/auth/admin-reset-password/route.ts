@@ -58,9 +58,14 @@ export async function POST(req: Request) {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      password: newPassword,
-    })
+    console.log('🔄 Attempting password update for user:', user.id)
+    console.log('🔍 Password length:', newPassword.length)
+    
+    // Try updateUserById with more specific error handling
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      { password: newPassword }
+    )
 
     if (updateError) {
       console.error('❌ Error updating password:', updateError)
@@ -68,7 +73,9 @@ export async function POST(req: Request) {
         userId: user.id,
         userEmail: user.email,
         errorMessage: updateError.message,
-        errorStatus: updateError.status
+        errorStatus: updateError.status,
+        errorCode: updateError.code,
+        passwordLength: newPassword.length
       })
       return NextResponse.json({ error: 'Failed to update password', details: updateError.message }, { status: 500 })
     }
