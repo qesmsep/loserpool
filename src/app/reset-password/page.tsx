@@ -21,86 +21,104 @@ function LoadingFallback() {
 
 function ResetPasswordContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const emailFromQuery = searchParams?.get('email') || ''
-  const [newPassword, setNewPassword] = useState('')
+  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
-  const handlePasswordReset = async () => {
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLoading(true)
     setError('')
 
     try {
-      // Try to get the session (Supabase recovery link may or may not set it)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.warn('Session error (continuing with query email if present):', sessionError)
-      }
-
-      const emailToUse = session?.user?.email || emailFromQuery
-
-      if (!emailToUse) {
-        throw new Error('Reset link missing session and email. Please request a new reset link.')
-      }
-
-      if (session?.user?.email) {
-        console.log('✅ User session confirmed:', session.user.email)
-      } else {
-        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
-      }
-
-      const response = await fetch('/api/auth/admin-reset-password', {
+      const response = await fetch('/api/auth/request-password-reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: emailToUse,
-          newPassword: newPassword
-        }),
+        body: JSON.stringify({ email }),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to reset password')
+        throw new Error(result.error || 'Failed to send reset email')
       }
 
-      router.push('/login')
+      setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password')
+      setError(err instanceof Error ? err.message : 'Failed to send reset email')
     } finally {
       setLoading(false)
     }
   }
 
+  if (success) {
+    return (
+      <div className="app-bg flex items-center justify-center min-h-screen">
+        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
+            <p className="text-gray-600 mb-6">
+              If an account with {email} exists, we've sent a password reset link to your email address.
+            </p>
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-bg flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Set a New Password</h1>
-
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Reset Password</h1>
+        
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
-        <input
-          type="password"
-          placeholder="New Password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6"
-        />
+        <form onSubmit={handleRequestReset} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="Enter your email address"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
+            />
+          </div>
 
-        <button
-          onClick={handlePasswordReset}
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Resetting...' : 'Reset Password'}
-        </button>
+          <button
+            type="submit"
+            disabled={loading || !email}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => router.push('/login')}
+            className="text-blue-600 hover:text-blue-500"
+          >
+            Back to Login
+          </button>
+        </div>
       </div>
     </div>
   )

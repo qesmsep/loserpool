@@ -113,16 +113,38 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
-      // Use Supabase's standard password reset method
+      // First, try the standard Supabase password reset using recovery session
       const { error } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
 
       if (error) {
-        throw new Error(error.message)
+        // If standard reset fails due to missing/invalid session, try admin fallback
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.email) {
+          const response = await fetch('/api/auth/admin-reset-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: session.user.email,
+              newPassword: newPassword
+            })
+          })
+
+          if (!response.ok) {
+            const result = await response.json()
+            throw new Error(result.error || 'Failed to reset password')
+          }
+        } else {
+          throw new Error(error.message)
+        }
       }
 
       setSuccess(true)
+      await supabase.auth.signOut()
+      setTimeout(() => { router.push('/login') }, 2500)
 
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to reset password')

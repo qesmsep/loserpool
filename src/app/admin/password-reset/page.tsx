@@ -41,44 +41,38 @@ function AdminPasswordResetContent() {
     setSuccess(false)
 
     try {
-      // Try to get the session (Supabase recovery link may or may not set it)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.warn('Session error (continuing with query email if present):', sessionError)
-      }
-
-      const emailToUse = session?.user?.email || emailFromQuery
-
-      if (!emailToUse) {
-        throw new Error('Reset link missing session and email. Please request a new reset link.')
-      }
-
-      if (session?.user?.email) {
-        console.log('✅ User session confirmed:', session.user.email)
-      } else {
-        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
-      }
-
-      const response = await fetch('/api/auth/admin-reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: emailToUse,
-          newPassword: newPassword
-        })
+      // First, try the standard Supabase password reset using recovery session
+      const { error } = await supabase.auth.updateUser({ 
+        password: newPassword 
       })
 
-      const result = await response.json()
+      if (error) {
+        // If standard reset fails due to missing/invalid session, try admin fallback
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.email) {
+          const response = await fetch('/api/auth/admin-reset-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: session.user.email,
+              newPassword: newPassword
+            })
+          })
 
-      if (response.ok) {
-        setSuccess(true)
-        setNewPassword('')
-      } else {
-        setError(result.error || 'Failed to reset password')
+          const result = await response.json()
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to reset password')
+          }
+        } else {
+          throw new Error(error.message)
+        }
       }
+
+      setSuccess(true)
+      setNewPassword('')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
