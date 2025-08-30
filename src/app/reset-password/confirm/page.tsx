@@ -137,26 +137,47 @@ function ResetPasswordConfirmContent() {
     try {
       console.log('🔄 Starting password update...')
       
-      // Use Supabase's built-in password update - this should work with the recovery session
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
-      })
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      if (updateError) {
-        console.error('❌ Password update failed:', updateError)
-        throw new Error(updateError.message || 'Failed to update password')
+      if (sessionError || !session?.user) {
+        throw new Error('No valid session found')
       }
       
-      console.log('✅ Password updated successfully!')
-      setSuccess(true)
+      console.log('✅ User session confirmed:', session.user.email)
       
-      // Sign out to clear any existing session
-      await supabase.auth.signOut()
+      // Use the admin API to update the password
+      console.log('🔄 Calling admin API...')
+      const response = await fetch('/api/auth/admin-reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: session.user.email,
+          newPassword: newPassword
+        })
+      })
       
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        router.push('/login')
-      }, 3000)
+      console.log('📥 Admin API response status:', response.status)
+      const result = await response.json()
+      console.log('📥 Admin API response:', result)
+      
+      if (response.ok) {
+        console.log('✅ Password updated successfully!')
+        setSuccess(true)
+        
+        // Sign out to clear any existing session
+        await supabase.auth.signOut()
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          router.push('/login')
+        }, 3000)
+      } else {
+        console.error('❌ Admin API failed:', result)
+        throw new Error(result.error || 'Failed to update password')
+      }
       
     } catch (error) {
       console.error('❌ Error resetting password:', error)
