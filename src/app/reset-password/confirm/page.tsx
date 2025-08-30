@@ -137,44 +137,26 @@ function ResetPasswordConfirmContent() {
     try {
       console.log('🔄 Starting password update...')
       
-      // Get the current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !session?.user) {
-        throw new Error('No valid session found')
-      }
-      
-      console.log('✅ User session confirmed:', session.user.email)
-      
-      // Use the admin API to update the password instead of client-side updateUser
-      const response = await fetch('/api/auth/admin-reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: session.user.email,
-          newPassword: newPassword
-        })
+      // Use Supabase's built-in password update - this should work with the recovery session
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
       })
       
-      const result = await response.json()
-      
-      if (response.ok) {
-        console.log('✅ Password updated successfully!')
-        setSuccess(true)
-        
-        // Sign out to clear any existing session
-        await supabase.auth.signOut()
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push('/login')
-        }, 3000)
-      } else {
-        console.error('❌ Password update failed:', result)
-        throw new Error(result.error || 'Failed to update password')
+      if (updateError) {
+        console.error('❌ Password update failed:', updateError)
+        throw new Error(updateError.message || 'Failed to update password')
       }
+      
+      console.log('✅ Password updated successfully!')
+      setSuccess(true)
+      
+      // Sign out to clear any existing session
+      await supabase.auth.signOut()
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
       
     } catch (error) {
       console.error('❌ Error resetting password:', error)
