@@ -1,71 +1,50 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function ResetPasswordConfirmContent() {
+function LoadingFallback() {
+  return (
+    <div className="app-bg flex items-center justify-center min-h-screen">
+      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-6"></div>
+          <div className="h-4 bg-gray-200 rounded mb-4"></div>
+          <div className="h-10 bg-gray-200 rounded mb-6"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LoginContent() {
   const searchParams = useSearchParams()
-  const emailFromQuery = searchParams?.get('email') || ''
   const router = useRouter()
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setSuccess(false)
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
     setLoading(true)
+    setError('')
 
     try {
-      // Try to get the session (Supabase recovery link may or may not set it)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.warn('Session error (continuing with query email if present):', sessionError)
-      }
-
-      const emailToUse = session?.user?.email || emailFromQuery
-
-      if (!emailToUse) {
-        throw new Error('Reset link missing session and email. Please request a new reset link.')
-      }
-
-      if (session?.user?.email) {
-        console.log('✅ User session confirmed:', session.user.email)
-      } else {
-        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
-      }
-
-      const response = await fetch('/api/auth/admin-reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailToUse,
-          newPassword: newPassword
-        })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to reset password')
+      if (error) {
+        throw error
       }
 
-      setSuccess(true)
-      setNewPassword('')
-      setConfirmPassword('')
-      setTimeout(() => {
-        router.push('/login')
-      }, 3000)
+      if (data.user) {
+        router.push('/dashboard')
+      }
     } catch (error: unknown) {
       console.error('Login error:', error)
       setError(error instanceof Error ? error.message : 'An unexpected error occurred')
@@ -77,47 +56,71 @@ export default function ResetPasswordConfirmContent() {
   return (
     <div className="app-bg flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6">Reset Password</h1>
-        {error && <div className="mb-4 text-red-600">{error}</div>}
-        {success && <div className="mb-4 text-green-600">Password reset successful! Redirecting to login...</div>}
-        <form onSubmit={handlePasswordReset} className="space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Sign In</h1>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
-              New Password
+            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
+              Email
             </label>
             <input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
             />
           </div>
+
           <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm New Password
+            <label htmlFor="password" className="block text-sm font-medium text-gray-900 mb-2">
+              Password
             </label>
             <input
-              id="confirm-password"
+              id="password"
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
             />
           </div>
+
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Resetting password...' : 'Reset Password'}
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <a
+            href="/reset-password"
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Forgot your password?
+          </a>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   )
 }
