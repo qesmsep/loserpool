@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     if (updateErr) return NextResponse.json({ error: 'Failed to update password', details: updateErr.message }, { status: 500 })
 
     return NextResponse.json({ success: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unexpected error' }, { status: 500 })
   }
 }
