@@ -154,6 +154,10 @@ function ResetPasswordConfirmContent() {
         console.log('⚠️ Standard reset failed, trying admin API fallback...')
         console.error('Standard reset error:', error)
         
+        // Use session email if available, otherwise fall back to query email
+        const emailToUse = session?.user?.email || emailFromQuery
+        console.log('📧 Using email for admin API:', emailToUse)
+        
         // Fallback to admin API if standard reset fails
         const response = await fetch('/api/auth/admin-reset-password', {
           method: 'POST',
@@ -161,7 +165,7 @@ function ResetPasswordConfirmContent() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email: emailFromQuery,
+            email: emailToUse,
             newPassword: newPassword
           })
         })
