@@ -43,7 +43,7 @@ export default function AdminResetPage() {
           text: data.error || 'Failed to reset picks'
         })
       }
-    } catch (error) {
+    } catch {
       setMessage({
         type: 'error',
         text: 'Network error occurred'

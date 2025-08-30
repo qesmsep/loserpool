@@ -46,7 +46,7 @@ export default function AdminPasswordResetPage() {
       } else {
         setError(result.error || 'Failed to reset password')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -60,7 +60,7 @@ export default function AdminPasswordResetPage() {
           <div className="bg-white rounded-lg shadow-xl p-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Admin Password Reset</h1>
-              <p className="text-gray-600 mt-2">Reset a user's password directly</p>
+              <p className="text-gray-600 mt-2">Reset a user&apos;s password directly</p>
             </div>
 
             {success && (
@@ -123,7 +123,7 @@ export default function AdminPasswordResetPage() {
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Important:</strong> This will immediately reset the user's password. 
+                  <strong>Important:</strong> This will immediately reset the user&apos;s password. 
                   The user will need to use this new password to sign in.
                 </p>
               </div>
