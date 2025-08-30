@@ -14,23 +14,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing email or newPassword' }, { status: 400 })
     }
 
-    // Find user by email
-    const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    // Find user by email - handle pagination to get all users
+    let allUsers: any[] = []
+    let page = 1
+    const perPage = 1000 // Get maximum users per page
+    
+    while (true) {
+      const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage
+      })
 
-    if (listError) {
-      console.error('❌ Error listing users:', listError)
-      return NextResponse.json({ error: 'Failed to look up user', details: listError.message }, { status: 500 })
+      if (listError) {
+        console.error('❌ Error listing users:', listError)
+        return NextResponse.json({ error: 'Failed to look up user', details: listError.message }, { status: 500 })
+      }
+
+      if (!list?.users || list.users.length === 0) {
+        break // No more users
+      }
+
+      allUsers = allUsers.concat(list.users)
+      
+      // If we got fewer users than requested, we've reached the end
+      if (list.users.length < perPage) {
+        break
+      }
+      
+      page++
     }
 
-    console.log('📋 Total users found:', list?.users?.length || 0)
+    console.log('📋 Total users found:', allUsers.length)
     console.log('🔍 Looking for email:', email)
     
     // Log first few users for debugging
-    if (list?.users && list.users.length > 0) {
-      console.log('📋 First 3 users:', list.users.slice(0, 3).map(u => ({ id: u.id, email: u.email })))
+    if (allUsers.length > 0) {
+      console.log('📋 First 3 users:', allUsers.slice(0, 3).map(u => ({ id: u.id, email: u.email })))
     }
 
-    const user = list?.users?.find(u => u.email === email)
+    const user = allUsers.find(u => u.email === email)
     console.log('🔍 User found:', user ? `Yes (${user.id})` : 'No')
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
