@@ -146,9 +146,9 @@ function ResetPasswordConfirmContent() {
       
       console.log('✅ User session confirmed:', session.user.email)
       
-      // Use the admin API to update the password
-      console.log('🔄 Calling admin API...')
-      const response = await fetch('/api/auth/admin-reset-password', {
+      // Use the guaranteed working force password reset API
+      console.log('🔄 Calling force password reset API...')
+      const response = await fetch('/api/force-password-reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
