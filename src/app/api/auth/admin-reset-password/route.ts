@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     }
 
     // Find user by email - handle pagination to get all users
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let allUsers: any[] = []
     let page = 1
     const perPage = 1000 // Get maximum users per page
