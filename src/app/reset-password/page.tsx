@@ -1,10 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function ResetPasswordConfirmContent() {
+function LoadingFallback() {
+  return (
+    <div className="app-bg flex items-center justify-center min-h-screen">
+      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-6"></div>
+          <div className="h-4 bg-gray-200 rounded mb-4"></div>
+          <div className="h-10 bg-gray-200 rounded mb-6"></div>
+          <div className="h-10 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailFromQuery = searchParams?.get('email') || ''
@@ -88,5 +103,13 @@ export default function ResetPasswordConfirmContent() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 function LoadingFallback() {
@@ -20,7 +20,6 @@ function LoadingFallback() {
 }
 
 function LoginContent() {
-  const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
