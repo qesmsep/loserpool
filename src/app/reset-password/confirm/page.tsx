@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-export default function ResetPasswordConfirmPage() {
+function ResetPasswordConfirmContent() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
@@ -355,5 +355,24 @@ export default function ResetPasswordConfirmPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="app-bg flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
+        <p className="mt-4 text-blue-200">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function ResetPasswordConfirmPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ResetPasswordConfirmContent />
+    </Suspense>
   )
 }
