@@ -15,17 +15,13 @@ export async function POST(req: Request) {
     }
 
     // Find user by email (DO NOT create)
-    const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
-      email
-    })
+    const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers()
 
     if (listError) {
       return NextResponse.json({ error: 'Failed to look up user', details: listError.message }, { status: 500 })
     }
 
-    const user = list?.users?.[0]
+    const user = list?.users?.find(u => u.email === email)
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
