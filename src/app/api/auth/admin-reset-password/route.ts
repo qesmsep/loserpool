@@ -63,9 +63,17 @@ export async function POST(req: Request) {
     })
 
     if (updateError) {
+      console.error('❌ Error updating password:', updateError)
+      console.error('❌ Error details:', {
+        userId: user.id,
+        userEmail: user.email,
+        errorMessage: updateError.message,
+        errorStatus: updateError.status
+      })
       return NextResponse.json({ error: 'Failed to update password', details: updateError.message }, { status: 500 })
     }
 
+    console.log('✅ Password updated successfully for user:', user.id)
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Unexpected error' }, { status: 500 })
