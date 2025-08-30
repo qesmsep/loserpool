@@ -77,6 +77,11 @@ export async function POST(req: Request) {
     console.log('🔄 Attempting password update for user:', user.id)
     console.log('🔍 Password length:', newPassword.length)
     
+    // Validate password meets Supabase requirements
+    if (newPassword.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 })
+    }
+    
     // Try updateUserById with more specific error handling
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       user.id,
