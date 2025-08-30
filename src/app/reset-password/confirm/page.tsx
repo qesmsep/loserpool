@@ -161,7 +161,7 @@ function ResetPasswordConfirmContent() {
       
       console.log('📥 Admin API response status:', response.status)
       const result = await response.json()
-      console.log('📥 Admin API response:', result)
+      console.log('📥 Admin API response:', JSON.stringify(result, null, 2))
       
       if (response.ok) {
         console.log('✅ Password updated successfully!')
