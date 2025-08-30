@@ -14,6 +14,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing email or newPassword' }, { status: 400 })
     }
 
+    console.log('🔍 Admin password reset request for:', email)
+
+    // First, test if we can list users to verify service role permissions
+    console.log('🔄 Testing service role permissions...')
+    const { data: testList, error: testError } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1
+    })
+
+    if (testError) {
+      console.error('❌ Service role test failed:', testError)
+      return NextResponse.json({ error: 'Service role permissions issue', details: testError.message }, { status: 500 })
+    }
+
+    console.log('✅ Service role permissions verified')
+
     // Find user by email - handle pagination to get all users
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let allUsers: any[] = []
@@ -83,6 +99,7 @@ export async function POST(req: Request) {
     console.log('✅ Password updated successfully for user:', user.id)
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
+    console.error('❌ Admin password reset error:', e)
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Unexpected error' }, { status: 500 })
   }
 }
