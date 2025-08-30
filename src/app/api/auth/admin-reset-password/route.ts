@@ -10,22 +10,19 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = createServiceRoleClient()
 
-    // Look up user by email (do not create)
+    // Look up existing user (do NOT create)
     const { data: users, error: getErr } = await supabaseAdmin.auth.admin.listUsers()
-    if (getErr) {
-      return NextResponse.json({ error: 'Failed to look up user', details: getErr.message }, { status: 500 })
-    }
+    if (getErr) return NextResponse.json({ error: 'Failed to look up user', details: getErr.message }, { status: 500 })
+
     const user = users?.users?.find(u => u.email === email)
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    // Update password by user id
+    // Update password by id
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password: newPassword })
-    if (updateErr) {
-      return NextResponse.json({ error: 'Failed to update password', details: updateErr.message }, { status: 500 })
-    }
+    if (updateErr) return NextResponse.json({ error: 'Failed to update password', details: updateErr.message }, { status: 500 })
 
     return NextResponse.json({ success: true })
-  } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unexpected error' }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
 }
