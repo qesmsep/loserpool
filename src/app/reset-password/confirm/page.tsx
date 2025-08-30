@@ -84,10 +84,10 @@ function ResetPasswordConfirmContent() {
         setError('Invalid or expired reset link. Please request a new password reset.')
         setIsChecking(false)
         
-      } catch (error) {
-        setError('An error occurred. Please try again.')
-        setIsChecking(false)
-      }
+              } catch {
+          setError('An error occurred. Please try again.')
+          setIsChecking(false)
+        }
     }
 
     checkSession()

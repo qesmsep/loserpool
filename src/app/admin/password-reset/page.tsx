@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 function LoadingFallback() {
@@ -20,8 +19,6 @@ function LoadingFallback() {
 }
 
 function AdminPasswordResetContent() {
-  const searchParams = useSearchParams()
-  const emailFromQuery = searchParams?.get('email') || ''
 
   const [newPassword, setNewPassword] = useState('')
   const [loading, setLoading] = useState(false)

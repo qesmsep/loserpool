@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 function LoadingFallback() {
   return (
@@ -61,7 +60,7 @@ function ResetPasswordContent() {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
             <p className="text-gray-600 mb-6">
-              If an account with {email} exists, we've sent a password reset link to your email address.
+              If an account with {email} exists, we&apos;ve sent a password reset link to your email address.
             </p>
             <button
               onClick={() => router.push('/login')}
