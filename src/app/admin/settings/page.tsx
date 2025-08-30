@@ -376,6 +376,21 @@ export default async function AdminSettingsPage() {
 
               <div className="flex justify-between items-center">
                 <div>
+                  <div className="text-sm font-medium text-white">Password Reset</div>
+                  <div className="text-sm text-blue-200">Admin password reset tool</div>
+                </div>
+                <div className="text-right">
+                  <Link
+                    href="/admin/password-reset"
+                    className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 transition-colors"
+                  >
+                    Access Tool
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div>
                   <div className="text-sm font-medium text-white">Odds Data</div>
                   <div className="text-sm text-blue-200">DraftKings Sportsbook integration</div>
                 </div>

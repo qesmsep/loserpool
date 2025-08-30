@@ -9,11 +9,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
+    }
+
     const supabaseAdmin = createServiceRoleClient()
 
-    // Use Supabase's built-in password reset with the correct redirect URL
+    // Use Supabase's built-in password reset
     const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://www.loserpool.app/reset-password/confirm'
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.loserpool.app'}/reset-password/confirm`
     })
 
     if (error) {

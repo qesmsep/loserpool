@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-function ResetPasswordConfirmContent() {
+export default function ResetPasswordConfirmPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
@@ -50,12 +50,7 @@ function ResetPasswordConfirmContent() {
           return
         }
 
-        // If no session, check for recovery tokens in URL
-        const accessToken = searchParams.get('access_token')
-        const refreshToken = searchParams.get('refresh_token')
-        const type = searchParams.get('type')
-        
-        // Also check URL fragment for tokens (Supabase puts them there)
+        // If no session, check for recovery tokens in URL fragment
         let fragmentTokens: Record<string, string> = {}
         if (typeof window !== 'undefined') {
           const fragment = window.location.hash.substring(1) // Remove the #
@@ -69,27 +64,19 @@ function ResetPasswordConfirmContent() {
           }
         }
         
-        // Log all search params to see what we're actually getting
-        const allParams: Record<string, string | null> = {}
-        searchParams.forEach((value, key) => {
-          allParams[key] = value ? '***HIDDEN***' : null
-        })
-        console.log('🔍 All URL params:', allParams)
         console.log('🔍 Fragment tokens:', Object.keys(fragmentTokens))
-        console.log('🔍 URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type })
         
-        // Use tokens from fragment if available, otherwise from search params
-        const finalAccessToken = fragmentTokens.access_token || accessToken
-        const finalRefreshToken = fragmentTokens.refresh_token || refreshToken
-        const finalType = fragmentTokens.type || type
+        const accessToken = fragmentTokens.access_token
+        const refreshToken = fragmentTokens.refresh_token
+        const type = fragmentTokens.type
         
-        if (finalAccessToken && finalRefreshToken && finalType === 'recovery') {
+        if (accessToken && refreshToken && type === 'recovery') {
           console.log('🔄 Setting session from recovery tokens...')
           
           // Set the session manually from recovery tokens
           const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
-            access_token: finalAccessToken,
-            refresh_token: finalRefreshToken
+            access_token: accessToken,
+            refresh_token: refreshToken
           })
           
           if (setSessionError) {
@@ -109,7 +96,6 @@ function ResetPasswordConfirmContent() {
         
         // If we get here, no valid session or tokens
         console.log('❌ No valid session or recovery tokens found')
-        console.log('🔍 Current URL:', window.location.href)
         setError('Invalid or expired reset link. Please request a new password reset.')
         setIsChecking(false)
         
@@ -149,7 +135,7 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
-      console.log('🔄 Starting SIMPLE password update...')
+      console.log('🔄 Starting password update...')
       
       // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -160,34 +146,26 @@ function ResetPasswordConfirmContent() {
       
       console.log('✅ User session confirmed:', session.user.email)
       
-      // Use the SIMPLE direct approach - just call the admin API directly
-      console.log('🔄 Using direct admin API approach...')
-      const response = await fetch('/api/auth/simple-password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: session.user.email,
-          password: newPassword
-        })
+      // Use Supabase's built-in password update
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
       })
       
-      const result = await response.json()
-      
-      if (response.ok) {
-        console.log('✅ Password reset successful!')
-        setSuccess(true)
-        
-        // Sign out to clear any existing session
-        await supabase.auth.signOut()
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push('/login')
-        }, 3000)
-      } else {
-        console.error('❌ Password reset failed:', result)
-        throw new Error(result.error || 'Password reset failed')
+      if (updateError) {
+        console.error('❌ Password update failed:', updateError)
+        throw new Error(updateError.message || 'Failed to update password')
       }
+      
+      console.log('✅ Password updated successfully!')
+      setSuccess(true)
+      
+      // Sign out to clear any existing session
+      await supabase.auth.signOut()
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        router.push('/login')
+      }, 3000)
       
     } catch (error) {
       console.error('❌ Error resetting password:', error)
@@ -377,24 +355,5 @@ function ResetPasswordConfirmContent() {
         </div>
       </div>
     </div>
-  )
-}
-
-function LoadingFallback() {
-  return (
-    <div className="app-bg flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
-        <p className="mt-4 text-blue-200">Loading...</p>
-      </div>
-    </div>
-  )
-}
-
-export default function ResetPasswordConfirmPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <ResetPasswordConfirmContent />
-    </Suspense>
   )
 }
