@@ -111,8 +111,13 @@ function ResetPasswordConfirmContent() {
   }, [router, searchParams])
 
   const handlePasswordReset = async () => {
+    if (!newPassword || !confirmPassword) {
+      setError('Please enter both password fields')
+      return
+    }
+
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match')
+      setError('Passwords do not match')
       return
     }
 
@@ -121,75 +126,62 @@ function ResetPasswordConfirmContent() {
       return
     }
 
-    // Additional password validation
-    const hasUpperCase = /[A-Z]/.test(newPassword)
-    const hasLowerCase = /[a-z]/.test(newPassword)
-    const hasNumbers = /\d/.test(newPassword)
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
-      return
-    }
-
     setLoading(true)
     setError('')
 
     try {
-      console.log('🔄 Starting password update...')
+      console.log('🔄 Starting password reset...')
       
-      // Try to get the session (Supabase recovery link may or may not set it)
+      // Check current session status
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
       if (sessionError) {
-        console.warn('Session error (continuing with query email if present):', sessionError)
-      }
-
-      const emailToUse = session?.user?.email || emailFromQuery
-
-      if (!emailToUse) {
-        throw new Error('Reset link missing session and email. Please request a new reset link.')
-      }
-
-      if (session?.user?.email) {
-        console.log('✅ User session confirmed:', session.user.email)
-      } else {
-        console.log('⚠️ No session from recovery link. Falling back to email from query:', emailFromQuery)
+        console.warn('Session check error:', sessionError)
       }
       
-      // Use the admin API to update the password
-      console.log('🔄 Calling admin API...')
-      const response = await fetch('/api/auth/admin-reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: emailToUse,
-          newPassword: newPassword
-        })
+      if (session) {
+        console.log('✅ User session found:', session.user.email)
+      } else {
+        console.log('⚠️ No user session found, will use email from query:', emailFromQuery)
+      }
+      
+      // First, try the standard Supabase password reset using recovery session
+      console.log('🔄 Attempting standard Supabase password reset...')
+      const { data, error } = await supabase.auth.updateUser({ 
+        password: newPassword 
       })
-      
-      console.log('📥 Admin API response status:', response.status)
-      const result = await response.json()
-      console.log('📥 Admin API response:', JSON.stringify(result, null, 2))
-      
-      if (response.ok) {
-        console.log('✅ Password updated successfully!')
+
+      if (error) {
+        console.log('⚠️ Standard reset failed, trying admin API fallback...')
+        console.error('Standard reset error:', error)
+        
+        // Fallback to admin API if standard reset fails
+        const response = await fetch('/api/auth/admin-reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: emailFromQuery,
+            newPassword: newPassword
+          })
+        })
+
+        console.log('📥 Admin API response status:', response.status)
+        const result = await response.json()
+        console.log('📥 Admin API response:', JSON.stringify(result, null, 2))
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to reset password')
+        }
+
+        console.log('✅ Password reset successful via admin API')
         setSuccess(true)
-        
-        // Sign out to clear any existing session
-        await supabase.auth.signOut()
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push('/login')
-        }, 3000)
-      } else {
-        console.error('❌ Admin API failed:', result)
-        throw new Error(result.error || 'Failed to update password')
+        return
       }
-      
+
+      console.log('✅ Password reset successful via standard Supabase method')
+      setSuccess(true)
+
     } catch (error) {
       console.error('❌ Error resetting password:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset password')
