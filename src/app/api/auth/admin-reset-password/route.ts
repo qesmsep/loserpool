@@ -35,33 +35,53 @@ export async function POST(request: Request) {
 
     const authUser = users.users.find(u => u.email === email)
     
-    if (!authUser) {
-      console.log('❌ User not found in auth.users:', email)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
+    if (authUser) {
+      console.log('✅ User found in auth.users:', authUser.id)
+      
+      // Update the existing user's password
+      console.log('🔄 Updating password for user:', authUser.id)
+      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        authUser.id,
+        { password: newPassword }
+      )
 
-    console.log('✅ User found in auth.users:', authUser.id)
-    
-    // Update the existing user's password
-    console.log('🔄 Updating password for user:', authUser.id)
-    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      authUser.id,
-      { password: newPassword }
-    )
+      if (updateError) {
+        console.error('❌ Error updating password:', updateError)
+        return NextResponse.json({ 
+          error: 'Failed to update password',
+          details: updateError.message 
+        }, { status: 500 })
+      }
 
-    if (updateError) {
-      console.error('❌ Error updating password:', updateError)
+      console.log('✅ Password updated successfully for user:', email)
       return NextResponse.json({ 
-        error: 'Failed to update password',
-        details: updateError.message 
-      }, { status: 500 })
-    }
+        success: true,
+        message: 'Password updated successfully'
+      })
+    } else {
+      console.log('⚠️ User not found in auth.users, creating new user...')
+      
+      // Create the user in auth.users since they have a valid session
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: newPassword,
+        email_confirm: true
+      })
 
-    console.log('✅ Password updated successfully for user:', email)
-    return NextResponse.json({ 
-      success: true,
-      message: 'Password updated successfully'
-    })
+      if (createError) {
+        console.error('❌ Error creating auth user:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create user account',
+          details: createError.message 
+        }, { status: 500 })
+      }
+
+      console.log('✅ New auth user created with password:', createData.user?.id)
+      return NextResponse.json({ 
+        success: true,
+        message: 'User created with password successfully'
+      })
+    }
 
   } catch (error) {
     console.error('❌ Admin password reset error:', error)
