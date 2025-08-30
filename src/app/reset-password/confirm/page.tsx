@@ -146,7 +146,7 @@ function ResetPasswordConfirmContent() {
       
       // First, try the standard Supabase password reset using recovery session
       console.log('🔄 Attempting standard Supabase password reset...')
-      const { data, error } = await supabase.auth.updateUser({ 
+      const { error } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
 

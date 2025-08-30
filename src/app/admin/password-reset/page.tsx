@@ -64,8 +64,8 @@ export default function ResetPasswordConfirmContent() {
       } else {
         setError(result.error || 'Failed to reset password')
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }

@@ -66,8 +66,9 @@ export default function ResetPasswordConfirmContent() {
       setTimeout(() => {
         router.push('/login')
       }, 3000)
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred')
+    } catch (error: unknown) {
+      console.error('Login error:', error)
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }

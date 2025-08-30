@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       page: 1,
       perPage: 1,
       email
-    } as any)
+    })
 
     if (listError) {
       return NextResponse.json({ error: 'Failed to look up user', details: listError.message }, { status: 500 })
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unexpected error' }, { status: 500 })
   }
 }
