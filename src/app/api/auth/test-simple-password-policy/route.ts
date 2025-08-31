@@ -19,12 +19,12 @@ export async function GET() {
       }, { status: 500 })
     }
     
-    const targetUser = users.users.find(u => u.email === 'jpatrickross1961@gmail.com')
+    const targetUser = users.users.find(u => u.email === 'tim.wirick@gmail.com')
     
     if (!targetUser) {
       return NextResponse.json({ 
         error: 'Target user not found',
-        details: 'User jpatrickross1961@gmail.com not found in the system',
+        details: 'User tim.wirick@gmail.com not found in the system',
         availableUsers: users.users.map(u => ({ email: u.email, id: u.id }))
       }, { status: 404 })
     }
