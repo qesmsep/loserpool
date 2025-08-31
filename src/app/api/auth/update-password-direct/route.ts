@@ -17,19 +17,38 @@ export async function POST(request: Request) {
     console.log('🔧 [UPDATE-PASSWORD-DIRECT] Creating Supabase admin client...')
     const supabaseAdmin = createServiceRoleClient()
     
-    // Find the user by email
+    // Find the user by email - handle pagination
     console.log('🔧 [UPDATE-PASSWORD-DIRECT] Finding user by email...')
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    let authUser = null
+    let page = 0
+    const perPage = 1000
     
-    if (listError) {
-      console.error('❌ [UPDATE-PASSWORD-DIRECT] Failed to list users:', listError)
-      return NextResponse.json({ 
-        error: 'Failed to find user',
-        details: listError.message
-      }, { status: 500 })
+    while (!authUser) {
+      const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page: page,
+        perPage: perPage
+      })
+      
+      if (listError) {
+        console.error('❌ [UPDATE-PASSWORD-DIRECT] Failed to list users:', listError)
+        return NextResponse.json({ 
+          error: 'Failed to find user',
+          details: listError.message
+        }, { status: 500 })
+      }
+      
+      if (!users || users.length === 0) {
+        console.log('❌ [UPDATE-PASSWORD-DIRECT] No more users found, user not in system')
+        break
+      }
+      
+      authUser = users.find(user => user.email === email)
+      
+      if (!authUser) {
+        page++
+        console.log(`🔍 [UPDATE-PASSWORD-DIRECT] User not found on page ${page-1}, checking page ${page}...`)
+      }
     }
-    
-    const authUser = users.find(user => user.email === email)
     
     if (!authUser) {
       console.log('❌ [UPDATE-PASSWORD-DIRECT] User not found:', email)
