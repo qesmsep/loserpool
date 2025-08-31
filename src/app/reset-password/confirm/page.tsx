@@ -196,13 +196,13 @@ function ResetPasswordConfirmContent() {
         accessToken: session.access_token ? 'present' : 'missing'
       })
       
-      // Use client-side updateUser (this is the correct approach according to Supabase docs)
-      console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
-      const { error: updateUserError } = await supabase.auth.updateUser({ 
-        password: newPassword 
-      })
-      
-                      if (updateUserError) {
+                      // Use client-side updateUser (this is the correct approach according to Supabase docs)
+                console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
+                const { error: updateUserError } = await supabase.auth.updateUser({ 
+                  password: newPassword 
+                })
+                
+                if (updateUserError) {
                   console.error('❌ [PASSWORD-CONFIRM] Client-side update failed:', updateUserError)
                   console.error('❌ [PASSWORD-CONFIRM] Error details:', {
                     message: updateUserError.message,
@@ -210,27 +210,12 @@ function ResetPasswordConfirmContent() {
                     code: updateUserError.code
                   })
                   
-                  // Try alternative server-side approach as fallback
-                  console.log('🔧 [PASSWORD-CONFIRM] Trying alternative server-side approach...')
-                  const response = await fetch('/api/auth/update-password-alternative', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      password: newPassword,
-                      userId: session.user.id
-                    })
-                  })
-                  
-                  const result = await response.json()
-                  
-                  if (!response.ok) {
-                    console.error('❌ [PASSWORD-CONFIRM] Alternative approach also failed:', result)
-                    throw new Error(result.error || 'Failed to update password')
+                  // If it's an unexpected_failure, this is likely due to SMTP configuration
+                  if (updateUserError.code === 'unexpected_failure') {
+                    throw new Error('Password update failed due to server configuration. Please contact support.')
                   }
                   
-                  console.log('✅ [PASSWORD-CONFIRM] Alternative approach succeeded:', result)
+                  throw new Error(updateUserError.message || 'Failed to update password')
                 }
       
       console.log('✅ [PASSWORD-CONFIRM] Client-side update succeeded')
