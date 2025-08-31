@@ -19,7 +19,7 @@ export default function AdminPasswordResetPage() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/auth/manual-password-reset', {
+      const response = await fetch('/api/auth/test-manual-reset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
