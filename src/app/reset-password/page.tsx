@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 
 function LoadingFallback() {
   return (
@@ -47,6 +48,7 @@ function ResetPasswordContent() {
 
       setSuccess(true)
     } catch (err) {
+      console.error('Password reset request error:', err)
       setError(err instanceof Error ? err.message : 'Failed to send reset email')
     } finally {
       setLoading(false)
@@ -58,10 +60,24 @@ function ResetPasswordContent() {
       <div className="app-bg flex items-center justify-center min-h-screen">
         <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
           <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
-            <p className="text-gray-600 mb-6">
-              If an account with {email} exists, we&apos;ve sent a password reset link to your email address.
-            </p>
+                          <p className="text-gray-600 mb-6">
+                If an account with <strong>{email}</strong> exists, we&apos;ve sent a password reset link to your email address.
+              </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>What to do next:</strong>
+              </p>
+              <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                <li>• Check your email inbox</li>
+                <li>• Click the &quot;Reset Password&quot; link</li>
+                <li>• Create a new password</li>
+                <li>• Sign in with your new password</li>
+              </ul>
+            </div>
             <button
               onClick={() => router.push('/login')}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
@@ -77,7 +93,13 @@ function ResetPasswordContent() {
   return (
     <div className="app-bg flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Reset Password</h1>
+        <div className="text-center mb-8">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+            <Mail className="h-6 w-6 text-blue-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Reset Password</h1>
+          <p className="text-gray-600 mt-2">Enter your email address to receive a reset link</p>
+        </div>
         
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
@@ -113,8 +135,9 @@ function ResetPasswordContent() {
         <div className="mt-6 text-center">
           <button
             onClick={() => router.push('/login')}
-            className="text-blue-600 hover:text-blue-500"
+            className="flex items-center justify-center mx-auto text-blue-600 hover:text-blue-500"
           >
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Login
           </button>
         </div>

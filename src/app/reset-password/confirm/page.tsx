@@ -21,31 +21,38 @@ function ResetPasswordConfirmContent() {
 
   useEffect(() => {
     const checkSession = async () => {
+      console.log('🔧 [SESSION-CHECK] Starting session validation')
       try {
         setIsChecking(true)
         
         // Wait a moment for Supabase to process the reset link
+        console.log('⏳ [SESSION-CHECK] Waiting for Supabase to process reset link...')
         await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Check if we have a valid session from the reset link
+        console.log('🔍 [SESSION-CHECK] Checking for valid session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
+          console.error('❌ [SESSION-CHECK] Session check error:', error)
           setError('Invalid or expired reset link. Please request a new password reset.')
           setIsChecking(false)
           return
         }
 
         if (session?.user) {
+          console.log('✅ [SESSION-CHECK] Valid session found for user:', session.user.email)
           setIsValidSession(true)
           setIsChecking(false)
           return
         }
 
         // If no session, check for recovery tokens in URL fragment
+        console.log('🔍 [SESSION-CHECK] No session found, checking URL fragment for recovery tokens...')
         let fragmentTokens: Record<string, string> = {}
         if (typeof window !== 'undefined') {
           const fragment = window.location.hash.substring(1)
+          console.log('🔍 [SESSION-CHECK] URL fragment found:', fragment ? 'yes' : 'no')
           if (fragment) {
             fragmentTokens = Object.fromEntries(
               fragment.split('&').map(pair => {
@@ -53,6 +60,7 @@ function ResetPasswordConfirmContent() {
                 return [key, decodeURIComponent(value)]
               })
             )
+            console.log('🔍 [SESSION-CHECK] Fragment tokens:', Object.keys(fragmentTokens))
           }
         }
         
@@ -61,6 +69,7 @@ function ResetPasswordConfirmContent() {
         const type = fragmentTokens.type
         
         if (accessToken && refreshToken && type === 'recovery') {
+          console.log('🔧 [SESSION-CHECK] Recovery tokens found, setting session manually...')
           // Set the session manually from recovery tokens
           const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -68,12 +77,14 @@ function ResetPasswordConfirmContent() {
           })
           
           if (setSessionError) {
+            console.error('❌ [SESSION-CHECK] Set session error:', setSessionError)
             setError('Invalid reset link. Please request a new password reset.')
             setIsChecking(false)
             return
           }
           
           if (sessionData.session?.user) {
+            console.log('✅ [SESSION-CHECK] Session set successfully for user:', sessionData.session.user.email)
             setIsValidSession(true)
             setIsChecking(false)
             return
@@ -81,72 +92,93 @@ function ResetPasswordConfirmContent() {
         }
         
         // If we get here, no valid session or tokens
+        console.log('❌ [SESSION-CHECK] No valid session or recovery tokens found')
         setError('Invalid or expired reset link. Please request a new password reset.')
         setIsChecking(false)
         
-              } catch {
-          setError('An error occurred. Please try again.')
-          setIsChecking(false)
-        }
+      } catch (error) {
+        console.error('Session check error:', error)
+        setError('An error occurred. Please try again.')
+        setIsChecking(false)
+      }
     }
 
     checkSession()
   }, [router, searchParams])
 
+  const validatePassword = (password: string) => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long'
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return 'Password must contain at least one lowercase letter'
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return 'Password must contain at least one uppercase letter'
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one number'
+    }
+    if (!/(?=.*[!@#$%^&*])/.test(password)) {
+      return 'Password must contain at least one special character (!@#$%^&*)'
+    }
+    return null
+  }
+
   const handlePasswordReset = async () => {
+    console.log('🔧 [PASSWORD-CONFIRM] Starting password reset process')
+    
     if (!newPassword || !confirmPassword) {
+      console.log('❌ [PASSWORD-CONFIRM] Missing password fields')
       setError('Please enter both password fields')
       return
     }
 
     if (newPassword !== confirmPassword) {
+      console.log('❌ [PASSWORD-CONFIRM] Passwords do not match')
       setError('Passwords do not match')
       return
     }
 
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long')
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      console.log('❌ [PASSWORD-CONFIRM] Password validation failed:', passwordError)
+      setError(passwordError)
       return
     }
 
+    console.log('✅ [PASSWORD-CONFIRM] Password validation passed')
     setLoading(true)
     setError('')
 
     try {
-      // First, try the standard Supabase password reset using recovery session
+      console.log('🔧 [PASSWORD-CONFIRM] Updating user password...')
+      // Update the user's password
       const { error } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
 
       if (error) {
-        // If standard reset fails due to missing/invalid session, try admin fallback
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user?.email) {
-          const response = await fetch('/api/auth/admin-reset-password', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: session.user.email,
-              newPassword: newPassword
-            })
-          })
-
-          if (!response.ok) {
-            const result = await response.json()
-            throw new Error(result.error || 'Failed to reset password')
-          }
-        } else {
-          throw new Error(error.message)
-        }
+        console.error('❌ [PASSWORD-CONFIRM] Password update error:', error)
+        throw new Error(error.message)
       }
 
+      console.log('✅ [PASSWORD-CONFIRM] Password updated successfully')
       setSuccess(true)
+      
+      // Sign out the user after successful password reset
+      console.log('🔧 [PASSWORD-CONFIRM] Signing out user...')
       await supabase.auth.signOut()
-      setTimeout(() => { router.push('/login') }, 2500)
+      console.log('✅ [PASSWORD-CONFIRM] User signed out successfully')
+      
+      // Redirect to login after a short delay
+      setTimeout(() => { 
+        console.log('🔧 [PASSWORD-CONFIRM] Redirecting to login...')
+        router.push('/login') 
+      }, 3000)
 
     } catch (error) {
+      console.error('❌ [PASSWORD-CONFIRM] Password reset error:', error)
       setError(error instanceof Error ? error.message : 'Failed to reset password')
     } finally {
       setLoading(false)
