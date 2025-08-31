@@ -214,10 +214,52 @@ function ResetPasswordConfirmContent() {
           
           const result = await response.json()
           
-          if (!response.ok) {
-            console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
-            throw new Error(result.error || 'Failed to update password')
-          }
+                      if (!response.ok) {
+              console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
+              
+              // Run diagnostics to understand the issue
+              console.log('🔧 [PASSWORD-CONFIRM] Running diagnostics...')
+              
+              try {
+                // Check user provider
+                const providerResponse = await fetch('/api/auth/check-user-provider', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: session.user.id
+                  })
+                })
+                
+                const providerResult = await providerResponse.json()
+                console.log('🔍 [PASSWORD-CONFIRM] User provider info:', providerResult)
+                
+                // Check Supabase config
+                const configResponse = await fetch('/api/auth/check-supabase-config')
+                const configResult = await configResponse.json()
+                console.log('🔍 [PASSWORD-CONFIRM] Supabase config:', configResult)
+                
+                // Provide specific error message based on diagnostics
+                if (providerResult.success && providerResult.userInfo) {
+                  const userInfo = providerResult.userInfo
+                  if (!userInfo.canUpdatePassword) {
+                    throw new Error(`Cannot update password for provider: ${userInfo.provider}. Only email/supabase providers support password updates.`)
+                  }
+                  if (!userInfo.isConfirmed) {
+                    throw new Error('User email is not confirmed. Please confirm your email before resetting password.')
+                  }
+                  if (!userInfo.hasPassword) {
+                    throw new Error('User account does not have a password set. This account may use a different authentication method.')
+                  }
+                }
+                
+              } catch (diagnosticError) {
+                console.error('❌ [PASSWORD-CONFIRM] Diagnostic failed:', diagnosticError)
+              }
+              
+              throw new Error(result.error || 'Failed to update password')
+            }
           
           console.log('✅ [PASSWORD-CONFIRM] Server-side API succeeded')
           updateError = null
