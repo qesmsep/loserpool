@@ -139,7 +139,26 @@ export default function ResetPasswordConfirmPage() {
         accessToken: currentSession.access_token ? 'present' : 'missing'
       })
       
-      // Use client-side updateUser with the stored session
+      // Try to re-establish the session right before the password update
+      console.log('🔧 [PASSWORD-CONFIRM] Re-establishing session before password update...')
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: currentSession.access_token,
+        refresh_token: currentSession.refresh_token
+      })
+      
+      if (sessionError) {
+        console.error('❌ [PASSWORD-CONFIRM] Failed to re-establish session:', sessionError)
+        throw new Error('Session expired. Please request a new reset link.')
+      }
+      
+      if (!sessionData.session) {
+        console.error('❌ [PASSWORD-CONFIRM] No session after re-establishment')
+        throw new Error('Session expired. Please request a new reset link.')
+      }
+      
+      console.log('✅ [PASSWORD-CONFIRM] Session re-established successfully')
+      
+      // Now try the password update
       console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
       const { error: updateUserError } = await supabase.auth.updateUser({ 
         password: newPassword 
