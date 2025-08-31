@@ -152,15 +152,80 @@ function ResetPasswordConfirmContent() {
     setError('')
 
     try {
+      console.log('🔧 [PASSWORD-CONFIRM] Getting current session...')
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('❌ [PASSWORD-CONFIRM] Session error:', sessionError)
+        throw new Error('Session error. Please try again.')
+      }
+
+      if (!session?.user) {
+        console.error('❌ [PASSWORD-CONFIRM] No valid session found')
+        throw new Error('No valid session found. Please request a new reset link.')
+      }
+
+      console.log('✅ [PASSWORD-CONFIRM] Valid session found for user:', session.user.email)
       console.log('🔧 [PASSWORD-CONFIRM] Updating user password...')
-      // Update the user's password
-      const { error } = await supabase.auth.updateUser({ 
+      
+      // Try multiple approaches for password update
+      let updateError = null
+      
+      // Approach 1: Direct updateUser
+      const { error: updateUserError } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
+      
+      if (updateUserError) {
+        console.log('❌ [PASSWORD-CONFIRM] Direct updateUser failed:', updateUserError)
+        updateError = updateUserError
+        
+        // Approach 2: Try with explicit user ID
+        console.log('🔧 [PASSWORD-CONFIRM] Trying alternative approach...')
+        const { error: altError } = await supabase.auth.updateUser({
+          password: newPassword,
+          data: { updated_at: new Date().toISOString() }
+        })
+        
+        if (altError) {
+          console.log('❌ [PASSWORD-CONFIRM] Alternative approach also failed:', altError)
+          updateError = altError
+        } else {
+          console.log('✅ [PASSWORD-CONFIRM] Alternative approach succeeded')
+          updateError = null
+        }
+      }
 
-      if (error) {
-        console.error('❌ [PASSWORD-CONFIRM] Password update error:', error)
-        throw new Error(error.message)
+      if (updateError) {
+        console.log('❌ [PASSWORD-CONFIRM] Client-side update failed, trying server-side API...')
+        
+        // Approach 3: Try server-side API as fallback
+        try {
+          const response = await fetch('/api/auth/update-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              password: newPassword,
+              userId: session.user.id
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (!response.ok) {
+            console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
+            throw new Error(result.error || 'Failed to update password')
+          }
+          
+          console.log('✅ [PASSWORD-CONFIRM] Server-side API succeeded')
+          updateError = null
+          
+        } catch (apiError) {
+          console.error('❌ [PASSWORD-CONFIRM] Server-side API also failed:', apiError)
+          throw new Error(updateError?.message || 'Failed to update password. Please try again.')
+        }
       }
 
       console.log('✅ [PASSWORD-CONFIRM] Password updated successfully')
