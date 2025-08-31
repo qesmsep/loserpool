@@ -75,10 +75,29 @@ export async function POST(request: Request) {
     
     console.log('🔧 [UPDATE-PASSWORD-API] Updating user password via admin API...')
     
-    // Use admin API to update password
+    // Check if user has needs_password_change flag that might be causing issues
+    const needsPasswordChange = userData.user?.user_metadata?.needs_password_change
+    console.log('🔍 [UPDATE-PASSWORD-API] User needs_password_change flag:', needsPasswordChange)
+    
+    // Prepare update data - clear the needs_password_change flag and update password
+    const updateData = { 
+      password: password,
+      user_metadata: {
+        ...userData.user?.user_metadata,
+        needs_password_change: false
+      }
+    }
+    
+    console.log('🔧 [UPDATE-PASSWORD-API] Update data prepared:', {
+      hasPassword: !!updateData.password,
+      hasUserMetadata: !!updateData.user_metadata,
+      needsPasswordChange: updateData.user_metadata.needs_password_change
+    })
+    
+    // Use admin API to update password and clear the flag
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { password: password }
+      updateData
     )
 
     if (error) {

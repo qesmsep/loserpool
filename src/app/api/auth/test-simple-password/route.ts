@@ -20,11 +20,32 @@ export async function POST(request: Request) {
     // Try with a very simple password to test if it's a policy issue
     const simplePassword = 'Test123!'
     
+    // Get user details first to check metadata
+    console.log('🔧 [TEST-SIMPLE-PASSWORD] Getting user details...')
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    
+    if (userError) {
+      console.error('❌ [TEST-SIMPLE-PASSWORD] Failed to get user details:', userError)
+      return NextResponse.json({ 
+        error: 'Failed to get user details',
+        details: userError.message
+      }, { status: 500 })
+    }
+    
     console.log('🔧 [TEST-SIMPLE-PASSWORD] Attempting update with simple password:', simplePassword)
+    
+    // Prepare update data - clear the needs_password_change flag
+    const updateData = { 
+      password: simplePassword,
+      user_metadata: {
+        ...userData.user?.user_metadata,
+        needs_password_change: false
+      }
+    }
     
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { password: simplePassword }
+      updateData
     )
 
     if (error) {

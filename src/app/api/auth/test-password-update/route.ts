@@ -41,9 +41,19 @@ export async function POST(request: Request) {
     
     // Try a simple password update without validation
     console.log('🔧 [TEST-PASSWORD-UPDATE] Attempting password update...')
+    
+    // Prepare update data - clear the needs_password_change flag
+    const updateData = { 
+      password: password,
+      user_metadata: {
+        ...userData.user?.user_metadata,
+        needs_password_change: false
+      }
+    }
+    
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
-      { password: password }
+      updateData
     )
 
     if (error) {
