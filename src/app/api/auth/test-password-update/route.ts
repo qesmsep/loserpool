@@ -1,101 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  console.log('🔧 [TEST-PASSWORD-UPDATE] Starting test password update')
+  
   try {
-    const { email, password } = await request.json()
+    const { password, userId } = await request.json()
     
-    console.log('🧪 Testing password update for:', email)
-    
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+    if (!password || !userId) {
+      console.log('❌ [TEST-PASSWORD-UPDATE] Missing required fields')
+      return NextResponse.json({ 
+        error: 'Password and user ID are required' 
+      }, { status: 400 })
     }
 
+    console.log('🔧 [TEST-PASSWORD-UPDATE] Creating Supabase admin client...')
     const supabaseAdmin = createServiceRoleClient()
-
-    // First, let's check what users exist
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
     
-    if (listError) {
-      console.error('❌ Error listing users:', listError)
+    // Check user details first
+    console.log('🔧 [TEST-PASSWORD-UPDATE] Checking user details...')
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    
+    if (userError) {
+      console.error('❌ [TEST-PASSWORD-UPDATE] Failed to get user details:', userError)
       return NextResponse.json({ 
-        error: 'Failed to list users',
-        details: listError.message 
+        error: 'Failed to get user details',
+        details: userError.message
       }, { status: 500 })
     }
-
-    console.log('🔍 Found', users.users.length, 'users in auth system')
     
-    const user = users.users.find(u => u.email === email)
-    
-    if (!user) {
-      console.log('❌ User not found in auth system, attempting to create...')
-      
-      // Try to create the user in auth system
-      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true
-      })
-
-      if (createError) {
-        console.error('❌ Error creating user:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create user in auth system',
-          details: createError.message,
-          code: createError.status
-        }, { status: 500 })
-      }
-
-      console.log('✅ User created successfully in auth system')
-      return NextResponse.json({ 
-        success: true,
-        message: 'User created with password successfully',
-        user: {
-          id: createData.user?.id,
-          email: createData.user?.email
-        }
-      })
-    }
-
-    console.log('✅ Found user:', {
-      id: user.id,
-      email: user.email,
-      emailConfirmed: user.email_confirmed_at,
-      createdAt: user.created_at,
-      lastSignIn: user.last_sign_in_at
+    console.log('✅ [TEST-PASSWORD-UPDATE] User details:', {
+      id: userData.user?.id,
+      email: userData.user?.email,
+      emailConfirmed: !!userData.user?.email_confirmed_at,
+      provider: userData.user?.app_metadata?.provider,
+      identities: userData.user?.identities?.map((i: any) => i.provider),
+      createdAt: userData.user?.created_at,
+      lastSignIn: userData.user?.last_sign_in_at
     })
-
-    // Try updating the password
-    console.log('🔄 Attempting password update...')
-    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
-      { password }
+    
+    // Try a simple password update without validation
+    console.log('🔧 [TEST-PASSWORD-UPDATE] Attempting password update...')
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { password: password }
     )
 
-    if (updateError) {
-      console.error('❌ Password update error:', updateError)
+    if (error) {
+      console.error('❌ [TEST-PASSWORD-UPDATE] Password update failed:', error)
+      console.error('❌ [TEST-PASSWORD-UPDATE] Full error object:', JSON.stringify(error, null, 2))
       return NextResponse.json({ 
-        error: 'Failed to update password',
-        details: updateError.message,
-        code: updateError.status
+        error: error.message || 'Failed to update password',
+        details: {
+          code: error.code,
+          status: error.status,
+          name: error.name
+        }
       }, { status: 500 })
     }
 
-    console.log('✅ Password updated successfully')
+    console.log('✅ [TEST-PASSWORD-UPDATE] Password updated successfully!')
+    console.log('✅ [TEST-PASSWORD-UPDATE] Updated user:', data.user?.email)
+    
     return NextResponse.json({ 
-      success: true,
+      success: true, 
       message: 'Password updated successfully',
       user: {
-        id: updateData.user?.id,
-        email: updateData.user?.email
+        email: data.user?.email,
+        updatedAt: data.user?.updated_at
       }
     })
 
   } catch (error) {
-    console.error('❌ Test password update error:', error)
+    console.error('❌ [TEST-PASSWORD-UPDATE] Unexpected error:', error)
     return NextResponse.json({ 
-      error: 'Test failed',
+      error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

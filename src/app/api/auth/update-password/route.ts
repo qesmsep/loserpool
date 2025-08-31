@@ -52,6 +52,27 @@ export async function POST(request: Request) {
     
     const supabaseAdmin = createServiceRoleClient()
     
+    // First, let's check the user details to understand what we're working with
+    console.log('🔧 [UPDATE-PASSWORD-API] Checking user details before update...')
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    
+    if (userError) {
+      console.error('❌ [UPDATE-PASSWORD-API] Failed to get user details:', userError)
+      return NextResponse.json({ 
+        error: 'Failed to get user details',
+        details: userError.message
+      }, { status: 500 })
+    }
+    
+    console.log('✅ [UPDATE-PASSWORD-API] User details retrieved:', {
+      id: userData.user?.id,
+      email: userData.user?.email,
+      emailConfirmed: !!userData.user?.email_confirmed_at,
+      provider: userData.user?.app_metadata?.provider,
+      createdAt: userData.user?.created_at,
+      lastSignIn: userData.user?.last_sign_in_at
+    })
+    
     console.log('🔧 [UPDATE-PASSWORD-API] Updating user password via admin API...')
     
     // Use admin API to update password
@@ -62,8 +83,19 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('❌ [UPDATE-PASSWORD-API] Password update failed:', error)
+      console.error('❌ [UPDATE-PASSWORD-API] Error details:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        name: error.name,
+        stack: error.stack
+      })
       return NextResponse.json({ 
-        error: error.message || 'Failed to update password' 
+        error: error.message || 'Failed to update password',
+        details: {
+          code: error.code,
+          status: error.status
+        }
       }, { status: 500 })
     }
 
