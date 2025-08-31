@@ -25,30 +25,10 @@ function ResetPasswordConfirmContent() {
       try {
         setIsChecking(true)
         
-        // Wait a moment for Supabase to process the reset link
-        console.log('⏳ [SESSION-CHECK] Waiting for Supabase to process reset link...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // First, let Supabase handle the recovery link automatically
+        console.log('⏳ [SESSION-CHECK] Letting Supabase process recovery link...')
         
-        // Check if we have a valid session from the reset link
-        console.log('🔍 [SESSION-CHECK] Checking for valid session...')
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('❌ [SESSION-CHECK] Session check error:', error)
-          setError('Invalid or expired reset link. Please request a new password reset.')
-          setIsChecking(false)
-          return
-        }
-
-        if (session?.user) {
-          console.log('✅ [SESSION-CHECK] Valid session found for user:', session.user.email)
-          setIsValidSession(true)
-          setIsChecking(false)
-          return
-        }
-
-        // If no session, check for recovery tokens in URL fragment
-        console.log('🔍 [SESSION-CHECK] No session found, checking URL fragment for recovery tokens...')
+        // Check for recovery tokens in URL fragment first
         let fragmentTokens: Record<string, string> = {}
         if (typeof window !== 'undefined') {
           const fragment = window.location.hash.substring(1)
@@ -69,8 +49,9 @@ function ResetPasswordConfirmContent() {
         const type = fragmentTokens.type
         
         if (accessToken && refreshToken && type === 'recovery') {
-          console.log('🔧 [SESSION-CHECK] Recovery tokens found, setting session manually...')
-          // Set the session manually from recovery tokens
+          console.log('🔧 [SESSION-CHECK] Recovery tokens found, setting session...')
+          
+          // Set the session from recovery tokens
           const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -85,10 +66,38 @@ function ResetPasswordConfirmContent() {
           
           if (sessionData.session?.user) {
             console.log('✅ [SESSION-CHECK] Session set successfully for user:', sessionData.session.user.email)
+            console.log('🔍 [SESSION-CHECK] Session details:', {
+              user: sessionData.session.user.email,
+              expiresAt: sessionData.session.expires_at,
+              accessToken: sessionData.session.access_token ? 'present' : 'missing'
+            })
             setIsValidSession(true)
             setIsChecking(false)
             return
           }
+        }
+        
+        // If no recovery tokens, check for existing session
+        console.log('🔍 [SESSION-CHECK] No recovery tokens, checking existing session...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('❌ [SESSION-CHECK] Session check error:', error)
+          setError('Invalid or expired reset link. Please request a new password reset.')
+          setIsChecking(false)
+          return
+        }
+
+        if (session?.user) {
+          console.log('✅ [SESSION-CHECK] Valid session found for user:', session.user.email)
+          console.log('🔍 [SESSION-CHECK] Session details:', {
+            user: session.user.email,
+            expiresAt: session.expires_at,
+            accessToken: session.access_token ? 'present' : 'missing'
+          })
+          setIsValidSession(true)
+          setIsChecking(false)
+          return
         }
         
         // If we get here, no valid session or tokens
@@ -97,7 +106,7 @@ function ResetPasswordConfirmContent() {
         setIsChecking(false)
         
       } catch (error) {
-        console.error('Session check error:', error)
+        console.error('❌ [SESSION-CHECK] Session check error:', error)
         setError('An error occurred. Please try again.')
         setIsChecking(false)
       }
@@ -165,109 +174,87 @@ function ResetPasswordConfirmContent() {
         throw new Error('No valid session found. Please request a new reset link.')
       }
 
-      console.log('✅ [PASSWORD-CONFIRM] Valid session found for user:', session.user.email)
-      console.log('🔧 [PASSWORD-CONFIRM] Updating user password...')
+            console.log('✅ [PASSWORD-CONFIRM] Valid session found for user:', session.user.email)
+      console.log('🔍 [PASSWORD-CONFIRM] Session details:', {
+        user: session.user.email,
+        expiresAt: session.expires_at,
+        accessToken: session.access_token ? 'present' : 'missing'
+      })
       
-      // Try multiple approaches for password update
-      let updateError = null
-      
-      // Approach 1: Direct updateUser
+      // Try direct client-side update (this should work with the recovery session)
+      console.log('🔧 [PASSWORD-CONFIRM] Attempting direct password update...')
       const { error: updateUserError } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
       
       if (updateUserError) {
-        console.log('❌ [PASSWORD-CONFIRM] Direct updateUser failed:', updateUserError)
-        updateError = updateUserError
+        console.error('❌ [PASSWORD-CONFIRM] Direct update failed:', updateUserError)
         
-        // Approach 2: Try with explicit user ID
-        console.log('🔧 [PASSWORD-CONFIRM] Trying alternative approach...')
-        const { error: altError } = await supabase.auth.updateUser({
-          password: newPassword,
-          data: { updated_at: new Date().toISOString() }
+        // If direct update fails, try server-side API as fallback
+        console.log('🔧 [PASSWORD-CONFIRM] Trying server-side API fallback...')
+        const response = await fetch('/api/auth/update-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            password: newPassword,
+            userId: session.user.id
+          })
         })
         
-        if (altError) {
-          console.log('❌ [PASSWORD-CONFIRM] Alternative approach also failed:', altError)
-          updateError = altError
-        } else {
-          console.log('✅ [PASSWORD-CONFIRM] Alternative approach succeeded')
-          updateError = null
-        }
-      }
-
-      if (updateError) {
-        console.log('❌ [PASSWORD-CONFIRM] Client-side update failed, trying server-side API...')
+        const result = await response.json()
         
-        // Approach 3: Try server-side API as fallback
-        try {
-          const response = await fetch('/api/auth/update-password', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              password: newPassword,
-              userId: session.user.id
+        if (!response.ok) {
+          console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
+          
+          // Run diagnostics to understand the issue
+          console.log('🔧 [PASSWORD-CONFIRM] Running diagnostics...')
+          
+          try {
+            // Check user provider
+            const providerResponse = await fetch('/api/auth/check-user-provider', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: session.user.id
+              })
             })
-          })
-          
-          const result = await response.json()
-          
-                      if (!response.ok) {
-              console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
-              
-              // Run diagnostics to understand the issue
-              console.log('🔧 [PASSWORD-CONFIRM] Running diagnostics...')
-              
-              try {
-                // Check user provider
-                const providerResponse = await fetch('/api/auth/check-user-provider', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userId: session.user.id
-                  })
-                })
-                
-                const providerResult = await providerResponse.json()
-                console.log('🔍 [PASSWORD-CONFIRM] User provider info:', providerResult)
-                
-                // Check Supabase config
-                const configResponse = await fetch('/api/auth/check-supabase-config')
-                const configResult = await configResponse.json()
-                console.log('🔍 [PASSWORD-CONFIRM] Supabase config:', configResult)
-                
-                // Provide specific error message based on diagnostics
-                if (providerResult.success && providerResult.userInfo) {
-                  const userInfo = providerResult.userInfo
-                  if (!userInfo.canUpdatePassword) {
-                    throw new Error(`Cannot update password for provider: ${userInfo.provider}. Only email/supabase providers support password updates.`)
-                  }
-                  if (!userInfo.isConfirmed) {
-                    throw new Error('User email is not confirmed. Please confirm your email before resetting password.')
-                  }
-                  if (!userInfo.hasPassword) {
-                    throw new Error('User account does not have a password set. This account may use a different authentication method.')
-                  }
-                }
-                
-              } catch (diagnosticError) {
-                console.error('❌ [PASSWORD-CONFIRM] Diagnostic failed:', diagnosticError)
+            
+            const providerResult = await providerResponse.json()
+            console.log('🔍 [PASSWORD-CONFIRM] User provider info:', providerResult)
+            
+            // Check Supabase config
+            const configResponse = await fetch('/api/auth/check-supabase-config')
+            const configResult = await configResponse.json()
+            console.log('🔍 [PASSWORD-CONFIRM] Supabase config:', configResult)
+            
+            // Provide specific error message based on diagnostics
+            if (providerResult.success && providerResult.userInfo) {
+              const userInfo = providerResult.userInfo
+              if (!userInfo.canUpdatePassword) {
+                throw new Error(`Cannot update password for provider: ${userInfo.provider}. Only email/supabase providers support password updates.`)
               }
-              
-              throw new Error(result.error || 'Failed to update password')
+              if (!userInfo.isConfirmed) {
+                throw new Error('User email is not confirmed. Please confirm your email before resetting password.')
+              }
+              if (!userInfo.hasPassword) {
+                throw new Error('User account does not have a password set. This account may use a different authentication method.')
+              }
             }
+            
+          } catch (diagnosticError) {
+            console.error('❌ [PASSWORD-CONFIRM] Diagnostic failed:', diagnosticError)
+          }
           
-          console.log('✅ [PASSWORD-CONFIRM] Server-side API succeeded')
-          updateError = null
-          
-        } catch (apiError) {
-          console.error('❌ [PASSWORD-CONFIRM] Server-side API also failed:', apiError)
-          throw new Error(updateError?.message || 'Failed to update password. Please try again.')
+          throw new Error(result.error || 'Failed to update password')
         }
+        
+        console.log('✅ [PASSWORD-CONFIRM] Server-side API succeeded')
+      } else {
+        console.log('✅ [PASSWORD-CONFIRM] Direct update succeeded')
       }
 
       console.log('✅ [PASSWORD-CONFIRM] Password updated successfully')
