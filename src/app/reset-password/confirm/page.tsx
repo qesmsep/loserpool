@@ -25,10 +25,22 @@ function ResetPasswordConfirmContent() {
       try {
         setIsChecking(true)
         
-        // First, let Supabase handle the recovery link automatically
-        console.log('⏳ [SESSION-CHECK] Letting Supabase process recovery link...')
+        // Set up auth state change listener for password recovery
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('🔍 [AUTH-STATE-CHANGE] Event:', event, 'User:', session?.user?.email)
+          
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('✅ [AUTH-STATE-CHANGE] User signed in via recovery link')
+            setIsValidSession(true)
+            setIsChecking(false)
+          } else if (event === 'PASSWORD_RECOVERY' && session?.user) {
+            console.log('✅ [AUTH-STATE-CHANGE] Password recovery event detected')
+            setIsValidSession(true)
+            setIsChecking(false)
+          }
+        })
         
-        // Check for recovery tokens in URL fragment first
+        // Check for recovery tokens in URL fragment
         let fragmentTokens: Record<string, string> = {}
         if (typeof window !== 'undefined') {
           const fragment = window.location.hash.substring(1)
@@ -104,6 +116,9 @@ function ResetPasswordConfirmContent() {
         console.log('❌ [SESSION-CHECK] No valid session or recovery tokens found')
         setError('Invalid or expired reset link. Please request a new password reset.')
         setIsChecking(false)
+        
+        // Cleanup subscription
+        return () => subscription.unsubscribe()
         
       } catch (error) {
         console.error('❌ [SESSION-CHECK] Session check error:', error)
@@ -181,81 +196,23 @@ function ResetPasswordConfirmContent() {
         accessToken: session.access_token ? 'present' : 'missing'
       })
       
-      // Try direct client-side update (this should work with the recovery session)
-      console.log('🔧 [PASSWORD-CONFIRM] Attempting direct password update...')
+      // Use client-side updateUser (this is the correct approach according to Supabase docs)
+      console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
       const { error: updateUserError } = await supabase.auth.updateUser({ 
         password: newPassword 
       })
       
       if (updateUserError) {
-        console.error('❌ [PASSWORD-CONFIRM] Direct update failed:', updateUserError)
-        
-        // If direct update fails, try server-side API as fallback
-        console.log('🔧 [PASSWORD-CONFIRM] Trying server-side API fallback...')
-        const response = await fetch('/api/auth/update-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            password: newPassword,
-            userId: session.user.id
-          })
+        console.error('❌ [PASSWORD-CONFIRM] Client-side update failed:', updateUserError)
+        console.error('❌ [PASSWORD-CONFIRM] Error details:', {
+          message: updateUserError.message,
+          status: updateUserError.status,
+          code: updateUserError.code
         })
-        
-        const result = await response.json()
-        
-        if (!response.ok) {
-          console.error('❌ [PASSWORD-CONFIRM] Server-side API failed:', result.error)
-          
-          // Run diagnostics to understand the issue
-          console.log('🔧 [PASSWORD-CONFIRM] Running diagnostics...')
-          
-          try {
-            // Check user provider
-            const providerResponse = await fetch('/api/auth/check-user-provider', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId: session.user.id
-              })
-            })
-            
-            const providerResult = await providerResponse.json()
-            console.log('🔍 [PASSWORD-CONFIRM] User provider info:', providerResult)
-            
-            // Check Supabase config
-            const configResponse = await fetch('/api/auth/check-supabase-config')
-            const configResult = await configResponse.json()
-            console.log('🔍 [PASSWORD-CONFIRM] Supabase config:', configResult)
-            
-            // Provide specific error message based on diagnostics
-            if (providerResult.success && providerResult.userInfo) {
-              const userInfo = providerResult.userInfo
-              if (!userInfo.canUpdatePassword) {
-                throw new Error(`Cannot update password for provider: ${userInfo.provider}. Only email/supabase providers support password updates.`)
-              }
-              if (!userInfo.isConfirmed) {
-                throw new Error('User email is not confirmed. Please confirm your email before resetting password.')
-              }
-              if (!userInfo.hasPassword) {
-                throw new Error('User account does not have a password set. This account may use a different authentication method.')
-              }
-            }
-            
-          } catch (diagnosticError) {
-            console.error('❌ [PASSWORD-CONFIRM] Diagnostic failed:', diagnosticError)
-          }
-          
-          throw new Error(result.error || 'Failed to update password')
-        }
-        
-        console.log('✅ [PASSWORD-CONFIRM] Server-side API succeeded')
-      } else {
-        console.log('✅ [PASSWORD-CONFIRM] Direct update succeeded')
+        throw new Error(updateUserError.message || 'Failed to update password')
       }
+      
+      console.log('✅ [PASSWORD-CONFIRM] Client-side update succeeded')
 
       console.log('✅ [PASSWORD-CONFIRM] Password updated successfully')
       setSuccess(true)
