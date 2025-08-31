@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { sendPasswordResetEmail } from '@/lib/resend'
 
 export async function POST(request: Request) {
   console.log('🔧 [REQUEST-PASSWORD-RESET] Starting password reset request')
@@ -17,8 +18,8 @@ export async function POST(request: Request) {
     console.log('🔧 [REQUEST-PASSWORD-RESET] Creating Supabase admin client...')
     const supabaseAdmin = createServiceRoleClient()
     
-    // Use Supabase's built-in password reset email system
-    console.log('🔧 [REQUEST-PASSWORD-RESET] Sending password reset email via Supabase...')
+    // Generate the password reset link using Supabase
+    console.log('🔧 [REQUEST-PASSWORD-RESET] Generating password reset link...')
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: email,
@@ -39,6 +40,23 @@ export async function POST(request: Request) {
     }
     
     console.log('✅ [REQUEST-PASSWORD-RESET] Password reset link generated successfully')
+    console.log('🔧 [REQUEST-PASSWORD-RESET] Sending email via Resend...')
+    
+    // Send the email using the existing Resend function
+    const emailResult = await sendPasswordResetEmail({
+      email: email,
+      resetUrl: data.properties.action_link
+    })
+    
+    if (!emailResult.success) {
+      console.error('❌ [REQUEST-PASSWORD-RESET] Failed to send email via Resend:', emailResult.error)
+      return NextResponse.json({ 
+        error: 'Failed to send password reset email',
+        details: emailResult.error instanceof Error ? emailResult.error.message : 'Unknown error'
+      }, { status: 500 })
+    }
+    
+    console.log('✅ [REQUEST-PASSWORD-RESET] Email sent successfully via Resend')
     console.log('✅ [REQUEST-PASSWORD-RESET] Reset link sent to:', email)
     
     return NextResponse.json({ 
