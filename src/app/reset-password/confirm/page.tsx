@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Session } from '@supabase/supabase-js'
 
 export default function ResetPasswordConfirmPage() {
   const [newPassword, setNewPassword] = useState('')
@@ -14,6 +15,7 @@ export default function ResetPasswordConfirmPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [sessionEstablished, setSessionEstablished] = useState(false)
+  const [currentSession, setCurrentSession] = useState<Session | null>(null)
   
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -67,12 +69,21 @@ export default function ResetPasswordConfirmPage() {
           }
           
           console.log('✅ [PASSWORD-CONFIRM] Session set successfully for user:', data.user?.email)
+          console.log('🔍 [PASSWORD-CONFIRM] Session data:', {
+            user: data.user?.email,
+            expiresAt: data.session?.expires_at,
+            accessToken: data.session?.access_token ? 'present' : 'missing'
+          })
+          
+          // Store the session immediately
+          setCurrentSession(data.session)
           setSessionEstablished(true)
         } else {
           // Check if we already have a valid session
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.user) {
             console.log('✅ [PASSWORD-CONFIRM] Valid session already exists for user:', session.user.email)
+            setCurrentSession(session)
             setSessionEstablished(true)
           } else {
             console.error('❌ [PASSWORD-CONFIRM] No valid session found')
@@ -110,7 +121,7 @@ export default function ResetPasswordConfirmPage() {
       return
     }
 
-    if (!sessionEstablished) {
+    if (!sessionEstablished || !currentSession) {
       console.log('❌ [PASSWORD-CONFIRM] No valid session established')
       setError('Please wait for session to be established or request a new reset link.')
       return
@@ -121,27 +132,14 @@ export default function ResetPasswordConfirmPage() {
     setError('')
 
     try {
-      console.log('🔧 [PASSWORD-CONFIRM] Getting current session...')
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('❌ [PASSWORD-CONFIRM] Session error:', sessionError)
-        throw new Error('Session error. Please try again.')
-      }
-
-      if (!session?.user) {
-        console.error('❌ [PASSWORD-CONFIRM] No valid session found')
-        throw new Error('No valid session found. Please request a new reset link.')
-      }
-
-      console.log('✅ [PASSWORD-CONFIRM] Valid session found for user:', session.user.email)
+      console.log('🔧 [PASSWORD-CONFIRM] Using stored session for user:', currentSession.user?.email)
       console.log('🔍 [PASSWORD-CONFIRM] Session details:', {
-        user: session.user.email,
-        expiresAt: session.expires_at,
-        accessToken: session.access_token ? 'present' : 'missing'
+        user: currentSession.user?.email,
+        expiresAt: currentSession.expires_at,
+        accessToken: currentSession.access_token ? 'present' : 'missing'
       })
       
-      // Use client-side updateUser (this is the correct approach according to Supabase docs)
+      // Use client-side updateUser with the stored session
       console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
       const { error: updateUserError } = await supabase.auth.updateUser({ 
         password: newPassword 
@@ -302,7 +300,7 @@ export default function ResetPasswordConfirmPage() {
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
-              <strong>Password requirements:</strong>
+              <strong>Password Requirements:</strong>
             </p>
             <ul className="text-sm text-blue-700 mt-2 space-y-1">
               <li>• At least 8 characters long</li>
