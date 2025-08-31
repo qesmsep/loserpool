@@ -71,14 +71,7 @@ export default async function HomePage() {
                     create an account
                   </Link>
                 </div>
-                {poolStatus.timeUntilLock && poolStatus.timeUntilLock < 24 * 60 * 60 * 1000 && (
-                  <div className="bg-yellow-500/20 backdrop-blur-sm rounded-lg p-4 border border-yellow-300">
-                    <p className="text-yellow-200 font-semibold">⏰ Pool Locks Soon!</p>
-                    <p className="text-yellow-100 text-sm">
-                      Pool locks in {Math.floor(poolStatus.timeUntilLock / (1000 * 60 * 60))} hours. Register now!
-                    </p>
-                  </div>
-                )}
+
               </>
             )}
           </div>
