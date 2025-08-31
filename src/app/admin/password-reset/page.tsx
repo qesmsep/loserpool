@@ -1,132 +1,136 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
+import { requireAdmin } from '@/lib/auth'
+import { ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
-function LoadingFallback() {
-  return (
-    <div className="app-bg min-h-screen py-8">
-      <div className="container mx-auto px-4 max-w-md">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-6"></div>
-          <div className="h-4 bg-gray-200 rounded mb-4"></div>
-          <div className="h-10 bg-gray-200 rounded mb-6"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AdminPasswordResetContent() {
-
+export default function AdminPasswordResetPage() {
+  const [email, setEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [success, setSuccess] = useState('')
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!newPassword || newPassword.length < 8) {
-      setError('Password must be at least 8 characters long')
-      return
-    }
-
     setLoading(true)
     setError('')
-    setSuccess(false)
+    setSuccess('')
 
     try {
-      // First, try the standard Supabase password reset using recovery session
-      const { error } = await supabase.auth.updateUser({ 
-        password: newPassword 
+      const response = await fetch('/api/auth/manual-password-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          newPassword
+        })
       })
 
-      if (error) {
-        // If standard reset fails due to missing/invalid session, try admin fallback
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user?.email) {
-          const response = await fetch('/api/auth/admin-reset-password', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: session.user.email,
-              newPassword: newPassword
-            })
-          })
+      const result = await response.json()
 
-          const result = await response.json()
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to reset password')
-          }
-        } else {
-          throw new Error(error.message)
-        }
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to reset password')
       }
 
-      setSuccess(true)
+      setSuccess(`Password reset successfully for ${email}`)
+      setEmail('')
       setNewPassword('')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } catch (error) {
+      console.error('Password reset error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to reset password')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="app-bg min-h-screen py-8">
-      <div className="container mx-auto px-4 max-w-md">
-        <h1 className="text-3xl font-bold mb-6">Reset Your Password</h1>
-
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
-            Password has been reset successfully!
+    <div className="min-h-screen app-bg">
+      {/* Header */}
+      <header className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <Link
+                href="/admin"
+                className="text-white hover:text-blue-200 transition-colors mr-4"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <h1 className="text-2xl font-bold text-white">Manual Password Reset</h1>
+            </div>
           </div>
-        )}
+        </div>
+      </header>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+          <h2 className="text-xl font-semibold text-white mb-6">Reset User Password</h2>
+          
+          {error && (
+            <div className="bg-red-500/20 border border-red-300 text-red-200 px-4 py-3 rounded mb-6">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-500/20 border border-green-300 text-green-200 px-4 py-3 rounded mb-6">
+              {success}
+            </div>
+          )}
+
+          <form onSubmit={handlePasswordReset} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                User Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="Enter user email"
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+                New Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                placeholder="Enter new password"
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+            >
+              {loading ? 'Resetting Password...' : 'Reset Password'}
+            </button>
+          </form>
+
+          <div className="mt-6 p-4 bg-yellow-500/20 border border-yellow-300 rounded-md">
+            <h3 className="text-yellow-200 font-semibold mb-2">⚠️ Important Note</h3>
+            <p className="text-yellow-100 text-sm">
+              This manual password reset is being used because the automated password reset flow is currently blocked by a Supabase configuration issue. 
+              Once the Supabase project settings are fixed, this manual reset will no longer be necessary.
+            </p>
           </div>
-        )}
-
-        <form onSubmit={handlePasswordReset} className="space-y-6">
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-900 mb-2">
-              New Password
-            </label>
-            <input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              placeholder="Enter new password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Resetting Password...' : 'Reset Password'}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
-  )
-}
-
-export default function AdminPasswordResetPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <AdminPasswordResetContent />
-    </Suspense>
   )
 }
