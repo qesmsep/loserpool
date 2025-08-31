@@ -202,15 +202,36 @@ function ResetPasswordConfirmContent() {
         password: newPassword 
       })
       
-      if (updateUserError) {
-        console.error('❌ [PASSWORD-CONFIRM] Client-side update failed:', updateUserError)
-        console.error('❌ [PASSWORD-CONFIRM] Error details:', {
-          message: updateUserError.message,
-          status: updateUserError.status,
-          code: updateUserError.code
-        })
-        throw new Error(updateUserError.message || 'Failed to update password')
-      }
+                      if (updateUserError) {
+                  console.error('❌ [PASSWORD-CONFIRM] Client-side update failed:', updateUserError)
+                  console.error('❌ [PASSWORD-CONFIRM] Error details:', {
+                    message: updateUserError.message,
+                    status: updateUserError.status,
+                    code: updateUserError.code
+                  })
+                  
+                  // Try alternative server-side approach as fallback
+                  console.log('🔧 [PASSWORD-CONFIRM] Trying alternative server-side approach...')
+                  const response = await fetch('/api/auth/update-password-alternative', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      password: newPassword,
+                      userId: session.user.id
+                    })
+                  })
+                  
+                  const result = await response.json()
+                  
+                  if (!response.ok) {
+                    console.error('❌ [PASSWORD-CONFIRM] Alternative approach also failed:', result)
+                    throw new Error(result.error || 'Failed to update password')
+                  }
+                  
+                  console.log('✅ [PASSWORD-CONFIRM] Alternative approach succeeded:', result)
+                }
       
       console.log('✅ [PASSWORD-CONFIRM] Client-side update succeeded')
 
