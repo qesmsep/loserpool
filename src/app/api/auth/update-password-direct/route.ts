@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       authUser.id,
-      { password: newPassword }
+      { password: newPassword, email_confirm: true }
     )
     
     if (updateError) {

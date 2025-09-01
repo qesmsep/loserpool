@@ -25,6 +25,8 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [needsConfirm, setNeedsConfirm] = useState(false)
+  const [resent, setResent] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,7 +48,38 @@ function LoginContent() {
       }
     } catch (error: unknown) {
       console.error('Login error:', error)
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
+      const msg = error instanceof Error ? error.message : 'An unexpected error occurred'
+      // Supabase returns "Email not confirmed" (400, code: email_not_confirmed)
+      if (typeof msg === 'string' && msg.toLowerCase().includes('email not confirmed')) {
+        setNeedsConfirm(true)
+        setError('Please confirm your email to sign in.')
+      } else {
+        setError(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Helper to resend confirmation email
+  const resendConfirmation = async () => {
+    setLoading(true)
+    setError('')
+    setResent(false)
+    try {
+      const resp = await fetch('/api/auth/resend-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const json = await resp.json()
+      if (!resp.ok || json?.success !== true) {
+        throw new Error(json?.error || 'Failed to resend confirmation email')
+      }
+      setResent(true)
+    } catch (e) {
+      console.error('Resend confirm error:', e)
+      setError(e instanceof Error ? e.message : 'Failed to resend confirmation email')
     } finally {
       setLoading(false)
     }
@@ -102,6 +135,22 @@ function LoginContent() {
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+
+        {needsConfirm && (
+          <div className="mt-4">
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mb-3">
+              Please confirm your email to continue. We can resend the confirmation link.
+            </div>
+            <button
+              type="button"
+              onClick={resendConfirmation}
+              disabled={loading || !email}
+              className="w-full bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {resent ? 'Confirmation Sent ✔' : 'Resend Confirmation Email'}
+            </button>
+          </div>
+        )}
 
         <div className="mt-6 text-center">
           <a
