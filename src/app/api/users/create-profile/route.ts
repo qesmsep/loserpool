@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuthForAPI } from '@/lib/auth'
 
 export async function POST() {
   try {
-    const user = await requireAuth()
+    const user = await requireAuthForAPI()
     const supabase = await createServerSupabaseClient()
 
     // Check if user profile already exists
@@ -41,6 +41,15 @@ export async function POST() {
     return NextResponse.json({ profile })
   } catch (error) {
     console.error('Create profile error:', error, JSON.stringify(error))
+    
+    // Handle authentication errors specifically
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error', details: error },
       { status: 500 }

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuthForAPI } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
     // Verify user is authenticated
-    const user = await requireAuth()
+    const user = await requireAuthForAPI()
     const supabase = await createServerSupabaseClient()
 
     // Parse request body
@@ -95,6 +95,15 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Error in deallocate picks API:', error)
+    
+    // Handle authentication errors specifically
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -71,6 +71,18 @@ export async function requireAuth() {
   return user
 }
 
+export async function requireAuthForAPI() {
+  const user = await getCurrentUser()
+  
+  if (!user) {
+    console.log('No user found in API route')
+    throw new Error('Authentication required')
+  }
+  
+  console.log('User authenticated:', user.email)
+  return user
+}
+
 export async function requireAdmin() {
   const user = await requireAuth()
   const supabase = await createServerSupabaseClient()
