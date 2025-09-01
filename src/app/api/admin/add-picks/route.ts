@@ -1,12 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { isUserTester, updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check admin authentication
-    await requireAdmin()
+    // Handle authentication - try bearer token first, then cookies
+    let authenticatedUser = null;
+    
+    // Check for bearer token
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      console.log('🔍 Admin add-picks API: Using bearer token authentication');
+      
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return [];
+            },
+            setAll() {
+              // No-op for API routes
+            },
+          },
+        }
+      );
+      
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (error) {
+        console.error('Bearer token auth error:', error.message);
+      } else if (user) {
+        authenticatedUser = user;
+        console.log('✅ Bearer token authentication successful for user:', user.email);
+      }
+    }
+    
+    // Fall back to cookie-based authentication
+    if (!authenticatedUser) {
+      console.log('🔍 Admin add-picks API: Falling back to cookie authentication');
+      
+      try {
+        const supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll() {
+                // No-op for API routes
+              },
+            },
+          }
+        );
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Cookie session error:', error.message);
+        } else if (session?.user) {
+          authenticatedUser = session.user;
+          console.log('✅ Cookie authentication successful for user:', session.user.email);
+        }
+      } catch (error) {
+        console.error('Cookie authentication error:', error);
+      }
+    }
+    
+    // If no authenticated user, return 401
+    if (!authenticatedUser) {
+      console.log('❌ No authenticated user found for admin add-picks API');
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    
+    // Check if user is admin using service role client
+    const supabaseAdmin = createServiceRoleClient();
+    const { data: userProfile, error: adminError } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', authenticatedUser.id)
+      .single();
+    
+    console.log('🔍 Admin check result:', {
+      hasProfile: !!userProfile,
+      isAdmin: userProfile?.is_admin,
+      error: adminError?.message
+    });
+    
+    if (adminError) {
+      console.error('Admin check error:', adminError.message);
+      return NextResponse.json({ error: 'Admin verification failed' }, { status: 403 });
+    }
+    
+    if (!userProfile?.is_admin) {
+      console.log('❌ User is not admin:', authenticatedUser.email);
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+    
+    console.log('✅ User is admin, proceeding with add picks operation');
     
     const { userId, picksCount } = await request.json()
 
@@ -20,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Adding picks:', { userId, picksCount })
 
-    const supabase = await createServerSupabaseClient()
+    // Use service role client for admin operations
 
     // Check if user is a tester to determine price
     const userIsTester = await isUserTester(userId)
@@ -30,7 +124,7 @@ export async function POST(request: NextRequest) {
     console.log('User tester status:', { userId, userIsTester, amountPerPick, totalAmount })
 
     // Add purchase record
-    const { data: purchaseData, error: purchaseError } = await supabase
+    const { data: purchaseData, error: purchaseError } = await supabaseAdmin
       .from('purchases')
       .insert({
         user_id: userId,
@@ -46,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get existing picks to determine the next sequential number
-    const { data: existingPicks } = await supabase
+    const { data: existingPicks } = await supabaseAdmin
       .from('picks')
       .select('pick_name')
       .eq('user_id', userId)
@@ -78,7 +172,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { data: picksData, error: picksError } = await supabase
+    const { data: picksData, error: picksError } = await supabaseAdmin
       .from('picks')
       .insert(pickRecords)
       .select()
