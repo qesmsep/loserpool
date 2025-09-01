@@ -73,61 +73,24 @@ export async function POST(request: Request) {
     
     if (updateError) {
       console.error('❌ [UPDATE-PASSWORD-DIRECT] Admin API password update failed:', updateError)
-      
-      // Since the admin API is failing due to auth_audit_log, let's try a different approach
-      // Let's create a simple SQL function to update the password directly
-      console.log('🔧 [UPDATE-PASSWORD-DIRECT] Trying SQL function approach...')
-      
-      try {
-        // Create a simple SQL function to update password
-        const { error: createFunctionError } = await supabaseAdmin.rpc('create_password_update_function', {})
-        
-        if (createFunctionError) {
-          console.log('🔧 [UPDATE-PASSWORD-DIRECT] Function might already exist, trying to use it...')
-        }
-        
-        // Try to call the function
-        const { data: functionResult, error: functionError } = await supabaseAdmin.rpc('update_user_password_direct', {
-          user_id: authUser.id,
-          new_password: newPassword
-        })
-        
-        if (functionError) {
-          console.error('❌ [UPDATE-PASSWORD-DIRECT] SQL function also failed:', functionError)
-          return NextResponse.json({
-            success: false,
-            error: 'Password update failed',
-            details: `Both admin API and SQL function failed: ${updateError.message}, Function: ${functionError.message}`,
-            code: updateError.code,
-            status: updateError.status
-          })
-        } else {
-          console.log('✅ [UPDATE-PASSWORD-DIRECT] SQL function update succeeded')
-        }
-      } catch (functionException) {
-        console.error('❌ [UPDATE-PASSWORD-DIRECT] SQL function exception:', functionException)
-        return NextResponse.json({
-          success: false,
-          error: 'Password update failed',
-          details: `Both admin API and SQL function failed: ${updateError.message}, Function exception: ${functionException}`,
-          code: updateError.code,
-          status: updateError.status
-        })
-      }
+      return NextResponse.json({
+        success: false,
+        error: 'Password update failed',
+        details: updateError.message,
+        code: updateError.code,
+        status: updateError.status
+      }, { status: updateError.status ?? 500 })
     } else {
       console.log('✅ [UPDATE-PASSWORD-DIRECT] Admin API password update succeeded')
+      return NextResponse.json({
+        success: true,
+        message: 'Password updated successfully',
+        user: {
+          id: authUser.id,
+          email: authUser.email
+        }
+      })
     }
-    
-    console.log('✅ [UPDATE-PASSWORD-DIRECT] Password updated successfully')
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Password updated successfully',
-      user: {
-        id: authUser.id,
-        email: authUser.email
-      }
-    })
 
   } catch (error) {
     console.error('❌ [UPDATE-PASSWORD-DIRECT] Unexpected error:', error)
