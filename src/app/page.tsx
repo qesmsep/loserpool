@@ -50,30 +50,27 @@ export default async function HomePage() {
           </p>
           
           <div className="space-y-4">
-            {poolStatus.isLocked ? (
+            {poolStatus.isLocked && (
               <div className="bg-red-500/20 backdrop-blur-sm rounded-lg p-4 border border-red-300">
                 <p className="text-red-200 font-semibold">🚫 Pool is Locked</p>
                 <p className="text-red-100 text-sm">
-                  Registration is closed. The pool is now locked and no new entries are allowed.
+                  The pool is now locked and no new pick purchases are allowed, but you can still sign up and sign in.
                 </p>
               </div>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors"
-                >
-                  Sign In
-                </Link>
-                <div className="text-gray-400">
-                  or{' '}
-                  <Link href="/signup" className="text-blue-400 hover:text-blue-300 underline">
-                    create an account
-                  </Link>
-                </div>
-
-              </>
             )}
+            
+            <Link
+              href="/login"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors"
+            >
+              Sign In
+            </Link>
+            <div className="text-gray-400">
+              or{' '}
+              <Link href="/signup" className="text-blue-400 hover:text-blue-300 underline">
+                create an account
+              </Link>
+            </div>
           </div>
 
           <div className="mt-16 grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">

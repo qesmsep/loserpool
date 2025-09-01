@@ -53,8 +53,8 @@ export async function getPoolStatus(): Promise<PoolStatus> {
       lockDate: lockDate?.toISOString() || null,
       currentTime,
       timeUntilLock,
-      canRegister: !poolIsLocked,
-      canPurchase: !poolIsLocked
+      canRegister: true, // Always allow registration
+      canPurchase: !poolIsLocked // Only block purchases when locked
     }
   } catch (error) {
     console.error('Error in getPoolStatus:', error)
@@ -90,8 +90,8 @@ export async function checkPoolLock(): Promise<{ allowed: boolean; message: stri
   
   if (status.isLocked) {
     return {
-      allowed: false,
-      message: 'The pool is now locked. No new entries are allowed.'
+      allowed: true, // Always allow registration
+      message: 'Pool is locked for purchases, but you can still register and sign in.'
     }
   }
   
@@ -99,12 +99,36 @@ export async function checkPoolLock(): Promise<{ allowed: boolean; message: stri
     const timeLeft = formatTimeUntilLock(status.timeUntilLock)
     return {
       allowed: true,
-      message: `Pool locks in ${timeLeft}. Register now!`
+      message: `Pool locks for purchases in ${timeLeft}. Register now!`
     }
   }
   
   return {
     allowed: true,
-    message: 'Pool is open for registration.'
+    message: 'Pool is open for registration and purchases.'
+  }
+} 
+
+export async function checkPoolLockForPurchase(): Promise<{ allowed: boolean; message: string }> {
+  const status = await getPoolStatus()
+  
+  if (status.isLocked) {
+    return {
+      allowed: false,
+      message: 'The pool is now locked. No new pick purchases are allowed.'
+    }
+  }
+  
+  if (status.timeUntilLock && status.timeUntilLock < 24 * 60 * 60 * 1000) { // Less than 24 hours
+    const timeLeft = formatTimeUntilLock(status.timeUntilLock)
+    return {
+      allowed: true,
+      message: `Pool locks for purchases in ${timeLeft}. Purchase now!`
+    }
+  }
+  
+  return {
+    allowed: true,
+    message: 'Pool is open for purchases.'
   }
 } 

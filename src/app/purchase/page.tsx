@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, ShoppingCart, CreditCard } from 'lucide-react'
-import { checkPoolLock } from '@/lib/pool-status-client'
+import { checkPoolLockForPurchase } from '@/lib/pool-status-client'
 import { isUserTester } from '@/lib/user-types-client'
 
 interface PurchaseSettings {
@@ -106,7 +106,7 @@ export default function PurchasePage() {
 
     try {
       // Check pool lock status
-      const poolStatus = await checkPoolLock()
+      const poolStatus = await checkPoolLockForPurchase()
       if (!poolStatus.allowed) {
         setError(poolStatus.message)
         setLoading(false)
