@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Eye, EyeOff, Lock } from 'lucide-react'
 
+// Safety flag to prevent client-side updateUser calls until Supabase fixes audit log issues
+const USE_CLIENT_UPDATE = false
+
 export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -63,22 +66,35 @@ export default function ChangePasswordPage() {
     setError('')
 
     try {
-      // Update password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
-      })
+      // Get current user to get email
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) {
+        throw new Error('User email not found')
+      }
 
-      if (updateError) {
-        throw updateError
+      // Update password using server-side API to avoid audit log issues
+      const resp = await fetch('/api/auth/update-password-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: user.email, 
+          newPassword 
+        }),
+      })
+      
+      const json = await resp.json()
+      
+      if (!resp.ok || json?.success !== true) {
+        throw new Error(json?.details || json?.error || 'Password update failed')
       }
 
       // Update the needs_password_change flag
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser) {
         const { error: profileError } = await supabase
           .from('users')
           .update({ needs_password_change: false })
-          .eq('id', user.id)
+          .eq('id', currentUser.id)
 
         if (profileError) {
           console.error('Error updating profile:', profileError)

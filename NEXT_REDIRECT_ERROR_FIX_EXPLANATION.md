@@ -218,6 +218,31 @@ The core issue was that API routes can't use `redirect()`, so the solution was t
 - ✅ `src/components/pick-selection-popup.tsx` - Already implementing Authorization headers correctly
 - ✅ `src/app/purchase/page.tsx` - Already implementing Authorization headers correctly
 
+### ✅ **SUPABASE AUDIT LOG FIXES IMPLEMENTED**
+
+**Problem:** `supabase.auth.updateUser()` calls causing 500 "Error during password storage" due to missing `auth.auth_audit_log` table in Supabase project.
+
+**Client-Side Fixes Applied:**
+- ✅ `src/app/reset-password/confirm/page.tsx` - Replaced `updateUser()` with server-side API call
+- ✅ `src/app/change-password/page.tsx` - Replaced `updateUser()` with server-side API call
+- ✅ Added safety flags (`USE_CLIENT_UPDATE = false`) to prevent future client-side calls
+
+**Server-Side API Used:**
+- ✅ `src/app/api/auth/update-password-direct/route.ts` - Already implemented and working
+
+**Pattern Implemented:**
+```typescript
+// Before (causes 500 error):
+await supabase.auth.updateUser({ password: newPassword })
+
+// After (uses server-side API):
+const resp = await fetch('/api/auth/update-password-direct', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, newPassword }),
+})
+```
+
 **Pattern Implemented:**
 ```typescript
 // Server-side: Conditional client creation and authentication

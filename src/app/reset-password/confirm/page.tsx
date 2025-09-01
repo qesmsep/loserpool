@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+// Safety flag to prevent client-side updateUser calls until Supabase fixes audit log issues
+const USE_CLIENT_UPDATE = false
+
 export default function ResetPasswordConfirmPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -134,81 +137,38 @@ export default function ResetPasswordConfirmPage() {
         throw new Error('Session lost; request a new reset link.')
       }
 
-      console.log('🔧 [PASSWORD-CONFIRM] Attempting client-side password update...')
+      console.log('🔧 [PASSWORD-CONFIRM] Using server-side password update...')
 
-      // Try client-side update first
-      try {
-        const { error } = await supabase.auth.updateUser({ password: newPassword })
-        if (error) throw error
-        
-        console.log('✅ [PASSWORD-CONFIRM] Client-side update succeeded')
-        
-        // Success - sign out and redirect
-        console.log('🔧 [PASSWORD-CONFIRM] Signing out user...')
-        await supabase.auth.signOut()
-        console.log('✅ [PASSWORD-CONFIRM] User signed out successfully')
-        
-        setSuccess(true)
-        
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          console.log('🔧 [PASSWORD-CONFIRM] Redirecting to login...')
-          router.push('/login')
-        }, 3000)
-        
-        return
-        
-             } catch (e: unknown) {
-         const error = e as { code?: string; status?: number; message?: string }
-         const code = error?.code || ''
-         const status = error?.status || 0
-        
-                 console.log('❌ [PASSWORD-CONFIRM] Client-side update failed:', {
-           code,
-           status,
-           message: error?.message
-         })
-        
-        // If it's an unexpected_failure or 5xx error, try server-side fallback
-        if (code === 'unexpected_failure' || status >= 500) {
-          console.log('🔧 [PASSWORD-CONFIRM] Attempting server-side fallback...')
-          
-          const resp = await fetch('/api/auth/update-password-direct', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: session.user.email, 
-              newPassword 
-            }),
-          })
-          
-          const json = await resp.json()
-          
-          if (!resp.ok || json?.success !== true) {
-            throw new Error(json?.details || json?.error || 'Password update failed')
-          }
-          
-          console.log('✅ [PASSWORD-CONFIRM] Server-side fallback succeeded')
-          
-          // Success - sign out and redirect
-          console.log('🔧 [PASSWORD-CONFIRM] Signing out user...')
-          await supabase.auth.signOut()
-          console.log('✅ [PASSWORD-CONFIRM] User signed out successfully')
-          
-          setSuccess(true)
-          
-          // Redirect to login after a short delay
-          setTimeout(() => {
-            console.log('🔧 [PASSWORD-CONFIRM] Redirecting to login...')
-            router.push('/login')
-          }, 3000)
-          
-          return
-        } else {
-          // Re-throw other errors
-          throw e
-        }
+      // Use server-side update to avoid audit log issues
+      const resp = await fetch('/api/auth/update-password-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: session.user.email, 
+          newPassword 
+        }),
+      })
+      
+      const json = await resp.json()
+      
+      if (!resp.ok || json?.success !== true) {
+        throw new Error(json?.details || json?.error || 'Password update failed')
       }
+      
+      console.log('✅ [PASSWORD-CONFIRM] Server-side update succeeded')
+      
+      // Success - sign out and redirect
+      console.log('🔧 [PASSWORD-CONFIRM] Signing out user...')
+      await supabase.auth.signOut()
+      console.log('✅ [PASSWORD-CONFIRM] User signed out successfully')
+      
+      setSuccess(true)
+      
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        console.log('🔧 [PASSWORD-CONFIRM] Redirecting to login...')
+        router.push('/login')
+      }, 3000)
 
     } catch (error) {
       console.error('❌ [PASSWORD-CONFIRM] Password reset error:', error)
