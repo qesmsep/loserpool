@@ -4,6 +4,7 @@ import { requireAuthForAPI } from '@/lib/auth'
 import { getCurrentSeasonInfo } from '@/lib/season-detection'
 import { isUserTester } from '@/lib/user-types'
 import { getWeekColumnNameFromSeasonInfo } from '@/lib/week-utils'
+import { cookies } from 'next/headers'
 
 // Type for pick data with dynamic week columns
 type PickData = {
@@ -16,16 +17,33 @@ export async function GET() {
   try {
     console.log('🔍 Available picks API called')
     
+    // Debug cookies
+    const cookieStore = await cookies()
+    const allCookies = cookieStore.getAll()
+    console.log('🔍 All cookies received:', allCookies.map(c => ({ name: c.name, value: c.value?.substring(0, 20) + '...' })))
+    
+    // Check for Supabase auth cookies specifically
+    const supabaseCookies = allCookies.filter(c => c.name.includes('supabase') || c.name.includes('auth'))
+    console.log('🔍 Supabase auth cookies:', supabaseCookies.map(c => ({ name: c.name, value: c.value?.substring(0, 20) + '...' })))
+    
     // Create Supabase client first
     const supabase = await createServerSupabaseClient()
     
     // Check session directly first
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
+    console.log('🔍 Session check result:', {
+      hasSession: !!session,
+      sessionError: sessionError?.message,
+      sessionExpiresAt: session?.expires_at,
+      userId: session?.user?.id,
+      userEmail: session?.user?.email
+    })
+    
     if (sessionError) {
       console.error('Session error in available picks API:', sessionError)
       return NextResponse.json(
-        { error: 'Session error' },
+        { error: 'Session error', details: sessionError.message },
         { status: 401 }
       )
     }
@@ -33,7 +51,7 @@ export async function GET() {
     if (!session) {
       console.log('No session found in available picks API')
       return NextResponse.json(
-        { error: 'No session found' },
+        { error: 'No session found', cookies: allCookies.map(c => c.name) },
         { status: 401 }
       )
     }
