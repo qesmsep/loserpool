@@ -33,6 +33,15 @@ export async function middleware(request: NextRequest) {
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
     
+    console.log('🔍 Middleware session check:', {
+      pathname: request.nextUrl.pathname,
+      hasSession: !!session,
+      sessionError: error?.message,
+      sessionExpiresAt: session?.expires_at,
+      userId: session?.user?.id,
+      userEmail: session?.user?.email
+    })
+    
     if (error) {
       console.error('Middleware session error:', error.message)
     }

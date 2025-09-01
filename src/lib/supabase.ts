@@ -17,7 +17,8 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storageKey: 'loser-pool-auth'
+    storageKey: 'loser-pool-auth',
+    flowType: 'pkce'
   },
   global: {
     headers: {
