@@ -83,7 +83,9 @@ export default function AdminPage() {
       // Check if user is admin
       const checkAdminStatus = async () => {
         try {
-          const response = await fetch('/api/check-admin-users')
+          const response = await fetch('/api/check-admin-users', {
+            credentials: 'include' // Include cookies for authentication
+          })
           if (!response.ok) {
             router.push('/dashboard')
             return
@@ -106,9 +108,9 @@ export default function AdminPage() {
       try {
         // Fetch all the data we need
         const [usersResponse, purchasesResponse, picksResponse] = await Promise.all([
-          fetch('/api/admin/users'),
-          fetch('/api/admin/purchases'),
-          fetch('/api/admin/picks')
+          fetch('/api/admin/users', { credentials: 'include' }),
+          fetch('/api/admin/purchases', { credentials: 'include' }),
+          fetch('/api/admin/picks', { credentials: 'include' })
         ])
 
         if (usersResponse.ok) {

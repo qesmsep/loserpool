@@ -6,6 +6,12 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
+  // Skip middleware for API routes that don't need session handling
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    // For API routes, we still want to handle session refresh
+    console.log('🔍 Middleware processing API route:', request.nextUrl.pathname)
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

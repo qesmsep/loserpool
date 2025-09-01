@@ -69,6 +69,7 @@ function LoginContent() {
     try {
       const resp = await fetch('/api/auth/resend-confirm', {
         method: 'POST',
+        credentials: 'include', // Include cookies for authentication
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })

@@ -3,16 +3,26 @@ import { redirect } from 'next/navigation'
 
 export async function getCurrentUser() {
   try {
+    console.log('🔍 getCurrentUser called')
     const supabase = await createServerSupabaseClient()
     
     // First check if we have a session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    console.log('🔍 Session check result:', {
+      hasSession: !!session,
+      sessionError: sessionError?.message,
+      sessionExpiresAt: session?.expires_at,
+      userId: session?.user?.id,
+      userEmail: session?.user?.email
+    })
     
     // If no session, return null silently (this is expected for unauthenticated users)
     if (!session || sessionError) {
       if (sessionError) {
         console.error('Session error in getCurrentUser:', sessionError.message)
       }
+      console.log('🔍 No valid session found, returning null')
       return null
     }
     
@@ -20,6 +30,12 @@ export async function getCurrentUser() {
     if (session.expires_at) {
       const expiresAt = new Date(session.expires_at * 1000)
       const now = new Date()
+      
+      console.log('🔍 Session expiry check:', {
+        expiresAt: expiresAt.toISOString(),
+        now: now.toISOString(),
+        isExpired: expiresAt <= now
+      })
       
       if (expiresAt <= now) {
         console.log('Session expired, attempting refresh')
@@ -34,6 +50,9 @@ export async function getCurrentUser() {
           console.log('No refreshed session available')
           return null
         }
+        
+        console.log('🔍 Session refreshed successfully for user:', refreshedSession.user.email)
+        return refreshedSession.user
       }
     }
     
@@ -45,10 +64,11 @@ export async function getCurrentUser() {
     }
     
     if (!user) {
+      console.log('🔍 No user found after getUser call')
       return null
     }
     
-    console.log('User authenticated:', user.email)
+    console.log('🔍 User authenticated successfully:', user.email)
     return user
   } catch (err) {
     // Only log errors that aren't about missing sessions

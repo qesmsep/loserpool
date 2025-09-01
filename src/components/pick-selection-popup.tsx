@@ -97,7 +97,12 @@ export default function PickSelectionPopup({
       setLoading(true)
       setError('')
       
-      const response = await fetch('/api/picks/available')
+      const response = await fetch('/api/picks/available', {
+        credentials: 'include', // Include cookies for authentication
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
       const data = await response.json()
       
       if (data.success) {
@@ -145,7 +150,10 @@ export default function PickSelectionPopup({
       
       const response = await fetch('/api/picks/allocate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for authentication
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({
           matchupId,
           teamName,

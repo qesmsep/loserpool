@@ -14,9 +14,35 @@ type PickData = {
 
 export async function GET() {
   try {
-    // Verify user is authenticated
-    const user = await requireAuthForAPI()
+    console.log('🔍 Available picks API called')
+    
+    // Create Supabase client first
     const supabase = await createServerSupabaseClient()
+    
+    // Check session directly first
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error in available picks API:', sessionError)
+      return NextResponse.json(
+        { error: 'Session error' },
+        { status: 401 }
+      )
+    }
+    
+    if (!session) {
+      console.log('No session found in available picks API')
+      return NextResponse.json(
+        { error: 'No session found' },
+        { status: 401 }
+      )
+    }
+    
+    console.log('Session found for user:', session.user.email)
+    
+    // Verify user is authenticated using our helper
+    const user = await requireAuthForAPI()
+    console.log('User authenticated via requireAuthForAPI:', user.email)
 
     const seasonInfo = await getCurrentSeasonInfo()
     const isTester = await isUserTester(user.id)

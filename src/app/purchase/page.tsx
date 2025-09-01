@@ -142,6 +142,7 @@ export default function PurchasePage() {
       if (userIsTester || settings.pickPrice === 0) {
         const response = await fetch('/api/purchases/free', {
           method: 'POST',
+          credentials: 'include', // Include cookies for authentication
           headers: {
             'Content-Type': 'application/json',
           },
@@ -169,6 +170,7 @@ export default function PurchasePage() {
       // Otherwise, proceed with Stripe checkout
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
+        credentials: 'include', // Include cookies for authentication
         headers: {
           'Content-Type': 'application/json',
         },
