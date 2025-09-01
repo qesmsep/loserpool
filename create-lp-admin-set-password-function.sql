@@ -33,9 +33,10 @@ BEGIN
   END IF;
 
   -- Update the user's password directly in the auth.users table
+  -- Use a simple hash that Supabase can handle
   UPDATE auth.users 
   SET 
-    encrypted_password = crypt(p_new_password, gen_salt('bf')),
+    encrypted_password = encode(sha256(p_new_password::bytea), 'hex'),
     email_confirmed_at = COALESCE(email_confirmed_at, now()),
     updated_at = now()
   WHERE id = target_user_id;
