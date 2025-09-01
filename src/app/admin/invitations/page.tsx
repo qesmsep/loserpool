@@ -1,37 +1,100 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Users, CheckCircle, Clock } from 'lucide-react'
 
-export default async function AdminInvitationsPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
+interface Invitation {
+  id: string
+  invite_code: string
+  created_by: string
+  used_by: string | null
+  created_at: string
+  users: {
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+  }
+  used_by_user?: {
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+  }
+}
 
-  // Get all invitations with user data
-  const { data: invitations } = await supabase
-    .from('invitations')
-    .select(`
-      *,
-      users!inner(
-        username,
-        email,
-        first_name,
-        last_name
-      ),
-      used_by_user:users!inner(
-        username,
-        email,
-        first_name,
-        last_name
-      )
-    `)
-    .order('created_at', { ascending: false })
+export default function AdminInvitationsPage() {
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const loadInvitations = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error('No session token available')
+        }
+        
+        // Prepare headers with authorization
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+        
+        // Use the admin API route to fetch invitations
+        const response = await fetch('/api/admin/invitations', {
+          credentials: 'include',
+          headers
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch invitations')
+        }
+        
+        const data = await response.json()
+        setInvitations(data.invitations || [])
+      } catch (err) {
+        console.error('Error loading invitations:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load invitations')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadInvitations()
+  }, [])
 
   // Calculate stats
   const totalInvitations = invitations?.length || 0
   const usedInvitations = invitations?.filter(i => i.used_by !== null).length || 0
   const unusedInvitations = invitations?.filter(i => i.used_by === null).length || 0
   const conversionRate = totalInvitations > 0 ? (usedInvitations / totalInvitations * 100).toFixed(1) : '0'
+
+  if (loading) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-white text-lg">Loading invitations...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-red-400 text-lg">Error: {error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen app-bg">

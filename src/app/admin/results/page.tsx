@@ -1,37 +1,92 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, Trophy, TrendingUp } from 'lucide-react'
 
-export default async function AdminResultsPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
+interface Pick {
+  picks_count: number
+  status: string
+  team_picked: string
+}
 
-  // Get all matchups with picks data
-  const { data: matchups } = await supabase
-    .from('matchups')
-    .select(`
-      *,
-      picks!inner(
-        picks_count,
-        status,
-        team_picked
-      )
-    `)
-    .order('week', { ascending: false })
-            .order('get_season_order(season)', { ascending: true })
-        .order('game_time', { ascending: true })
+interface Matchup {
+  id: number | string
+  week: number
+  season: string
+  away_team: string
+  home_team: string
+  status: string
+  game_time: string
+  away_score: number | null
+  home_score: number | null
+  picks: Pick[]
+  totalPicks: number
+  activePicks: number
+  eliminatedPicks: number
+  winner: string | null
+}
+
+export default function AdminResultsPage() {
+  const [matchups, setMatchups] = useState<Matchup[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const loadMatchups = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error('No session token available')
+        }
+        
+        // Prepare headers with authorization
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+        
+        // Use the admin API route to fetch matchups
+        const response = await fetch('/api/admin/results', {
+          credentials: 'include',
+          headers
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch matchups')
+        }
+        
+        const data = await response.json()
+        setMatchups(data.matchups || [])
+      } catch (err) {
+        console.error('Error loading matchups:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load matchups')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadMatchups()
+  }, [])
 
   // Calculate stats for each matchup
   const matchupsWithStats = matchups?.map(matchup => {
     const matchupPicks = matchup.picks || []
-    const totalPicks = matchupPicks.reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+    const totalPicks = matchupPicks.reduce((sum: number, p: Pick) => sum + p.picks_count, 0)
     const activePicks = matchupPicks
-      .filter((p: { status: string }) => p.status === 'active')
-      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+      .filter((p: Pick) => p.status === 'active')
+      .reduce((sum: number, p: Pick) => sum + p.picks_count, 0)
     const eliminatedPicks = matchupPicks
-      .filter((p: { status: string }) => p.status === 'eliminated')
-      .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+      .filter((p: Pick) => p.status === 'eliminated')
+      .reduce((sum: number, p: Pick) => sum + p.picks_count, 0)
 
     // Determine winner
     let winner = null
@@ -67,6 +122,22 @@ export default async function AdminResultsPage() {
   const completedMatchups = matchupsWithStats.filter(m => m.status === 'final').length
   const pendingMatchups = matchupsWithStats.filter(m => m.status === 'scheduled').length
   const liveMatchups = matchupsWithStats.filter(m => m.status === 'live').length
+
+  if (loading) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-white text-lg">Loading matchups...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-red-400 text-lg">Error: {error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen app-bg">
@@ -167,20 +238,7 @@ export default async function AdminResultsPage() {
         {/* Matchups by Week */}
         <div className="space-y-8">
           {Object.entries(matchupsByWeek).map(([week, weekMatchups]) => {
-            type MatchupType = {
-              id: number | string;
-              away_team: string;
-              home_team: string;
-              status: string;
-              game_time: string;
-              away_score: number | null;
-              home_score: number | null;
-              totalPicks: number;
-              activePicks: number;
-              eliminatedPicks: number;
-              winner: string | null;
-            };
-            const weekMatchupsArr = weekMatchups as MatchupType[];
+            const weekMatchupsArr = weekMatchups as Matchup[];
             return (
               <div key={week} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
                 <div className="px-6 py-4 border-b border-white/20">
