@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { getPoolStatus } from '@/lib/pool-status'
 import { isUserTester } from '@/lib/user-types'
 import { sendAdminPurchaseNotification } from '@/lib/email'
@@ -7,13 +8,40 @@ import { sendAdminPurchaseNotification } from '@/lib/email'
 export async function POST(request: NextRequest) {
   try {
     const { picks_count } = await request.json()
-    const supabase = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get headers
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const hasBearer = !!authHeader && authHeader.toLowerCase().startsWith('bearer ')
+
+    // Build the right client
+    const supabase = hasBearer
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: authHeader! } }
+        })
+      : await createServerSupabaseClient()
+
+    // Authenticate
+    let userId: string
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (hasBearer) {
+      // Bearer Token
+      const { data: { user }, error } = await supabase.auth.getUser()
+      console.log({ authMethod: 'bearer', hasUser: !!user, error: error?.message })
+      
+      if (error || !user) {
+        return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      }
+      userId = user.id
+    } else {
+      // Cookie Session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      console.log({ authMethod: 'cookie', hasSession: !!session, error: error?.message })
+      
+      if (error || !session) {
+        return NextResponse.json({ error: 'No session found' }, { status: 401 })
+      }
+      userId = session.user.id
     }
 
     // Check pool lock status
@@ -38,7 +66,7 @@ export async function POST(request: NextRequest) {
     const { data: userPurchases } = await supabase
       .from('purchases')
       .select('picks_count')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'completed')
 
     // Create settings map
@@ -54,7 +82,7 @@ export async function POST(request: NextRequest) {
     const userPicksPurchased = userPurchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
     // Check if user is a tester
-    const userIsTester = await isUserTester(user.id)
+    const userIsTester = await isUserTester(userId)
 
     // Only allow free purchases if user is a tester OR if global price is $0
     if (!userIsTester && pickPrice !== 0) {
@@ -80,7 +108,7 @@ export async function POST(request: NextRequest) {
     const { data: purchaseData, error: purchaseError } = await supabase
       .from('purchases')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         stripe_session_id: null, // Free purchases don't need a Stripe session ID
         amount_paid: 0, // $0 for free picks
         picks_count: picks_count,
@@ -101,7 +129,7 @@ export async function POST(request: NextRequest) {
       const { data: userDetails } = await supabase
         .from('users')
         .select('email, username, first_name, last_name')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single()
 
       if (userDetails) {
@@ -125,7 +153,7 @@ export async function POST(request: NextRequest) {
       const { data: existingPicks } = await supabase
         .from('picks')
         .select('pick_name')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .not('pick_name', 'is', null)
 
       // Find the highest existing pick number
@@ -148,7 +176,7 @@ export async function POST(request: NextRequest) {
       
       for (let i = 0; i < picks_count; i++) {
         pickRecords.push({
-          user_id: user.id,
+          user_id: userId,
           picks_count: 1,
           status: 'pending' as const,
           pick_name: `Pick ${nextPickNumber + i}` // Sequential naming starting from next available number
@@ -167,7 +195,7 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
       }
 
-      console.log(`Created ${pickRecords.length} default pick records for free picks for user ${user.id}`)
+      console.log(`Created ${pickRecords.length} default pick records for free picks for user ${userId}`)
     } catch (pickCreationError) {
       console.error('Error creating default pick records for free picks:', pickCreationError)
       return NextResponse.json({ 

@@ -16,37 +16,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for bearer token in Authorization header
-    const authHeader = request.headers.get('authorization')
-    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
-    
-    console.log('🔍 Allocate API auth check:', {
-      hasAuthHeader: !!authHeader,
-      hasBearer: !!bearer,
-      authHeader: authHeader?.substring(0, 20) + '...'
-    })
-    
-    // Create Supabase client based on authentication method
-    const supabaseCookie = await createServerSupabaseClient()
-    const supabaseHeader = bearer
+    // Get headers
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const hasBearer = !!authHeader && authHeader.toLowerCase().startsWith('bearer ')
+
+    // Build the right client
+    const supabase = hasBearer
       ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-          global: { headers: { Authorization: bearer } },
-          auth: { persistSession: false, autoRefreshToken: false }
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: authHeader! } }
         })
-      : null
+      : await createServerSupabaseClient()
+
+    // Authenticate
+    let userId: string
     
-    const supabase = supabaseHeader ?? supabaseCookie
-
-    // Get the current user from the session
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      )
+    if (hasBearer) {
+      // Bearer Token
+      const { data: { user }, error } = await supabase.auth.getUser()
+      console.log({ authMethod: 'bearer', hasUser: !!user, error: error?.message })
+      
+      if (error || !user) {
+        return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      }
+      userId = user.id
+    } else {
+      // Cookie Session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      console.log({ authMethod: 'cookie', hasSession: !!session, error: error?.message })
+      
+      if (error || !session) {
+        return NextResponse.json({ error: 'No session found' }, { status: 401 })
+      }
+      userId = session.user.id
     }
-
-    const userId = user.id
     const picksCount = pickNameIds.length
 
     const seasonInfo = await getCurrentSeasonInfo()

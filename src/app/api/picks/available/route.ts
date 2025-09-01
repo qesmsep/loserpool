@@ -1,11 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { requireAuthForAPI } from '@/lib/auth'
 import { getCurrentSeasonInfo } from '@/lib/season-detection'
 import { isUserTester } from '@/lib/user-types'
 import { getWeekColumnNameFromSeasonInfo } from '@/lib/week-utils'
-import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
 
 // Type for pick data with dynamic week columns
 type PickData = {
@@ -14,102 +13,72 @@ type PickData = {
   [key: string]: string | null | undefined // Allow dynamic week column properties
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Available picks API called')
     
-    // Check for bearer token in Authorization header
-    const authHeader = request.headers.get('authorization')
-    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
-    
-    console.log('🔍 Auth header check:', {
-      hasAuthHeader: !!authHeader,
-      hasBearer: !!bearer,
-      authHeader: authHeader?.substring(0, 20) + '...'
-    })
-    
-    // Create Supabase client based on authentication method
-    const supabaseCookie = await createServerSupabaseClient()
-    const supabaseHeader = bearer
+    // Get headers
+    const h = await headers()
+    const authHeader = h.get('authorization') || h.get('Authorization')
+    const hasBearer = !!authHeader && authHeader.toLowerCase().startsWith('bearer ')
+
+    // Build the right client
+    const supabase = hasBearer
       ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-          global: { headers: { Authorization: bearer } },
-          auth: { persistSession: false, autoRefreshToken: false }
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: authHeader! } }
         })
-      : null
+      : await createServerSupabaseClient()
+
+    // Authenticate
+    let userId: string
     
-    const client = supabaseHeader ?? supabaseCookie
-    
-    // Debug cookies (only for cookie-based auth)
-    if (!supabaseHeader) {
-      const cookieStore = await cookies()
-      const allCookies = cookieStore.getAll()
-      console.log('🔍 All cookies received:', allCookies.map(c => ({ name: c.name, value: c.value?.substring(0, 20) + '...' })))
+    if (hasBearer) {
+      // Bearer Token
+      const { data: { user }, error } = await supabase.auth.getUser()
+      console.log({ authMethod: 'bearer', hasUser: !!user, error: error?.message })
       
-      // Check for Supabase auth cookies specifically
-      const supabaseCookies = allCookies.filter(c => c.name.includes('supabase') || c.name.includes('auth'))
-      console.log('🔍 Supabase auth cookies:', supabaseCookies.map(c => ({ name: c.name, value: c.value?.substring(0, 20) + '...' })))
+      if (error || !user) {
+        return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      }
+      userId = user.id
+    } else {
+      // Cookie Session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      console.log({ authMethod: 'cookie', hasSession: !!session, error: error?.message })
+      
+      if (error || !session) {
+        return NextResponse.json({ error: 'No session found' }, { status: 401 })
+      }
+      userId = session.user.id
     }
-    
-    // Check session directly first
-    const { data: { session }, error: sessionError } = await client.auth.getSession()
-    
-    console.log('🔍 Session check result:', {
-      authMethod: supabaseHeader ? 'bearer' : 'cookie',
-      hasSession: !!session,
-      sessionError: sessionError?.message,
-      sessionExpiresAt: session?.expires_at,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email
-    })
-    
-    if (sessionError) {
-      console.error('Session error in available picks API:', sessionError)
-      return NextResponse.json(
-        { error: 'Session error', details: sessionError.message },
-        { status: 401 }
-      )
-    }
-    
-    if (!session) {
-      console.log('No session found in available picks API')
-      return NextResponse.json(
-        { error: 'No session found' },
-        { status: 401 }
-      )
-    }
-    
-    console.log('Session found for user:', session.user.email)
-    
-    // Get user from session
-    const user = session.user
-    console.log('User authenticated:', user.email)
 
     const seasonInfo = await getCurrentSeasonInfo()
-    const isTester = await isUserTester(user.id)
+    const isTester = await isUserTester(userId)
     const weekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
     const currentWeek = seasonInfo.currentWeek
     
     console.log('🔍 Available API Debug:', {
-      userId: user.id,
+      userId: userId,
       isTester,
       seasonInfo,
       weekColumn,
       currentWeek
     })
     
-    const { data: allPicksData } = await client
+    const { data: allPicksData } = await supabase
       .from('picks')
       .select(`
         pick_name,
         ${weekColumn},
         status
       `)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .not('pick_name', 'is', null)
       .neq('status', 'eliminated') as { data: PickData[] | null }
 
     // Get all matchups for the current season to map team_matchup_id to team names
-    const { data: matchupsData } = await client
+    const { data: matchupsData } = await supabase
       .from('matchups')
       .select('id, away_team, home_team, season')
       .eq('season', seasonInfo.seasonDisplay)

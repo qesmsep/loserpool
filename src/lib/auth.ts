@@ -91,7 +91,42 @@ export async function requireAuth() {
   return user
 }
 
-export async function requireAuthForAPI() {
+export async function requireAuthForAPI(request?: Request) {
+  // If we have a request object, check for bearer token
+  if (request) {
+    const authHeader = request.headers.get('authorization')
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
+    
+    if (bearer) {
+      // For bearer token, create a client with the token
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: { headers: { Authorization: bearer } },
+          auth: { persistSession: false, autoRefreshToken: false }
+        }
+      )
+      
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('Bearer token auth error:', error)
+        throw new Error('Authentication required')
+      }
+      
+      if (!user) {
+        console.log('No user found with bearer token')
+        throw new Error('Authentication required')
+      }
+      
+      console.log('User authenticated with bearer token:', user.email)
+      return user
+    }
+  }
+  
+  // Fall back to cookie-based authentication
   const user = await getCurrentUser()
   
   if (!user) {
@@ -99,7 +134,7 @@ export async function requireAuthForAPI() {
     throw new Error('Authentication required')
   }
   
-  console.log('User authenticated:', user.email)
+  console.log('User authenticated with cookies:', user.email)
   return user
 }
 

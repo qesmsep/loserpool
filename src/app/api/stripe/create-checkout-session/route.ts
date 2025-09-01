@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import { getPoolStatus } from '@/lib/pool-status'
 import { isUserTester } from '@/lib/user-types'
 
@@ -15,20 +16,49 @@ export async function POST(request: NextRequest) {
     }
 
     const { picks_count } = await request.json()
-    const supabase = await createServerSupabaseClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // Get headers
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const hasBearer = !!authHeader && authHeader.toLowerCase().startsWith('bearer ')
+
+    // Build the right client
+    const supabase = hasBearer
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: { headers: { Authorization: authHeader! } }
+        })
+      : await createServerSupabaseClient()
+
+    // Authenticate
+    let userId: string
+    let userEmail: string
     
-    if (authError || !user) {
-      console.error('Auth error in create-checkout-session:', authError)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (hasBearer) {
+      // Bearer Token
+      const { data: { user }, error } = await supabase.auth.getUser()
+      console.log({ authMethod: 'bearer', hasUser: !!user, error: error?.message })
+      
+      if (error || !user) {
+        return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      }
+      userId = user.id
+      userEmail = user.email || ''
+    } else {
+      // Cookie Session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      console.log({ authMethod: 'cookie', hasSession: !!session, error: error?.message })
+      
+      if (error || !session) {
+        return NextResponse.json({ error: 'No session found' }, { status: 401 })
+      }
+      userId = session.user.id
+      userEmail = session.user.email || ''
     }
 
-    console.log('Creating checkout session for user:', user.email, 'picks_count:', picks_count)
+    console.log('Creating checkout session for user:', userEmail, 'picks_count:', picks_count)
 
     // Check if user is a tester
-    const userIsTester = await isUserTester(user.id)
+    const userIsTester = await isUserTester(userId)
     if (userIsTester) {
       return NextResponse.json({ 
         error: 'Testers should use free purchase endpoint instead of Stripe checkout' 
@@ -67,7 +97,7 @@ export async function POST(request: NextRequest) {
     const { data: userPurchases, error: userPurchasesError } = await supabase
       .from('purchases')
       .select('picks_count')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'completed')
 
     if (userPurchasesError) {
@@ -132,7 +162,7 @@ export async function POST(request: NextRequest) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/purchase/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/purchase?canceled=true`,
       metadata: {
-        user_id: user.id,
+        user_id: userId,
         picks_count: picks_count.toString(),
       },
     })
@@ -141,7 +171,7 @@ export async function POST(request: NextRequest) {
 
     // Create pending purchase record
     const purchaseData = {
-      user_id: user.id,
+      user_id: userId,
       stripe_session_id: session.id,
       amount_paid: picks_count * pickPrice * 100, // Convert to cents
       picks_count: picks_count,
