@@ -63,61 +63,60 @@ export async function POST(request: Request) {
     // Update the password directly using admin API
     console.log('🔧 [UPDATE-PASSWORD-DIRECT] Updating password...')
     
-    // Try updating with metadata first
+        // Try using the admin API with minimal data
+    console.log('🔧 [UPDATE-PASSWORD-DIRECT] Attempting password update with admin API...')
+    
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       authUser.id,
-      { 
-        password: newPassword,
-        user_metadata: { needs_password_change: false }
-      }
+      { password: newPassword }
     )
     
     if (updateError) {
-      console.error('❌ [UPDATE-PASSWORD-DIRECT] Password update failed:', updateError)
+      console.error('❌ [UPDATE-PASSWORD-DIRECT] Admin API password update failed:', updateError)
       
-      // Check if this is the audit log error or unexpected_failure
-      if ((updateError.message && updateError.message.includes('auth_audit_log')) || 
-          updateError.code === 'unexpected_failure') {
-        console.log('🔧 [UPDATE-PASSWORD-DIRECT] Detected audit log error or unexpected_failure, trying password-only update...')
+      // Since the admin API is failing due to auth_audit_log, let's try a different approach
+      // Let's create a simple SQL function to update the password directly
+      console.log('🔧 [UPDATE-PASSWORD-DIRECT] Trying SQL function approach...')
+      
+      try {
+        // Create a simple SQL function to update password
+        const { error: createFunctionError } = await supabaseAdmin.rpc('create_password_update_function', {})
         
-        // Try updating just the password without metadata
-        const { data: simpleUpdateData, error: simpleUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
-          authUser.id,
-          { password: newPassword }
-        )
-        
-        if (simpleUpdateError) {
-          console.error('❌ [UPDATE-PASSWORD-DIRECT] Simple password update also failed:', simpleUpdateError)
-          
-          // If it's still the audit log error or unexpected_failure, we'll consider it a success since the password was likely updated
-          if ((simpleUpdateError.message && simpleUpdateError.message.includes('auth_audit_log')) ||
-              simpleUpdateError.code === 'unexpected_failure') {
-            console.log('✅ [UPDATE-PASSWORD-DIRECT] Password likely updated despite audit log error')
-            console.log('✅ [UPDATE-PASSWORD-DIRECT] Password updated successfully (audit log error ignored)')
-          } else {
-            return NextResponse.json({
-              success: false,
-              error: 'Password update failed',
-              details: simpleUpdateError.message,
-              code: simpleUpdateError.code,
-              status: simpleUpdateError.status
-            })
-          }
-        } else {
-          console.log('✅ [UPDATE-PASSWORD-DIRECT] Simple password update succeeded')
+        if (createFunctionError) {
+          console.log('🔧 [UPDATE-PASSWORD-DIRECT] Function might already exist, trying to use it...')
         }
-      } else {
+        
+        // Try to call the function
+        const { data: functionResult, error: functionError } = await supabaseAdmin.rpc('update_user_password_direct', {
+          user_id: authUser.id,
+          new_password: newPassword
+        })
+        
+        if (functionError) {
+          console.error('❌ [UPDATE-PASSWORD-DIRECT] SQL function also failed:', functionError)
+          return NextResponse.json({
+            success: false,
+            error: 'Password update failed',
+            details: `Both admin API and SQL function failed: ${updateError.message}, Function: ${functionError.message}`,
+            code: updateError.code,
+            status: updateError.status
+          })
+        } else {
+          console.log('✅ [UPDATE-PASSWORD-DIRECT] SQL function update succeeded')
+        }
+      } catch (functionException) {
+        console.error('❌ [UPDATE-PASSWORD-DIRECT] SQL function exception:', functionException)
         return NextResponse.json({
           success: false,
           error: 'Password update failed',
-          details: updateError.message,
+          details: `Both admin API and SQL function failed: ${updateError.message}, Function exception: ${functionException}`,
           code: updateError.code,
           status: updateError.status
         })
       }
-         } else {
-       console.log('✅ [UPDATE-PASSWORD-DIRECT] Password update succeeded with metadata')
-     }
+    } else {
+      console.log('✅ [UPDATE-PASSWORD-DIRECT] Admin API password update succeeded')
+    }
     
     console.log('✅ [UPDATE-PASSWORD-DIRECT] Password updated successfully')
     
