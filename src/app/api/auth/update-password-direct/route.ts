@@ -171,15 +171,15 @@ export async function POST(request: Request) {
              })
            }
         }
-      } else {
-        return NextResponse.json({
-          success: false,
-          error: 'Password update failed',
-          details: updateException?.message || 'Unknown error',
-          code: updateException?.code,
-          status: updateException?.status
-        })
-      }
+             } else {
+         return NextResponse.json({
+           success: false,
+           error: 'Password update failed',
+           details: error?.message || 'Unknown error',
+           code: error?.code,
+           status: error?.status
+         })
+       }
     }
     
     console.log('✅ [UPDATE-PASSWORD-DIRECT] Password updated successfully')
