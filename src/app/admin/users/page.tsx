@@ -350,12 +350,24 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(newUser)
       })
 
@@ -414,12 +426,24 @@ export default function AdminUsersPage() {
       console.log('User type changed:', userTypeChanged)
       console.log('Tester to Active transition:', isTesterToActive)
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ userId, updateData })
       })
 
@@ -452,6 +476,20 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       if (picksToAdd <= 0) {
         setError('Please enter a valid number of picks')
         return
@@ -460,9 +498,7 @@ export default function AdminUsersPage() {
       const response = await fetch('/api/admin/add-picks', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ 
           userId, 
           picksCount: picksToAdd 
@@ -488,6 +524,20 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       if (picksToReduce <= 0) {
         setError('Please enter a valid number of picks to reduce')
         return
@@ -500,9 +550,7 @@ export default function AdminUsersPage() {
       const response = await fetch('/api/admin/reduce-picks', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ 
           userId, 
           picksCount: picksToReduce 
@@ -532,12 +580,24 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       const response = await fetch('/api/admin/delete-user', {
         method: 'DELETE',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ userId })
       })
 
@@ -580,7 +640,23 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
-      const response = await fetch(`/api/admin/user-details?userId=${userId}`)
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
+      const response = await fetch(`/api/admin/user-details?userId=${userId}`, {
+        credentials: 'include',
+        headers
+      })
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -621,6 +697,20 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       const updateData = {
         email: modalEditData.email,
         username: modalEditData.username || null,
@@ -634,9 +724,7 @@ export default function AdminUsersPage() {
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ userId: selectedUser.user.id, updateData })
       })
 
@@ -664,6 +752,20 @@ export default function AdminUsersPage() {
     try {
       setError('')
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        throw new Error('No session token available')
+      }
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+      
       if (modalPicksToAdd <= 0) {
         setError('Please enter a valid number of picks')
         return
@@ -672,9 +774,7 @@ export default function AdminUsersPage() {
       const response = await fetch('/api/admin/add-picks', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ 
           userId: selectedUser.user.id, 
           picksCount: modalPicksToAdd 
