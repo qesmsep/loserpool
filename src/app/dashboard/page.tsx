@@ -434,7 +434,9 @@ export default function DashboardPage() {
       // Get current week display from API
       let week = 1 // Default fallback
       try {
-        const weekDisplayResponse = await fetch(`/api/current-week-display?userId=${user.id}`)
+        const weekDisplayResponse = await fetch(`/api/current-week-display?userId=${user.id}`, {
+          credentials: 'include'
+        })
         const weekDisplayResult = await weekDisplayResponse.json()
         
         if (weekDisplayResult.success) {
@@ -482,7 +484,9 @@ export default function DashboardPage() {
   
   try {
     // Fetch current week matchups
-    const currentWeekResponse = await fetch(`/api/matchups?userId=${user.id}`)
+    const currentWeekResponse = await fetch(`/api/matchups?userId=${user.id}`, {
+      credentials: 'include'
+    })
     const currentWeekResult = await currentWeekResponse.json()
     
     if (currentWeekResult.success) {

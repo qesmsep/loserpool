@@ -56,7 +56,9 @@ export default function PickHistoryTable({ pickId }: PickHistoryTableProps) {
       setLoading(true)
       setError('')
       
-      const response = await fetch(`/api/picks/history-season/${pickId}`)
+      const response = await fetch(`/api/picks/history-season/${pickId}`, {
+        credentials: 'include'
+      })
       const data = await response.json()
       
       if (data.success) {

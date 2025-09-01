@@ -313,7 +313,9 @@ export default function AdminUsersPage() {
       setLoading(true)
       
       // Use the admin API route to fetch users (bypasses RLS)
-      const response = await fetch('/api/admin/users')
+      const response = await fetch('/api/admin/users', {
+        credentials: 'include'
+      })
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -336,6 +338,7 @@ export default function AdminUsersPage() {
       
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -399,6 +402,7 @@ export default function AdminUsersPage() {
       
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -441,6 +445,7 @@ export default function AdminUsersPage() {
 
       const response = await fetch('/api/admin/add-picks', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -480,6 +485,7 @@ export default function AdminUsersPage() {
 
       const response = await fetch('/api/admin/reduce-picks', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -514,6 +520,7 @@ export default function AdminUsersPage() {
       
       const response = await fetch('/api/admin/delete-user', {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -612,6 +619,7 @@ export default function AdminUsersPage() {
       
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -649,6 +657,7 @@ export default function AdminUsersPage() {
 
       const response = await fetch('/api/admin/add-picks', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

@@ -6,11 +6,9 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  // Skip middleware for API routes that don't need session handling
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    // For API routes, we still want to handle session refresh
-    console.log('🔍 Middleware processing API route:', request.nextUrl.pathname)
-  }
+  const url = new URL(request.url)
+  const isApi = url.pathname.startsWith('/api/')
+  const isProtectedRoute = url.pathname.startsWith('/admin/') || url.pathname.startsWith('/api/admin/')
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +37,9 @@ export async function middleware(request: NextRequest) {
       sessionError: error?.message,
       sessionExpiresAt: session?.expires_at,
       userId: session?.user?.id,
-      userEmail: session?.user?.email
+      userEmail: session?.user?.email,
+      isApi,
+      isProtectedRoute
     })
     
     if (error) {
@@ -59,6 +59,21 @@ export async function middleware(request: NextRequest) {
           console.error('Session refresh error:', refreshError.message)
         } else if (refreshedSession) {
           console.log('Session refreshed successfully')
+        }
+      }
+    }
+
+    // Check if we need to handle authentication for protected routes
+    if (isProtectedRoute) {
+      if (!session) {
+        if (isApi) {
+          // For API routes, return 401 JSON instead of redirecting
+          console.log('API route without session, returning 401')
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        } else {
+          // For page routes, redirect to login
+          console.log('Protected page without session, redirecting to login')
+          return NextResponse.redirect(new URL('/login', url))
         }
       }
     }

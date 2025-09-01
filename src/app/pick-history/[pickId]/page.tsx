@@ -37,7 +37,9 @@ export default function PickHistoryPage() {
       setLoading(true)
       setError('')
       
-      const response = await fetch(`/api/picks/history/${pickId}`)
+      const response = await fetch(`/api/picks/history/${pickId}`, {
+        credentials: 'include'
+      })
       const data = await response.json()
       
       if (data.success) {
