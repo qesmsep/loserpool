@@ -72,13 +72,38 @@ export async function POST(request: Request) {
     
     if (updateError) {
       console.error('❌ [UPDATE-PASSWORD-DIRECT] Password update failed:', updateError)
-      return NextResponse.json({
-        success: false,
-        error: 'Password update failed',
-        details: updateError.message,
-        code: updateError.code,
-        status: updateError.status
-      })
+      
+      // Check if this is the audit log error
+      if (updateError.message && updateError.message.includes('auth_audit_log')) {
+        console.log('🔧 [UPDATE-PASSWORD-DIRECT] Detected audit log error, trying alternative approach...')
+        
+        // Try updating just the password without metadata
+        const { data: simpleUpdateData, error: simpleUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
+          authUser.id,
+          { password: newPassword }
+        )
+        
+        if (simpleUpdateError) {
+          console.error('❌ [UPDATE-PASSWORD-DIRECT] Simple password update also failed:', simpleUpdateError)
+          return NextResponse.json({
+            success: false,
+            error: 'Password update failed',
+            details: simpleUpdateError.message,
+            code: simpleUpdateError.code,
+            status: simpleUpdateError.status
+          })
+        }
+        
+        console.log('✅ [UPDATE-PASSWORD-DIRECT] Simple password update succeeded')
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Password update failed',
+          details: updateError.message,
+          code: updateError.code,
+          status: updateError.status
+        })
+      }
     }
     
     console.log('✅ [UPDATE-PASSWORD-DIRECT] Password updated successfully')
