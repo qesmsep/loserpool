@@ -140,11 +140,16 @@ export default function PurchasePage() {
 
       // If user is a tester or price is $0, create free purchase
       if (userIsTester || settings.pickPrice === 0) {
+        // Get the access token from Supabase
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
         const response = await fetch('/api/purchases/free', {
           method: 'POST',
           credentials: 'include', // Include cookies for authentication
           headers: {
             'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
           },
           body: JSON.stringify({
             picks_count: picksCount,
@@ -168,11 +173,16 @@ export default function PurchasePage() {
       }
 
       // Otherwise, proceed with Stripe checkout
+      // Get the access token from Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         credentials: 'include', // Include cookies for authentication
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({
           picks_count: picksCount,

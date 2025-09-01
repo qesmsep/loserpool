@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { getCurrentSeasonInfo } from '@/lib/season-detection'
 import { isUserTester } from '@/lib/user-types'
 import { getWeekColumnNameFromSeasonInfo } from '@/lib/week-utils'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerSupabaseClient()
+    // Check for bearer token in Authorization header
+    const authHeader = request.headers.get('authorization')
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
+    
+    console.log('🔍 Allocate API auth check:', {
+      hasAuthHeader: !!authHeader,
+      hasBearer: !!bearer,
+      authHeader: authHeader?.substring(0, 20) + '...'
+    })
+    
+    // Create Supabase client based on authentication method
+    const supabaseCookie = await createServerSupabaseClient()
+    const supabaseHeader = bearer
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+          global: { headers: { Authorization: bearer } },
+          auth: { persistSession: false, autoRefreshToken: false }
+        })
+      : null
+    
+    const supabase = supabaseHeader ?? supabaseCookie
 
     // Get the current user from the session
     const { data: { user } } = await supabase.auth.getUser()

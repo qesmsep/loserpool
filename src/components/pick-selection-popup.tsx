@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Check, AlertCircle } from 'lucide-react'
 import { getTeamColors } from '@/lib/team-logos'
 import TeamBackground from '@/components/team-background'
+import { supabase } from '@/lib/supabase'
 
 // Team abbreviation to full name mapping
 const TEAM_ABBREVIATIONS: Record<string, string> = {
@@ -97,10 +98,15 @@ export default function PickSelectionPopup({
       setLoading(true)
       setError('')
       
+      // Get the access token from Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
       const response = await fetch('/api/picks/available', {
         credentials: 'include', // Include cookies for authentication
         headers: {
           'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         }
       })
       const data = await response.json()
@@ -148,11 +154,16 @@ export default function PickSelectionPopup({
       setLoading(true)
       setError('')
       
+      // Get the access token from Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
       const response = await fetch('/api/picks/allocate', {
         method: 'POST',
         credentials: 'include', // Include cookies for authentication
         headers: { 
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
         body: JSON.stringify({
           matchupId,
