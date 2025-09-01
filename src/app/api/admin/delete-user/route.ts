@@ -18,123 +18,163 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🔄 Starting comprehensive user deletion for:', userId)
 
-    // Try service role approach first
-    if (supabaseServiceKey) {
-      try {
-        // Create service role client for admin operations
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        })
+    // Create service role client for admin operations
+    if (!supabaseServiceKey) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY not configured')
+      return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 })
+    }
 
-        // First, get user info for logging
-        const { data: userInfo } = await supabaseAdmin
-          .from('users')
-          .select('email, username, first_name, last_name')
-          .eq('id', userId)
-          .single()
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
 
-        console.log('👤 Deleting user:', userInfo?.email || userId)
+    // First, get user info for logging
+    const { data: userInfo, error: userInfoError } = await supabaseAdmin
+      .from('users')
+      .select('email, username, first_name, last_name, is_admin')
+      .eq('id', userId)
+      .single()
 
-        // Count related records before deletion for logging
-        const { count: picksCount } = await supabaseAdmin
-          .from('picks')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
+    if (userInfoError) {
+      console.error('❌ Error fetching user info:', userInfoError)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
 
-        const { count: purchasesCount } = await supabaseAdmin
-          .from('purchases')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
+    console.log('👤 Deleting user:', userInfo?.email || userId)
+    console.log('👤 User is admin:', userInfo?.is_admin)
 
-        const { count: weeklyResultsCount } = await supabaseAdmin
-          .from('weekly_results')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
+    // Prevent deleting the last admin user
+    if (userInfo?.is_admin) {
+      const { count: adminCount } = await supabaseAdmin
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_admin', true)
 
-        console.log('📊 Related records to be deleted:')
-        console.log('  - Picks:', picksCount || 0)
-        console.log('  - Purchases:', purchasesCount || 0)
-        console.log('  - Weekly Results:', weeklyResultsCount || 0)
-
-        // Delete from auth.users using service role
-        console.log('🗑️ Deleting from auth.users...')
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
-
-        if (authError) {
-          console.error('❌ Auth delete error:', authError)
-          // If auth delete fails, we'll still try to delete the profile
-        } else {
-          console.log('✅ Auth user deleted successfully')
-        }
-
-        // Delete from public.users (this should cascade to related records)
-        console.log('🗑️ Deleting from public.users (with cascade)...')
-        const { error: profileError } = await supabaseAdmin
-          .from('users')
-          .delete()
-          .eq('id', userId)
-
-        if (profileError) {
-          console.error('❌ Profile delete error:', profileError)
-          throw profileError
-        }
-
-        console.log('✅ User profile and all related records deleted successfully')
+      if (adminCount === 1) {
         return NextResponse.json({ 
-          message: 'User and all related data deleted successfully',
-          deletedRecords: {
-            picks: picksCount || 0,
-            purchases: purchasesCount || 0,
-            weeklyResults: weeklyResultsCount || 0
-          }
-        })
-      } catch (serviceRoleError) {
-        console.error('❌ Service role approach failed:', serviceRoleError)
-        // Fall back to manual approach
+          error: 'Cannot delete the last admin user. Please create another admin first.' 
+        }, { status: 400 })
       }
     }
 
-    // Fallback: Try to delete profile only (cascade will handle related records)
-    console.log('⚠️ Using fallback approach - deleting profile only')
-    const { createServerSupabaseClient } = await import('@/lib/supabase-server')
-    const supabase = await createServerSupabaseClient()
-    
     // Count related records before deletion for logging
-    const { count: picksCount } = await supabase
+    const { count: picksCount } = await supabaseAdmin
       .from('picks')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    const { count: purchasesCount } = await supabase
+    const { count: purchasesCount } = await supabaseAdmin
       .from('purchases')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    console.log('📊 Related records that will be cascaded:')
+    const { count: weeklyResultsCount } = await supabaseAdmin
+      .from('weekly_results')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    // Check for other related tables
+    const { count: invitationsCount } = await supabaseAdmin
+      .from('invitations')
+      .select('*', { count: 'exact', head: true })
+      .or(`created_by.eq.${userId},used_by.eq.${userId}`)
+
+    console.log('📊 Related records to be deleted:')
     console.log('  - Picks:', picksCount || 0)
     console.log('  - Purchases:', purchasesCount || 0)
-    
-    const { error: profileError } = await supabase
+    console.log('  - Weekly Results:', weeklyResultsCount || 0)
+    console.log('  - Invitations:', invitationsCount || 0)
+
+    // Start transaction-like deletion process
+    console.log('🗑️ Starting deletion process...')
+
+    // 1. Delete from public.users first (this should cascade to related records)
+    console.log('🗑️ Deleting from public.users (with cascade)...')
+    const { error: profileError } = await supabaseAdmin
       .from('users')
       .delete()
       .eq('id', userId)
 
     if (profileError) {
-      console.error('❌ Profile deletion error:', profileError)
-      return NextResponse.json({ error: profileError.message }, { status: 400 })
+      console.error('❌ Profile delete error:', profileError)
+      
+      // If cascade delete failed, try manual deletion of related records
+      console.log('🔄 Cascade delete failed, trying manual deletion...')
+      
+      // Delete picks
+      const { error: picksError } = await supabaseAdmin
+        .from('picks')
+        .delete()
+        .eq('user_id', userId)
+      
+      if (picksError) console.error('❌ Picks delete error:', picksError)
+      else console.log('✅ Picks deleted manually')
+
+      // Delete purchases
+      const { error: purchasesError } = await supabaseAdmin
+        .from('purchases')
+        .delete()
+        .eq('user_id', userId)
+      
+      if (purchasesError) console.error('❌ Purchases delete error:', purchasesError)
+      else console.log('✅ Purchases deleted manually')
+
+      // Delete weekly results
+      const { error: weeklyError } = await supabaseAdmin
+        .from('weekly_results')
+        .delete()
+        .eq('user_id', userId)
+      
+      if (weeklyError) console.error('❌ Weekly results delete error:', weeklyError)
+      else console.log('✅ Weekly results deleted manually')
+
+      // Try deleting user profile again
+      const { error: retryError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', userId)
+
+      if (retryError) {
+        console.error('❌ Final profile delete error:', retryError)
+        return NextResponse.json({ 
+          error: `Failed to delete user profile: ${retryError.message}` 
+        }, { status: 500 })
+      }
     }
 
-    console.log('✅ User profile deleted successfully (fallback)')
+    // 2. Delete from auth.users using service role
+    console.log('🗑️ Deleting from auth.users...')
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (authError) {
+      console.error('❌ Auth delete error:', authError)
+      console.log('⚠️ Auth user deletion failed, but profile was deleted successfully')
+      return NextResponse.json({ 
+        message: 'User profile deleted successfully, but auth user deletion failed. You may need to delete the auth user manually.',
+        warning: 'Auth user deletion failed',
+        deletedRecords: {
+          picks: picksCount || 0,
+          purchases: purchasesCount || 0,
+          weeklyResults: weeklyResultsCount || 0,
+          invitations: invitationsCount || 0
+        }
+      })
+    }
+
+    console.log('✅ User and all related data deleted successfully')
     return NextResponse.json({ 
-      message: 'User profile and related records deleted. Note: Auth user may need to be deleted separately.',
+      message: 'User and all related data deleted successfully',
       deletedRecords: {
         picks: picksCount || 0,
-        purchases: purchasesCount || 0
+        purchases: purchasesCount || 0,
+        weeklyResults: weeklyResultsCount || 0,
+        invitations: invitationsCount || 0
       }
     })
+
   } catch (error) {
     console.error('Delete user error:', error)
     return NextResponse.json(

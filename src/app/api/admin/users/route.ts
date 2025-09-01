@@ -1,15 +1,71 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase-server'
-import { requireAdmin } from '@/lib/auth'
+import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getCurrentUser } from '@/lib/auth'
+import { headers } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
+  console.log('🔍 API: /api/admin/users called')
+  
   try {
-    // Check admin authentication using the same pattern as other admin routes
-    const adminUser = await requireAdmin()
-    console.log('Admin check passed:', adminUser?.email)
-
-    // Create service role client to bypass RLS for fetching all users
+    // Check for bearer token first
+    const headersList = await headers()
+    const authHeader = headersList.get('authorization')
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
+    
+    let user = null
+    
+    if (bearer) {
+      console.log('🔍 API: Using bearer token authentication')
+      // Create a client with the bearer token
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: { headers: { Authorization: bearer } },
+          auth: { persistSession: false, autoRefreshToken: false }
+        }
+      )
+      
+      const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('🔍 API: Bearer token auth error:', error)
+      } else if (bearerUser) {
+        user = bearerUser
+        console.log('🔍 API: Bearer token auth successful:', user.email)
+      }
+    }
+    
+    // Fall back to cookie-based authentication if bearer token failed
+    if (!user) {
+      console.log('🔍 API: Falling back to cookie-based authentication')
+      user = await getCurrentUser()
+    }
+    
+    console.log('🔍 API: Final authentication result:', { hasUser: !!user, userEmail: user?.email })
+    
+    if (!user) {
+      console.log('🔍 API: No user found, returning 401')
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+    
+    // Check if user is admin
     const supabaseAdmin = createServiceRoleClient()
+    const { data: userProfile, error } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    
+    console.log('🔍 API: Admin check result:', { hasProfile: !!userProfile, isAdmin: userProfile?.is_admin, error: error?.message })
+    
+    if (error || !userProfile?.is_admin) {
+      console.log('🔍 API: User is not admin, returning 401')
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+
+    console.log('🔍 API: User is admin, proceeding with data fetch')
 
     // Fetch all users with their stats using service role client
     const { data: usersData, error: usersError } = await supabaseAdmin
@@ -107,9 +163,10 @@ export async function GET() {
       return aName.localeCompare(bName)
     })
 
+    console.log('🔍 API: Successfully returning users data')
     return NextResponse.json({ users: sortedUsers })
   } catch (error) {
-    console.error('Admin users API error:', error)
+    console.error('🔍 API: Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

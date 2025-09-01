@@ -312,9 +312,23 @@ export default function AdminUsersPage() {
     try {
       setLoading(true)
       
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+      
       // Use the admin API route to fetch users (bypasses RLS)
       const response = await fetch('/api/admin/users', {
-        credentials: 'include'
+        credentials: 'include',
+        headers
       })
       
       if (!response.ok) {

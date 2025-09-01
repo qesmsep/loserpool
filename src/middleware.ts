@@ -7,8 +7,21 @@ export async function middleware(request: NextRequest) {
   })
 
   const url = new URL(request.url)
-  const isApi = url.pathname.startsWith('/api/')
-  const isProtectedRoute = url.pathname.startsWith('/admin/') || url.pathname.startsWith('/api/admin/')
+  const isAdminApiRoute = url.pathname.startsWith('/api/admin/')
+  
+  // Only handle admin API routes in middleware
+  if (!isAdminApiRoute) {
+    return response
+  }
+
+  // Check if request has bearer token - if so, let the API route handle authentication
+  const authHeader = request.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    console.log('🔍 Middleware: Request has bearer token, letting API route handle authentication')
+    return response
+  }
+
+  console.log('🔍 Middleware: No bearer token, checking session cookies')
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,23 +40,26 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired - required for Server Components
+  // Check for valid session
   try {
     const { data: { session }, error } = await supabase.auth.getSession()
     
-    console.log('🔍 Middleware session check:', {
+    console.log('🔍 Middleware admin API session check:', {
       pathname: request.nextUrl.pathname,
       hasSession: !!session,
       sessionError: error?.message,
-      sessionExpiresAt: session?.expires_at,
       userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      isApi,
-      isProtectedRoute
+      userEmail: session?.user?.email
     })
     
     if (error) {
       console.error('Middleware session error:', error.message)
+    }
+    
+    // If no session, return 401 for admin API routes
+    if (!session) {
+      console.log('No session found for admin API route, returning 401')
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
     // If session exists but is expired, try to refresh it
@@ -57,42 +73,23 @@ export async function middleware(request: NextRequest) {
         
         if (refreshError) {
           console.error('Session refresh error:', refreshError.message)
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
         } else if (refreshedSession) {
           console.log('Session refreshed successfully')
-        }
-      }
-    }
-
-    // Check if we need to handle authentication for protected routes
-    if (isProtectedRoute) {
-      if (!session) {
-        if (isApi) {
-          // For API routes, return 401 JSON instead of redirecting
-          console.log('API route without session, returning 401')
-          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
         } else {
-          // For page routes, redirect to login
-          console.log('Protected page without session, redirecting to login')
-          return NextResponse.redirect(new URL('/login', url))
+          console.log('No refreshed session available')
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
         }
       }
     }
   } catch (error) {
     console.error('Middleware error:', error)
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   return response
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/api/admin/:path*']
 } 

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      console.log('🔍 Admin purchases API: Using bearer token authentication');
+      console.log('🔍 Admin settings API: Using bearer token authentication');
       
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     
     // Fall back to cookie-based authentication
     if (!authenticatedUser) {
-      console.log('🔍 Admin purchases API: Falling back to cookie authentication');
+      console.log('🔍 Admin settings API: Falling back to cookie authentication');
       
       try {
         const supabase = createServerClient(
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     
     // If no authenticated user, return 401
     if (!authenticatedUser) {
-      console.log('❌ No authenticated user found for admin purchases API');
+      console.log('❌ No authenticated user found for admin settings API');
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     
@@ -101,33 +101,45 @@ export async function GET(request: NextRequest) {
     
     console.log('✅ User is admin, proceeding with data fetch');
     
-    // Get all purchases with user data using service role client
+    // Get global settings using service role client
+    const { data: settings, error: settingsError } = await supabaseAdmin
+      .from('global_settings')
+      .select('*')
+      .order('key');
+    
+    if (settingsError) {
+      console.error('Error fetching settings:', settingsError.message);
+      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    }
+    
+    // Get completed purchases for revenue calculation
     const { data: purchases, error: purchasesError } = await supabaseAdmin
       .from('purchases')
-      .select(`
-        *,
-        users!inner(
-          username,
-          email,
-          first_name,
-          last_name
-        )
-      `)
-      .order('created_at', { ascending: false });
+      .select('amount_paid, picks_count')
+      .eq('status', 'completed');
     
     if (purchasesError) {
       console.error('Error fetching purchases:', purchasesError.message);
       return NextResponse.json({ error: 'Failed to fetch purchases' }, { status: 500 });
     }
     
-    console.log('✅ Admin purchases API: Success for user:', authenticatedUser.email);
+    // Get pool status (simplified for now)
+    const poolStatus = {
+      isLocked: false,
+      lockDate: null,
+      timeUntilLock: null
+    };
+    
+    console.log('✅ Admin settings API: Success for user:', authenticatedUser.email);
     return NextResponse.json({
+      settings: settings || [],
       purchases: purchases || [],
+      poolStatus,
       success: true
     });
     
   } catch (error) {
-    console.error('Admin purchases API error:', error);
+    console.error('Admin settings API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

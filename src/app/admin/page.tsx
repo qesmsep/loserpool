@@ -106,12 +106,50 @@ export default function AdminPage() {
 
     const loadData = async () => {
       try {
+        // Get the current session token using the supabase client directly
+        const { supabase } = await import('@/lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        console.log('🔍 Admin page: Session check:', {
+          hasSession: !!session,
+          hasAccessToken: !!accessToken,
+          userEmail: session?.user?.email
+        })
+        
+        // Prepare headers with authorization
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        }
+        
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`
+          console.log('🔍 Admin page: Setting Authorization header with bearer token')
+        } else {
+          console.log('🔍 Admin page: No access token available')
+        }
+
         // Fetch all the data we need
         const [usersResponse, purchasesResponse, picksResponse] = await Promise.all([
-          fetch('/api/admin/users', { credentials: 'include' }),
-          fetch('/api/admin/purchases', { credentials: 'include' }),
-          fetch('/api/admin/picks', { credentials: 'include' })
+          fetch('/api/admin/users', { 
+            credentials: 'include',
+            headers
+          }),
+          fetch('/api/admin/purchases', { 
+            credentials: 'include',
+            headers
+          }),
+          fetch('/api/admin/picks', { 
+            credentials: 'include',
+            headers
+          })
         ])
+
+        console.log('🔍 Admin page: API responses:', {
+          users: usersResponse.status,
+          purchases: purchasesResponse.status,
+          picks: picksResponse.status
+        })
 
         if (usersResponse.ok) {
           const usersData = await usersResponse.json()

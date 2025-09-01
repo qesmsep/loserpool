@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from './supabase-server'
+import { createServerSupabaseClient, createServiceRoleClient } from './supabase-server'
 import { redirect } from 'next/navigation'
 
 export async function getCurrentUser() {
@@ -162,6 +162,58 @@ export async function requireAdmin() {
   }
   
   return user
+}
+
+export async function requireAdminForAPI() {
+  try {
+    const supabase = await createServerSupabaseClient()
+    
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error in requireAdminForAPI:', sessionError)
+      throw new Error('Authentication required')
+    }
+    
+    if (!session) {
+      console.log('No session found in requireAdminForAPI')
+      throw new Error('Authentication required')
+    }
+    
+    // Get the user from the session
+    const user = session.user
+    if (!user) {
+      console.log('No user found in session')
+      throw new Error('Authentication required')
+    }
+    
+    console.log('User authenticated in API:', user.email)
+    
+    // Check if user is admin using service role client to bypass RLS
+    const supabaseAdmin = createServiceRoleClient()
+    const { data: userProfile, error } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    
+    if (error) {
+      console.error('Admin check error:', error)
+      throw new Error('Admin verification failed')
+    }
+    
+    if (!userProfile?.is_admin) {
+      console.log('User is not admin:', user.email)
+      throw new Error('User is not admin')
+    }
+    
+    console.log('Admin verification successful:', user.email)
+    return user
+  } catch (error) {
+    console.error('requireAdminForAPI error:', error)
+    throw error
+  }
 }
 
 export async function getUserProfile(userId: string) {

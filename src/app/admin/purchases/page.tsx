@@ -1,31 +1,96 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, DollarSign, ShoppingCart, TrendingUp, Users } from 'lucide-react'
 
-export default async function AdminPurchasesPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
+interface Purchase {
+  id: string
+  user_id: string
+  picks_count: number
+  amount_paid: number
+  status: string
+  stripe_session_id?: string
+  created_at: string
+  users: {
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+  }
+}
 
-  // Get all purchases with user data
-  const { data: purchases } = await supabase
-    .from('purchases')
-    .select(`
-      *,
-      users!inner(
-        username,
-        email,
-        first_name,
-        last_name
-      )
-    `)
-    .order('created_at', { ascending: false })
+export default function AdminPurchasesPage() {
+  const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const loadPurchases = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error('No session token available')
+        }
+        
+        // Prepare headers with authorization
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+        
+        // Use the admin API route to fetch purchases
+        const response = await fetch('/api/admin/purchases', {
+          credentials: 'include',
+          headers
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch purchases')
+        }
+        
+        const data = await response.json()
+        setPurchases(data.purchases || [])
+      } catch (err) {
+        console.error('Error loading purchases:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load purchases')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPurchases()
+  }, [])
 
   // Calculate stats
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicks = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
   const completedPurchases = purchases?.filter(p => p.status === 'completed').length || 0
   const pendingPurchases = purchases?.filter(p => p.status === 'pending').length || 0
+
+  if (loading) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-white text-lg">Loading purchases...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-red-400 text-lg">Error: {error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen app-bg">

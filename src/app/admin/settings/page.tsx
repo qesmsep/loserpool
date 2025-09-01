@@ -1,27 +1,81 @@
-import { requireAdmin } from '@/lib/auth'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowLeft, Settings, Users, Calendar, DollarSign } from 'lucide-react'
-import { getPoolStatus } from '@/lib/pool-status'
 
-export default async function AdminSettingsPage() {
-  await requireAdmin()
-  const supabase = await createServerSupabaseClient()
+interface GlobalSetting {
+  key: string
+  value: string
+}
 
-  // Get pool status
-  const poolStatus = await getPoolStatus()
+interface Purchase {
+  amount_paid: number
+  picks_count: number
+}
 
-  // Get global settings
-  const { data: settings } = await supabase
-    .from('global_settings')
-    .select('*')
-    .order('key')
+interface PoolStatus {
+  isLocked: boolean
+  lockDate?: string
+  timeUntilLock?: number
+}
 
-  const { data: purchases } = await supabase
-    .from('purchases')
-    .select('amount_paid, picks_count')
-    .eq('status', 'completed')
+export default function AdminSettingsPage() {
+  const [settings, setSettings] = useState<GlobalSetting[]>([])
+  const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [poolStatus, setPoolStatus] = useState<PoolStatus>({ isLocked: false })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error('No session token available')
+        }
+        
+        // Prepare headers with authorization
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+        
+        // Load settings data
+        const settingsResponse = await fetch('/api/admin/settings', {
+          credentials: 'include',
+          headers
+        })
+        
+        if (!settingsResponse.ok) {
+          const errorData = await settingsResponse.json()
+          throw new Error(errorData.error || 'Failed to fetch settings')
+        }
+        
+        const settingsData = await settingsResponse.json()
+        setSettings(settingsData.settings || [])
+        setPurchases(settingsData.purchases || [])
+        setPoolStatus(settingsData.poolStatus || { isLocked: false })
+        
+      } catch (err) {
+        console.error('Error loading settings:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load settings')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  // Calculate stats
   const totalRevenue = purchases?.reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicksPurchased = purchases?.reduce((sum, p) => sum + p.picks_count, 0) || 0
 
@@ -35,6 +89,22 @@ export default async function AdminSettingsPage() {
   const entriesPerUser = parseInt(settingsMap.entries_per_user || '10')
   const entriesRemaining = maxTotalEntries - totalPicksPurchased
   const pickPrice = parseFloat(settingsMap.pick_price || '1.00')
+
+  if (loading) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-white text-lg">Loading settings...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen app-bg flex items-center justify-center">
+        <div className="text-red-400 text-lg">Error: {error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen app-bg">
@@ -168,15 +238,15 @@ export default async function AdminSettingsPage() {
               </Link>
             </div>
             <div className="p-6 space-y-4">
-                             <div className="flex justify-between items-center">
-                 <div>
-                   <div className="text-sm font-medium text-white">Pick Price</div>
-                   <div className="text-sm text-blue-200">Cost per pick in dollars</div>
-                 </div>
-                 <div className="text-right">
-                   <div className="text-lg font-semibold text-white">${pickPrice.toFixed(2)}</div>
-                 </div>
-               </div>
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-white">Pick Price</div>
+                  <div className="text-sm text-blue-200">Cost per pick in dollars</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-white">${pickPrice.toFixed(2)}</div>
+                </div>
+              </div>
               
               <div className="flex justify-between items-center">
                 <div>
