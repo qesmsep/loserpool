@@ -92,15 +92,17 @@ export async function GET() {
     const weekSetting = settings?.find(s => s.key === 'current_week')
     const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
 
-    // Get current week column
+    // Get current week column - FIXED LOGIC
     let weekColumn: string
     if (currentWeek <= 3) {
       weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 20) {
+    } else if (currentWeek <= 21) {
       weekColumn = `reg${currentWeek - 3}_team_matchup_id`
     } else {
-      weekColumn = `post${currentWeek - 20}_team_matchup_id`
+      weekColumn = `post${currentWeek - 21}_team_matchup_id`
     }
+
+    console.log(`Current week: ${currentWeek}, Using column: ${weekColumn}`)
 
     // Fetch picks data with current week information
     const { data: picks, error: picksError } = await supabaseAdmin
@@ -122,13 +124,25 @@ export async function GET() {
         .filter((p: { status: string }) => p.status === 'completed')
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
       
+      // FIXED: Count ALL non-eliminated picks as active picks
       const activePicks = userPicks
-        .filter((p: { status: string }) => p.status === 'active')
+        .filter((p: { status: string }) => p.status !== 'eliminated')
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
       
       const eliminatedPicks = userPicks
         .filter((p: { status: string }) => p.status === 'eliminated')
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+
+      // Debug logging for pick counting
+      if (user.email?.includes('247eagle') || user.email?.includes('gregory')) {
+        console.log(`🔍 Debug for user ${user.email}:`, {
+          totalPicks: userPicks.length,
+          pickStatuses: userPicks.map(p => ({ status: p.status, picks_count: p.picks_count })),
+          activePicks,
+          eliminatedPicks,
+          totalPurchased
+        })
+      }
 
       // Get current week picks (picks that have a team_matchup_id for current week)
       const currentWeekPicks = userPicks.filter(pick => {
