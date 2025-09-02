@@ -130,7 +130,7 @@ export async function GET() {
         status: string
         picks_count: number
         pick_name: string
-        [key: string]: any
+        [key: string]: string | number | null | undefined
       }> || []
       
       if (userPicksError) {
