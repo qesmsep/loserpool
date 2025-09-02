@@ -333,7 +333,7 @@ export default function DashboardPage() {
   const [dbPicksRemaining, setDbPicksRemaining] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-    const [error, setError] = useState('')
+  const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [picksSaved, setPicksSaved] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -346,35 +346,10 @@ export default function DashboardPage() {
   const [editingPickId, setEditingPickId] = useState<string | null>(null)
   const [editingPickName, setEditingPickName] = useState('')
 
-
   const router = useRouter()
-
-  // Show loading while auth state is being determined
-  if (authLoading) {
-    return (
-      <div className="app-bg flex items-center justify-center min-h-screen">
-        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded mb-6"></div>
-            <div className="h-4 bg-gray-200 rounded mb-4"></div>
-            <div className="h-10 bg-gray-200 rounded mb-6"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Redirect to login if not authenticated
-  if (!user) {
-    router.push('/login')
-    return null
-  }
 
   // Check if the season has started (based on database current week)
   const hasSeasonStarted = currentWeek > 0
-  
-
   
   // Check if user should see onboarding (first login, less than 10 picks, or before regular season)
   const shouldShowOnboarding = picksRemaining < 10 || !hasSeasonStarted
@@ -661,19 +636,19 @@ export default function DashboardPage() {
       setDbPicksRemaining(dbPicksRemaining)
       setPicksSaved((userPicksData || []).length > 0) // Set saved state based on existing picks
       setIsEditing(false) // Reset edit state when data is loaded
-      setLoading(false)
     } catch (error) {
       console.error('Error loading data:', error)
       setError('Failed to load data')
+    } finally {
       setLoading(false)
     }
   }, [user, router])
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user && !authLoading) {
       loadData()
     }
-  }, [loadData, authLoading, user])
+  }, [user, authLoading, loadData])
 
   // Set picks remaining directly from database
   useEffect(() => {
@@ -834,15 +809,26 @@ export default function DashboardPage() {
     return now >= deadlineDate
   }
 
-  if (authLoading || loading) {
+  // Show loading while auth state is being determined
+  if (authLoading) {
     return (
-      <div className="min-h-screen app-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300 mx-auto"></div>
-          <p className="mt-4 text-blue-200">Loading...</p>
+      <div className="app-bg flex items-center justify-center min-h-screen">
+        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded mb-6"></div>
+            <div className="h-4 bg-gray-200 rounded mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded mb-6"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
         </div>
       </div>
     )
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    router.push('/login')
+    return null
   }
 
   return (
