@@ -113,10 +113,6 @@ export async function GET() {
     
     // Instead of trying to get all picks at once (which hits limits),
     // we'll query picks for each user individually in the loop below
-    let picks: any[] = []
-    let picksError = null
-
-    // No need to check picksError here since we're querying per user
 
     // Calculate stats for each user
     const usersWithStats = await Promise.all(usersData?.map(async (user) => {
@@ -152,12 +148,12 @@ export async function GET() {
       
       // FIXED: Count ALL non-eliminated picks as active picks
       const activePicks = userPicks
-        .filter((p: { status: string }) => p.status !== 'eliminated')
-        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+        ?.filter((p: { status: string }) => p.status !== 'eliminated')
+        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0) || 0
       
       const eliminatedPicks = userPicks
-        .filter((p: { status: string }) => p.status === 'eliminated')
-        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+        ?.filter((p: { status: string }) => p.status === 'eliminated')
+        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0) || 0
 
       // Calculate total picks as active + eliminated (actual picks in system)
       const totalPicks = activePicks + eliminatedPicks
@@ -165,27 +161,27 @@ export async function GET() {
       // Debug logging for pick counting
       if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
         console.log(`🔍 Debug for user ${user.email}:`, {
-          totalPicks: userPicks.length,
-          pickStatuses: userPicks.map(p => ({ 
+          totalPicks: userPicks?.length || 0,
+          pickStatuses: userPicks?.map(p => ({ 
             status: p.status, 
             picks_count: p.picks_count,
             pick_name: p.pick_name,
-            team_matchup_id: (p as Record<string, unknown>)[weekColumn]
-          })),
+            team_matchup_id: p[weekColumn]
+          })) || [],
           activePicks,
           eliminatedPicks,
           totalPurchased,
           totalPicksCalculated: totalPicks,
           weekColumn,
-          hasCurrentWeekPicks: userPicks.some(p => (p as Record<string, unknown>)[weekColumn] !== null)
+          hasCurrentWeekPicks: userPicks?.some(p => p[weekColumn] !== null) || false
         })
       }
 
       // Get current week picks (picks that have a team_matchup_id for current week)
-      const currentWeekPicks = userPicks.filter(pick => {
-        const teamMatchupId = (pick as Record<string, unknown>)[weekColumn]
+      const currentWeekPicks = userPicks?.filter(pick => {
+        const teamMatchupId = pick[weekColumn]
         return teamMatchupId !== null && teamMatchupId !== undefined
-      })
+      }) || []
 
       return {
         ...user,
@@ -198,7 +194,7 @@ export async function GET() {
           pick_name: pick.pick_name,
           status: pick.status,
           picks_count: pick.picks_count,
-          team_matchup_id: (pick as Record<string, unknown>)[weekColumn]
+          team_matchup_id: pick[weekColumn]
         }))
       }
             })) || []
