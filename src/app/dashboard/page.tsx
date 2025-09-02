@@ -349,6 +349,28 @@ export default function DashboardPage() {
 
   const router = useRouter()
 
+  // Show loading while auth state is being determined
+  if (authLoading) {
+    return (
+      <div className="app-bg flex items-center justify-center min-h-screen">
+        <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded mb-6"></div>
+            <div className="h-4 bg-gray-200 rounded mb-4"></div>
+            <div className="h-10 bg-gray-200 rounded mb-6"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    router.push('/login')
+    return null
+  }
+
   // Check if the season has started (based on database current week)
   const hasSeasonStarted = currentWeek > 0
   
