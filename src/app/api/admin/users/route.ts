@@ -124,6 +124,15 @@ export async function GET() {
         .select(`user_id, status, picks_count, pick_name, ${weekColumn}`)
         .eq('user_id', user.id)
       
+      // Type the userPicks properly
+      const typedUserPicks = userPicks as Array<{
+        user_id: string
+        status: string
+        picks_count: number
+        pick_name: string
+        [key: string]: any
+      }> || []
+      
       if (userPicksError) {
         console.error(`Error fetching picks for user ${user.email}:`, userPicksError)
       }
@@ -132,13 +141,13 @@ export async function GET() {
       if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
         console.log(`🔍 User picks for ${user.email}:`, {
           userId: user.id,
-          totalPicks: userPicks?.length || 0,
-          pickDetails: userPicks?.map(p => ({ 
+          totalPicks: typedUserPicks.length,
+          pickDetails: typedUserPicks.map(p => ({ 
             status: p.status, 
             picks_count: p.picks_count,
             pick_name: p.pick_name,
             team_matchup_id: p[weekColumn]
-          })) || []
+          }))
         })
       }
       
@@ -147,13 +156,13 @@ export async function GET() {
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
       
       // FIXED: Count ALL non-eliminated picks as active picks
-      const activePicks = userPicks
-        ?.filter((p: { status: string }) => p.status !== 'eliminated')
-        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0) || 0
+      const activePicks = typedUserPicks
+        .filter((p: { status: string }) => p.status !== 'eliminated')
+        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
       
-      const eliminatedPicks = userPicks
-        ?.filter((p: { status: string }) => p.status === 'eliminated')
-        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0) || 0
+      const eliminatedPicks = typedUserPicks
+        .filter((p: { status: string }) => p.status === 'eliminated')
+        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
 
       // Calculate total picks as active + eliminated (actual picks in system)
       const totalPicks = activePicks + eliminatedPicks
@@ -161,27 +170,27 @@ export async function GET() {
       // Debug logging for pick counting
       if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
         console.log(`🔍 Debug for user ${user.email}:`, {
-          totalPicks: userPicks?.length || 0,
-          pickStatuses: userPicks?.map(p => ({ 
+          totalPicks: typedUserPicks.length,
+          pickStatuses: typedUserPicks.map(p => ({ 
             status: p.status, 
             picks_count: p.picks_count,
             pick_name: p.pick_name,
             team_matchup_id: p[weekColumn]
-          })) || [],
+          })),
           activePicks,
           eliminatedPicks,
           totalPurchased,
           totalPicksCalculated: totalPicks,
           weekColumn,
-          hasCurrentWeekPicks: userPicks?.some(p => p[weekColumn] !== null) || false
+          hasCurrentWeekPicks: typedUserPicks.some(p => p[weekColumn] !== null)
         })
       }
 
       // Get current week picks (picks that have a team_matchup_id for current week)
-      const currentWeekPicks = userPicks?.filter(pick => {
+      const currentWeekPicks = typedUserPicks.filter(pick => {
         const teamMatchupId = pick[weekColumn]
         return teamMatchupId !== null && teamMatchupId !== undefined
-      }) || []
+      })
 
       return {
         ...user,
