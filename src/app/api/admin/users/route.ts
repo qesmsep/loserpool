@@ -125,13 +125,13 @@ export async function GET() {
         .eq('user_id', user.id)
       
       // Type the userPicks properly
-      const typedUserPicks = userPicks as Array<{
+      const typedUserPicks = (userPicks || []) as Array<{
         user_id: string
         status: string
         picks_count: number
         pick_name: string
         [key: string]: string | number | null | undefined
-      }> || []
+      }>
       
       if (userPicksError) {
         console.error(`Error fetching picks for user ${user.email}:`, userPicksError)
