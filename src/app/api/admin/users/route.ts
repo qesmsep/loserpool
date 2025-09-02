@@ -92,33 +92,59 @@ export async function GET() {
     const weekSetting = settings?.find(s => s.key === 'current_week')
     const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
 
-    // Get current week column - FIXED LOGIC
+    // Get current week column - SIMPLIFIED LOGIC (no testers)
     let weekColumn: string
-    if (currentWeek <= 3) {
-      weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 21) {
-      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
+    if (currentWeek >= 1 && currentWeek <= 18) {
+      // Regular season weeks 1-18 map directly to reg1_team_matchup_id through reg18_team_matchup_id
+      weekColumn = `reg${currentWeek}_team_matchup_id`
+    } else if (currentWeek > 18) {
+      // Postseason weeks
+      weekColumn = `post${currentWeek - 18}_team_matchup_id`
     } else {
-      weekColumn = `post${currentWeek - 21}_team_matchup_id`
+      // Preseason weeks (fallback)
+      weekColumn = `pre${currentWeek}_team_matchup_id`
     }
 
-    console.log(`Current week: ${currentWeek}, Using column: ${weekColumn}`)
+    console.log(`🔍 Week mapping: current_week=${currentWeek} → column=${weekColumn}`)
+    console.log(`🔍 This means we're looking for picks in the ${weekColumn} column`)
 
-    // Fetch picks data with current week information
-    const { data: picks, error: picksError } = await supabaseAdmin
-      .from('picks')
-      .select(`user_id, status, picks_count, pick_name, ${weekColumn}`)
+    // Fetch picks data with current week information - FIXED APPROACH
+    console.log(`🔍 Fetching picks with column: ${weekColumn}`)
+    
+    // Instead of trying to get all picks at once (which hits limits),
+    // we'll query picks for each user individually in the loop below
+    let picks: any[] = []
+    let picksError = null
 
-    if (picksError) {
-      console.error('Error fetching picks:', picksError)
-      return NextResponse.json({ error: 'Failed to fetch picks data' }, { status: 500 })
-    }
+    // No need to check picksError here since we're querying per user
 
     // Calculate stats for each user
-    const usersWithStats = usersData?.map(user => {
+    const usersWithStats = await Promise.all(usersData?.map(async (user) => {
       const userPurchases = user.purchases || []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userPicks = (picks as any[])?.filter((p: any) => p.user_id === user.id) || []
+      
+      // Query picks individually for each user to avoid limits
+      const { data: userPicks, error: userPicksError } = await supabaseAdmin
+        .from('picks')
+        .select(`user_id, status, picks_count, pick_name, ${weekColumn}`)
+        .eq('user_id', user.id)
+      
+      if (userPicksError) {
+        console.error(`Error fetching picks for user ${user.email}:`, userPicksError)
+      }
+      
+      // Debug: Check picks for specific users
+      if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
+        console.log(`🔍 User picks for ${user.email}:`, {
+          userId: user.id,
+          totalPicks: userPicks?.length || 0,
+          pickDetails: userPicks?.map(p => ({ 
+            status: p.status, 
+            picks_count: p.picks_count,
+            pick_name: p.pick_name,
+            team_matchup_id: p[weekColumn]
+          })) || []
+        })
+      }
       
       const totalPurchased = userPurchases
         .filter((p: { status: string }) => p.status === 'completed')
@@ -133,14 +159,25 @@ export async function GET() {
         .filter((p: { status: string }) => p.status === 'eliminated')
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
 
+      // Calculate total picks as active + eliminated (actual picks in system)
+      const totalPicks = activePicks + eliminatedPicks
+
       // Debug logging for pick counting
-      if (user.email?.includes('247eagle') || user.email?.includes('gregory')) {
+      if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
         console.log(`🔍 Debug for user ${user.email}:`, {
           totalPicks: userPicks.length,
-          pickStatuses: userPicks.map(p => ({ status: p.status, picks_count: p.picks_count })),
+          pickStatuses: userPicks.map(p => ({ 
+            status: p.status, 
+            picks_count: p.picks_count,
+            pick_name: p.pick_name,
+            team_matchup_id: (p as Record<string, unknown>)[weekColumn]
+          })),
           activePicks,
           eliminatedPicks,
-          totalPurchased
+          totalPurchased,
+          totalPicksCalculated: totalPicks,
+          weekColumn,
+          hasCurrentWeekPicks: userPicks.some(p => (p as Record<string, unknown>)[weekColumn] !== null)
         })
       }
 
@@ -153,6 +190,7 @@ export async function GET() {
       return {
         ...user,
         totalPurchased,
+        totalPicks, // This will be used for the "Total" display
         activePicks,
         eliminatedPicks,
         isEliminated: eliminatedPicks > 0 && activePicks === 0 && totalPurchased > 0,
@@ -163,8 +201,8 @@ export async function GET() {
           team_matchup_id: (pick as Record<string, unknown>)[weekColumn]
         }))
       }
-    }) || []
-
+            })) || []
+    
     // Sort users by username (or email if no username), with admins first
     const sortedUsers = usersWithStats.sort((a, b) => {
       // Admins first
@@ -177,6 +215,11 @@ export async function GET() {
       return aName.localeCompare(bName)
     })
 
+    // Log summary of pick counting results
+    const totalActivePicks = sortedUsers.reduce((sum, user) => sum + (user.activePicks || 0), 0)
+    const totalEliminatedPicks = sortedUsers.reduce((sum, user) => sum + (user.eliminatedPicks || 0), 0)
+    console.log(`🔍 Pick counting summary: ${totalActivePicks} total active picks, ${totalEliminatedPicks} total eliminated picks across ${sortedUsers.length} users`)
+    
     console.log('🔍 API: Successfully returning users data')
     return NextResponse.json({ users: sortedUsers })
   } catch (error) {

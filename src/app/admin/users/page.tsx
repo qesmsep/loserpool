@@ -17,6 +17,7 @@ interface User {
   user_type: 'registered' | 'active' | 'tester' | 'eliminated' | 'pending'
   created_at: string
   totalPurchased: number
+  totalPicks: number
   activePicks: number
   eliminatedPicks: number
   isEliminated: boolean
@@ -1376,7 +1377,7 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-xs text-blue-200 space-y-1">
                         <div>{user.activePicks} active</div>
-                        <div>{user.totalPurchased} total</div>
+                        <div>{user.totalPicks} total</div>
                       </div>
                       {editingUser === user.id && (
                         <div className="mt-2 space-y-2">
