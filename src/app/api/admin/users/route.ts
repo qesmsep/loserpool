@@ -124,8 +124,8 @@ export async function GET() {
         .select(`user_id, status, picks_count, pick_name, ${weekColumn}`)
         .eq('user_id', user.id)
       
-      // Type the userPicks properly
-      const typedUserPicks = (userPicks || []) as Array<{
+      // Type the userPicks properly - cast through unknown to avoid type conflicts
+      const typedUserPicks = ((userPicks || []) as unknown) as Array<{
         user_id: string
         status: string
         picks_count: number
