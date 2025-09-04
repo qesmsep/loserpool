@@ -20,6 +20,7 @@ interface User {
   totalPicks: number
   activePicks: number
   eliminatedPicks: number
+  pendingPicks: number
   isEliminated: boolean
   currentWeekPicks: Array<{
     pick_name: string
@@ -97,6 +98,7 @@ const exportToCSV = (users: User[], filterName: string) => {
     'Total Purchased',
     'Active Picks',
     'Eliminated Picks',
+    'Pending Picks',
     'Is Eliminated',
     'Created At'
   ]
@@ -115,6 +117,7 @@ const exportToCSV = (users: User[], filterName: string) => {
       user.totalPurchased,
       user.activePicks,
       user.eliminatedPicks,
+      user.pendingPicks,
       user.isEliminated ? 'Yes' : 'No',
       new Date(user.created_at).toLocaleDateString()
     ].join(','))
@@ -184,7 +187,8 @@ export default function AdminUsersPage() {
     userType: 'all' as 'all' | 'registered' | 'active' | 'tester' | 'eliminated' | 'pending',
     purchaseStatus: 'all' as 'all' | 'no_purchases' | 'has_purchases' | 'has_picks_left',
     adminStatus: 'all' as 'all' | 'admin' | 'non_admin',
-    eliminationStatus: 'all' as 'all' | 'eliminated' | 'active'
+    eliminationStatus: 'all' as 'all' | 'eliminated' | 'active',
+    pendingPicks: 'all' as 'all' | 'has_pending' | 'no_pending'
   })
 
   // Filter users based on search term and filters
@@ -234,6 +238,12 @@ export default function AdminUsersPage() {
       if (filters.eliminationStatus === 'active' && user.isEliminated) return false
     }
 
+    // Pending picks filter
+    if (filters.pendingPicks !== 'all') {
+      if (filters.pendingPicks === 'has_pending' && user.pendingPicks === 0) return false
+      if (filters.pendingPicks === 'no_pending' && user.pendingPicks > 0) return false
+    }
+
     return true
   })
 
@@ -258,6 +268,9 @@ export default function AdminUsersPage() {
     if (filters.eliminationStatus !== 'all') {
       descriptions.push(`Elimination Status: ${filters.eliminationStatus === 'eliminated' ? 'Eliminated' : 'Active'}`)
     }
+    if (filters.pendingPicks !== 'all') {
+      descriptions.push(`Pending Picks: ${filters.pendingPicks === 'has_pending' ? 'Has Pending' : 'No Pending'}`)
+    }
     
     return descriptions.length > 0 ? descriptions.join('_') : 'all_users'
   }
@@ -269,7 +282,8 @@ export default function AdminUsersPage() {
       userType: 'all',
       purchaseStatus: 'all',
       adminStatus: 'all',
-      eliminationStatus: 'all'
+      eliminationStatus: 'all',
+      pendingPicks: 'all'
     })
   }
 
@@ -1095,7 +1109,8 @@ export default function AdminUsersPage() {
                   userType: 'all',
                   purchaseStatus: 'no_purchases',
                   adminStatus: 'all',
-                  eliminationStatus: 'all'
+                  eliminationStatus: 'all',
+                  pendingPicks: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.purchaseStatus === 'no_purchases' && filters.userType === 'all'
@@ -1111,7 +1126,8 @@ export default function AdminUsersPage() {
                   userType: 'all',
                   purchaseStatus: 'has_picks_left',
                   adminStatus: 'all',
-                  eliminationStatus: 'all'
+                  eliminationStatus: 'all',
+                  pendingPicks: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.purchaseStatus === 'has_picks_left' && filters.userType === 'all'
@@ -1127,7 +1143,8 @@ export default function AdminUsersPage() {
                   userType: 'all',
                   purchaseStatus: 'all',
                   adminStatus: 'all',
-                  eliminationStatus: 'eliminated'
+                  eliminationStatus: 'eliminated',
+                  pendingPicks: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.eliminationStatus === 'eliminated' && filters.purchaseStatus === 'all'
@@ -1143,7 +1160,8 @@ export default function AdminUsersPage() {
                   userType: 'all',
                   purchaseStatus: 'all',
                   adminStatus: 'admin',
-                  eliminationStatus: 'all'
+                  eliminationStatus: 'all',
+                  pendingPicks: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.adminStatus === 'admin' && filters.purchaseStatus === 'all'
@@ -1159,7 +1177,8 @@ export default function AdminUsersPage() {
                   userType: 'registered',
                   purchaseStatus: 'all',
                   adminStatus: 'all',
-                  eliminationStatus: 'all'
+                  eliminationStatus: 'all',
+                  pendingPicks: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.userType === 'registered' && filters.purchaseStatus === 'all'
@@ -1168,6 +1187,23 @@ export default function AdminUsersPage() {
                 }`}
               >
                 Registered Only ({users.filter(u => u.user_type === 'registered').length})
+              </button>
+              
+              <button
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'all',
+                  adminStatus: 'all',
+                  eliminationStatus: 'all',
+                  pendingPicks: 'has_pending'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.pendingPicks === 'has_pending' && filters.userType === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Has Pending Picks ({users.filter(u => u.pendingPicks > 0).length})
               </button>
             </div>
           </div>
@@ -1181,7 +1217,7 @@ export default function AdminUsersPage() {
               </div>
             </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* User Type Filter */}
             <div>
               <label className="block text-xs font-medium text-blue-200 mb-1">User Type</label>
@@ -1241,6 +1277,20 @@ export default function AdminUsersPage() {
                 <option value="eliminated">Eliminated</option>
               </select>
             </div>
+
+            {/* Pending Picks Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">Pending Picks</label>
+              <select
+                value={filters.pendingPicks}
+                onChange={(e) => setFilters({...filters, pendingPicks: e.target.value as 'all' | 'has_pending' | 'no_pending'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Users</option>
+                <option value="has_pending">Has Pending</option>
+                <option value="no_pending">No Pending</option>
+              </select>
+            </div>
           </div>
 
           {/* Filter Summary */}
@@ -1259,6 +1309,9 @@ export default function AdminUsersPage() {
             )}
             {filters.eliminationStatus !== 'all' && (
               <span className="ml-2">• Status: {filters.eliminationStatus === 'eliminated' ? 'Eliminated' : 'Active'}</span>
+            )}
+            {filters.pendingPicks !== 'all' && (
+              <span className="ml-2">• Pending: {filters.pendingPicks === 'has_pending' ? 'Has Pending' : 'No Pending'}</span>
             )}
           </div>
         </div>
@@ -1377,7 +1430,10 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-xs text-blue-200 space-y-1">
                         <div>{user.activePicks} active</div>
-                        <div>{user.totalPicks} total</div>
+                        <div>{user.totalPurchased} purchased</div>
+                        {user.pendingPicks > 0 && (
+                          <div className="text-orange-300 font-medium">{user.pendingPicks} pending</div>
+                        )}
                       </div>
                       {editingUser === user.id && (
                         <div className="mt-2 space-y-2">

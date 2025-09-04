@@ -164,6 +164,11 @@ export async function GET() {
         .filter((p: { status: string }) => p.status === 'eliminated')
         .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
 
+      // Count pending picks (unallocated picks)
+      const pendingPicks = typedUserPicks
+        .filter((p: { status: string }) => p.status === 'pending')
+        .reduce((sum: number, p: { picks_count: number }) => sum + p.picks_count, 0)
+
       // Calculate total picks as active + eliminated (actual picks in system)
       const totalPicks = activePicks + eliminatedPicks
 
@@ -198,6 +203,7 @@ export async function GET() {
         totalPicks, // This will be used for the "Total" display
         activePicks,
         eliminatedPicks,
+        pendingPicks, // Add pending picks count
         isEliminated: eliminatedPicks > 0 && activePicks === 0 && totalPurchased > 0,
         currentWeekPicks: currentWeekPicks.map(pick => ({
           pick_name: pick.pick_name,
