@@ -348,26 +348,26 @@ export default function PickSelectionPopup({
           {!loading && availablePicks.length > 0 && (
             <>
               {/* Selection Instructions */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 font-medium">
+                  <p className="text-xs text-gray-600 font-medium">
                     Choose your pick below to select this team to lose
                   </p>
                 </div>
               </div>
 
               {/* Column Headers */}
-              <div className="flex items-center space-x-3 p-3 mb-2 bg-gray-100 rounded-lg border border-gray-200">
-                <div className="w-4"></div> {/* Checkbox spacer */}
-                <div className="flex-1 grid grid-cols-3 gap-4">
-                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Pick Name</div>
-                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Status</div>
-                  <div className="font-semibold text-xs sm:text-sm text-gray-700">Chosen Team</div>
+              <div className="flex items-center space-x-2 p-2 mb-1 bg-gray-100 rounded border border-gray-200">
+                <div className="w-3"></div> {/* Checkbox spacer */}
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <div className="font-semibold text-xs text-gray-700">Pick Name</div>
+                  <div className="font-semibold text-xs text-gray-700">Status</div>
+                  <div className="font-semibold text-xs text-gray-700">Chosen Team</div>
                 </div>
               </div>
 
               {/* Picks List */}
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-1 max-h-[60vh] overflow-y-auto">
                 {availablePicks.map((pick) => {
                   const isLost = pick.status === 'lost'
                   const isSelectable = pick.status !== 'lost'
@@ -375,7 +375,7 @@ export default function PickSelectionPopup({
                   return (
                     <label
                       key={pick.id}
-                      className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                      className={`flex items-center space-x-2 p-2 rounded border transition-colors ${
                         isLost
                           ? 'bg-red-50 border-red-200 cursor-not-allowed opacity-75'
                           : selectedPickIds.includes(pick.id)
@@ -388,10 +388,10 @@ export default function PickSelectionPopup({
                         checked={selectedPickIds.includes(pick.id)}
                         onChange={() => handlePickToggle(pick.id)}
                         disabled={isLost}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
-                      <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                        <div className="font-medium text-gray-900">{pick.name}</div>
+                      <div className="flex-1 grid grid-cols-3 gap-2 items-center">
+                        <div className="font-medium text-gray-900 text-sm">{pick.name}</div>
                         <div>
                           {/* Status Badge */}
                           {(() => {
@@ -407,7 +407,7 @@ export default function PickSelectionPopup({
                             }
                             
                             return (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+                              <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}>
                                 {statusText}
                               </span>
                             )
@@ -420,7 +420,7 @@ export default function PickSelectionPopup({
                               <TeamBackground
                                 teamName={pick.allocatedTeam}
                                 size="sm"
-                                className="w-16 h-6 rounded text-xs font-medium border border-gray-300 flex items-center justify-center"
+                                className="w-12 h-4 rounded text-xs font-medium border border-gray-300 flex items-center justify-center"
                                 gradientDepth={false}
                                 borderGlow={false}
                                 watermarkLogo={false}
