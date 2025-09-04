@@ -203,7 +203,7 @@ export default function PickSelectionPopup({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] sm:max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white rounded-lg max-w-lg w-full max-h-[95vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-6 border-b">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">
@@ -367,7 +367,7 @@ export default function PickSelectionPopup({
               </div>
 
               {/* Picks List */}
-              <div className="space-y-2 max-h-80 sm:max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {availablePicks.map((pick) => {
                   const isLost = pick.status === 'lost'
                   const isSelectable = pick.status !== 'lost'
