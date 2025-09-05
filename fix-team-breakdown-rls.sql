@@ -1,11 +1,15 @@
 -- Fix RLS policies to allow team breakdown viewing
 -- This allows all authenticated users to view picks for team breakdown purposes
 
--- First, drop the existing restrictive policy
+-- Run these commands in Supabase SQL editor:
+
+-- 1. Drop the existing restrictive policy
 DROP POLICY IF EXISTS "Users can view their own picks" ON public.picks;
 
--- Create a new policy that allows all authenticated users to view picks
--- This is needed for the team breakdown feature on the dashboard
+-- 2. Drop any existing policy with the same name to avoid conflicts
+DROP POLICY IF EXISTS "Authenticated users can view all picks" ON public.picks;
+
+-- 3. Create a new policy that allows all authenticated users to view picks
 CREATE POLICY "Authenticated users can view all picks" ON public.picks
   FOR SELECT USING (auth.uid() IS NOT NULL);
 
