@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Settings, Users, Calendar, Trophy } from 'lucide-react'
+import { Settings, Users, Calendar, Trophy, Target } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 import AdminStatsModal from '@/components/admin-stats-modal'
 import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
@@ -61,6 +61,27 @@ interface Purchase {
   created_at: string
 }
 
+interface DefaultPickData {
+  currentWeek: number
+  defaultPick: {
+    matchup_id: string
+    away_team: string
+    home_team: string
+    favored_team: string
+    spread_magnitude: number
+    game_time: string
+  } | null
+  usersNeedingPicks: Array<{
+    id: string
+    email: string
+    username: string
+    name: string
+    picksAvailable: number
+  }>
+  userCount: number
+  totalPicksToAssign: number
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -71,6 +92,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [showTeamBreakdownModal, setShowTeamBreakdownModal] = useState(false)
+  const [defaultPickData, setDefaultPickData] = useState<DefaultPickData | null>(null)
 
   useEffect(() => {
     // Check if user is authenticated and is admin
@@ -130,7 +152,7 @@ export default function AdminPage() {
         }
 
         // Fetch all the data we need
-        const [usersResponse, purchasesResponse, picksResponse] = await Promise.all([
+        const [usersResponse, purchasesResponse, picksResponse, defaultPickResponse] = await Promise.all([
           fetch('/api/admin/users', { 
             credentials: 'include',
             headers
@@ -140,6 +162,10 @@ export default function AdminPage() {
             headers
           }),
           fetch('/api/admin/picks', { 
+            credentials: 'include',
+            headers
+          }),
+          fetch('/api/admin/current-week-default-pick', { 
             credentials: 'include',
             headers
           })
@@ -165,6 +191,13 @@ export default function AdminPage() {
         if (picksResponse.ok) {
           const picksData = await picksResponse.json()
           setPicks(picksData.picks || [])
+        }
+
+        if (defaultPickResponse.ok) {
+          const defaultPickData = await defaultPickResponse.json()
+          setDefaultPickData(defaultPickData)
+        } else {
+          console.error('Default pick API error:', defaultPickResponse.status)
         }
       } catch (error) {
         console.error('Error loading admin data:', error)
@@ -260,6 +293,91 @@ export default function AdminPage() {
               </div>
             </div>
           </button>
+        </div>
+
+        {/* Current Week Default Pick */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <Target className="w-5 h-5 mr-2 text-orange-200" />
+            {defaultPickData ? `Week ${defaultPickData.currentWeek} Default Pick` : 'Current Week Default Pick'}
+          </h2>
+          
+          {loading ? (
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <p className="text-blue-200">Loading default pick information...</p>
+            </div>
+          ) : defaultPickData && defaultPickData.defaultPick ? (
+            <div className="space-y-4">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">
+                      {defaultPickData.defaultPick.away_team} @ {defaultPickData.defaultPick.home_team}
+                    </h3>
+                    <p className="text-blue-200">
+                      Game Time: {new Date(defaultPickData.defaultPick.game_time).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-orange-300">
+                      {defaultPickData.defaultPick.favored_team}
+                    </div>
+                    <div className="text-sm text-orange-200">
+                      Favored by {defaultPickData.defaultPick.spread_magnitude} points
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                      <Users className="w-5 h-5 text-orange-200" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-orange-100">Users Needing Picks</p>
+                      <p className="text-xl font-bold text-white">{defaultPickData.userCount}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Target className="w-5 h-5 text-blue-200" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-blue-100">Total Picks to Assign</p>
+                      <p className="text-xl font-bold text-white">{defaultPickData.totalPicksToAssign}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {defaultPickData.userCount > 0 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                  <p className="text-yellow-200 text-sm">
+                    <strong>{defaultPickData.userCount}</strong> users with completed purchases haven't made picks for Week {defaultPickData.currentWeek}.
+                    They will automatically be assigned to pick <strong>{defaultPickData.defaultPick.favored_team}</strong> (the most favored team).
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : defaultPickData ? (
+            <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-4">
+              <p className="text-gray-200">
+                No default pick available for Week {defaultPickData.currentWeek}. 
+                This could mean no games are scheduled or no spreads are available.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-red-200">
+                Unable to load default pick information. Please check the console for errors.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Admin Actions */}
