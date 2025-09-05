@@ -298,7 +298,7 @@ export default function AdminResultsPage() {
                 {defaultPickData.userCount > 0 && (
                   <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
                     <p className="text-yellow-200 text-sm">
-                      <strong>{defaultPickData.userCount}</strong> users with completed purchases haven't made picks for Week {defaultPickData.currentWeek}.
+                      <strong>{defaultPickData.userCount}</strong> users with completed purchases haven&apos;t made picks for Week {defaultPickData.currentWeek}.
                       They will automatically be assigned to pick <strong>{defaultPickData.defaultPick.favored_team}</strong> (the most favored team).
                     </p>
                   </div>
