@@ -963,7 +963,7 @@ export default function DashboardPage() {
                 <div className="flex items-center">
                   <BarChart3 className="w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-green-200" />
                   <div>
-                    <h3 className="text-sm sm:text-lg font-semibold text-white">See This Week's Picks!</h3>
+                    <h3 className="text-sm sm:text-lg font-semibold text-white">See This Week&apos;s Picks!</h3>
                     <p className="text-xs sm:text-base text-green-200">
                       View team breakdown for {currentWeekDisplay}
                     </p>
