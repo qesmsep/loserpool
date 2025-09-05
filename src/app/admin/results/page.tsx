@@ -103,16 +103,20 @@ export default function AdminResultsPage() {
         
         if (!defaultPickResponse.ok) {
           const errorData = await defaultPickResponse.json()
-          throw new Error(errorData.error || 'Failed to fetch default pick data')
+          console.error('Default pick API error:', errorData)
+          // Don't throw error, just log it and continue without default pick data
         }
         
-        const [matchupsData, defaultPickData] = await Promise.all([
-          matchupsResponse.json(),
-          defaultPickResponse.json()
-        ])
-        
+        const matchupsData = await matchupsResponse.json()
         setMatchups(matchupsData.matchups || [])
-        setDefaultPickData(defaultPickData)
+        
+        // Only try to parse default pick data if the response was ok
+        if (defaultPickResponse.ok) {
+          const defaultPickData = await defaultPickResponse.json()
+          setDefaultPickData(defaultPickData)
+        } else {
+          setDefaultPickData(null)
+        }
       } catch (err) {
         console.error('Error loading data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -232,14 +236,17 @@ export default function AdminResultsPage() {
         </div>
 
         {/* Current Week Default Pick */}
-        {defaultPickData && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
-              <Target className="w-5 h-5 mr-2 text-orange-200" />
-              Week {defaultPickData.currentWeek} Default Pick
-            </h2>
-            
-            {defaultPickData.defaultPick ? (
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <Target className="w-5 h-5 mr-2 text-orange-200" />
+            {defaultPickData ? `Week ${defaultPickData.currentWeek} Default Pick` : 'Current Week Default Pick'}
+          </h2>
+          
+          {loading ? (
+            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+              <p className="text-blue-200">Loading default pick information...</p>
+            </div>
+          ) : defaultPickData && defaultPickData.defaultPick ? (
               <div className="space-y-4">
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                   <div className="flex items-center justify-between">
@@ -297,16 +304,21 @@ export default function AdminResultsPage() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : defaultPickData ? (
               <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-4">
                 <p className="text-gray-200">
                   No default pick available for Week {defaultPickData.currentWeek}. 
                   This could mean no games are scheduled or no spreads are available.
                 </p>
               </div>
+            ) : (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <p className="text-red-200">
+                  Unable to load default pick information. Please check the console for errors.
+                </p>
+              </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
