@@ -54,18 +54,29 @@ export async function GET() {
 
         // Add computed fields
         if (bestDefaultPickMatchup) {
+          // Debug: Log the matchup data
+          console.log('Best matchup found:', {
+            away_team: bestDefaultPickMatchup.away_team,
+            home_team: bestDefaultPickMatchup.home_team,
+            away_spread: bestDefaultPickMatchup.away_spread,
+            home_spread: bestDefaultPickMatchup.home_spread
+          })
+          
           // Determine which team is most favored (most likely to win in loser pool)
           const awaySpread = bestDefaultPickMatchup.away_spread || 0
           const homeSpread = bestDefaultPickMatchup.home_spread || 0
           
+          // The team with the LARGER positive spread is most favored
           if (awaySpread > homeSpread) {
             // Away team is most favored (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
             bestDefaultPickMatchup.spread_magnitude = awaySpread
+            console.log('Selected away team as most favored:', bestDefaultPickMatchup.away_team, 'with spread:', awaySpread)
           } else {
             // Home team is most favored (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.home_team
             bestDefaultPickMatchup.spread_magnitude = homeSpread
+            console.log('Selected home team as most favored:', bestDefaultPickMatchup.home_team, 'with spread:', homeSpread)
           }
         }
       }
