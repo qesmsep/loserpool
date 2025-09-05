@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/update-schedules",
       "schedule": "0 6,18 * * *"
+    },
+    {
+      "path": "/api/cron/fetch-spreads",
+      "schedule": "0 */2 * * *"
     }
   ]
 } 
