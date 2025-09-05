@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { espnService } from '@/lib/espn-service'
+import { espnService, ESPNGame } from '@/lib/espn-service'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all available games from ESPN API for current week
-    const allEspnGames: any[] = []
+    const allEspnGames: ESPNGame[] = []
     const seasonTypes = ['PRE', 'REG', 'POST']
     
     for (const st of seasonTypes) {
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const errors: string[] = []
 
     // Create a map of ESPN games by team matchup for easy lookup
-    const espnGameMap = new Map<string, any>()
+    const espnGameMap = new Map<string, Record<string, unknown>>()
     allEspnGames.forEach(game => {
       const convertedGame = espnService.convertToMatchupFormat(game)
       if (convertedGame) {
