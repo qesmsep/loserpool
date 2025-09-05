@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
-import { X, TrendingDown, Users } from 'lucide-react'
+import { X } from 'lucide-react'
 import { getTeamColors } from '@/lib/team-logos'
+import StyledTeamName from '@/components/styled-team-name'
 
 interface Pick {
   id: string
@@ -43,6 +44,7 @@ interface TeamPicksBreakdownModalProps {
   isOpen: boolean
   onClose: () => void
   picks: Pick[]
+  currentWeekColumn?: string
 }
 
 interface TeamBreakdown {
@@ -56,12 +58,28 @@ interface TeamBreakdown {
 export default function TeamPicksBreakdownModal({
   isOpen,
   onClose,
-  picks
+  picks,
+  currentWeekColumn = 'reg1_team_matchup_id'
 }: TeamPicksBreakdownModalProps) {
 
   const getCurrentWeekColumn = (): string => {
-    // This should match the logic from the API
-    return 'reg1_team_matchup_id' // For week 1
+    // Use the passed currentWeekColumn prop
+    return currentWeekColumn
+  }
+
+  const getCurrentWeekDisplay = (): string => {
+    const currentWeekColumn = getCurrentWeekColumn()
+    if (currentWeekColumn.startsWith('pre')) {
+      const weekNum = currentWeekColumn.replace('pre', '').replace('_team_matchup_id', '')
+      return `Preseason Week ${weekNum}`
+    } else if (currentWeekColumn.startsWith('reg')) {
+      const weekNum = currentWeekColumn.replace('reg', '').replace('_team_matchup_id', '')
+      return `Week ${weekNum}`
+    } else if (currentWeekColumn.startsWith('post')) {
+      const weekNum = currentWeekColumn.replace('post', '').replace('_team_matchup_id', '')
+      return `Postseason Week ${weekNum}`
+    }
+    return 'Current Week'
   }
 
   const getTeamFromMatchupId = (matchupId: string | null | undefined): string => {
@@ -118,8 +136,9 @@ export default function TeamPicksBreakdownModal({
     })
 
     return Object.values(breakdown)
+      .filter(team => team.team !== 'No team selected')
       .sort((a, b) => b.totalPicks - a.totalPicks)
-  }, [picks, isOpen])
+  }, [picks, isOpen, currentWeekColumn])
 
   if (!isOpen) return null
 
@@ -136,7 +155,10 @@ export default function TeamPicksBreakdownModal({
       <div className="bg-gray-900 border border-white/20 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/20">
-          <h2 className="text-xl font-semibold text-white">Teams Picked to Lose</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-white">Teams Picked to Lose</h2>
+            <p className="text-sm text-blue-200 mt-1">{getCurrentWeekDisplay()}</p>
+          </div>
           <button
             onClick={onClose}
             className="text-white/60 hover:text-white transition-colors"
@@ -148,106 +170,48 @@ export default function TeamPicksBreakdownModal({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           <div className="space-y-4">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <TrendingDown className="w-5 h-5 text-blue-200 mr-2" />
-                  <h3 className="text-lg font-semibold text-white">Total Teams</h3>
+
+            {/* Team Breakdown Cards */}
+            <div className="space-y-3">
+              {teamBreakdown.map((team, index) => (
+                <div key={team.team} className="relative rounded-lg border border-gray-300 overflow-hidden">
+                  <div 
+                    className="p-4 flex items-center justify-between"
+                    style={{
+                      background: `linear-gradient(to bottom,
+                        rgba(255,255,255,0.18) 0%,
+                        ${getTeamColors(team.team).primary} 12%,
+                        ${getTeamColors(team.team).primary} 60%,
+                        rgba(0,0,0,0.28) 100%)`
+                    }}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-full">
+                        <span 
+                          className="text-sm font-bold text-white"
+                          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                        >
+                          #{index + 1}
+                        </span>
+                      </div>
+                      <StyledTeamName 
+                        teamName={team.team} 
+                        size="lg" 
+                        className="font-bold"
+                        showTeamColors={false}
+                      />
+                    </div>
+                    <div className="text-right">
+                      <div 
+                        className="text-2xl font-bold text-white"
+                        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                      >
+                        {getDisplayPicks(team)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-white">{teamBreakdown.length}</p>
-                <p className="text-sm text-blue-200">Teams picked to lose</p>
-              </div>
-
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <Users className="w-5 h-5 text-green-200 mr-2" />
-                  <h3 className="text-lg font-semibold text-white">Total Picks</h3>
-                </div>
-                <p className="text-3xl font-bold text-white">
-                  {teamBreakdown.reduce((sum, team) => sum + getDisplayPicks(team), 0)}
-                </p>
-                <p className="text-sm text-green-200">All picks</p>
-              </div>
-
-              <div className="bg-white/5 border border-white/20 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <Users className="w-5 h-5 text-purple-200 mr-2" />
-                  <h3 className="text-lg font-semibold text-white">Unique Users</h3>
-                </div>
-                <p className="text-3xl font-bold text-white">
-                  {new Set(picks.map(pick => pick.user_id)).size}
-                </p>
-                <p className="text-sm text-purple-200">Users who made picks</p>
-              </div>
-            </div>
-
-            {/* Team Breakdown Table */}
-            <div className="bg-white/5 border border-white/20 rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/20">
-                <h3 className="text-lg font-semibold text-white">Team Breakdown</h3>
-                <p className="text-sm text-blue-200">
-                  Sorted by total picks (most to least)
-                </p>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                        Team
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                        Total Picks
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
-                        Unique Users
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white/5 divide-y divide-white/20">
-                    {teamBreakdown.map((team, index) => (
-                      <tr key={team.team} className="hover:bg-white/5">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-white">#{index + 1}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div 
-                              className="w-4 h-4 rounded-full mr-3"
-                              style={{ backgroundColor: getTeamColors(team.team).primary }}
-                            ></div>
-                            <span className="text-sm font-semibold text-white">{team.team}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`text-lg font-bold ${getStatusColor()}`}>
-                            {getDisplayPicks(team)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-white">{team.uniqueUsers}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Data Source Info */}
-            <div className="bg-white/5 border border-white/20 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-white mb-3">Data Source</h3>
-              <div className="space-y-2 text-sm text-blue-200">
-                <p>• Teams extracted from {getCurrentWeekColumn()} column in picks table</p>
-                <p>• Team names parsed from matchup_id format: &quot;matchup_id_team_name&quot;</p>
-                <p>• Pick counts include picks_count field from each pick record</p>
-                <p>• Unique users counted per team (one user can have multiple picks for same team)</p>
-              </div>
+              ))}
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Calendar, Save, ShoppingCart, Edit, X } from 'lucide-react'
+import { Calendar, Save, ShoppingCart, Edit, X, BarChart3 } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically, getWeekDateRange } from '@/lib/timezone'
 import { DateTime } from 'luxon'
@@ -16,6 +16,7 @@ import { getWeekColumnName } from '@/lib/week-utils'
 import MatchupBox from '@/components/matchup-box'
 import PickSelectionPopup from '@/components/pick-selection-popup'
 import OnboardingPopup from '@/components/onboarding-popup'
+import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
 import { getTeamColors } from '@/lib/team-logos'
 
 // Team abbreviation to full name mapping
@@ -345,6 +346,18 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [editingPickId, setEditingPickId] = useState<string | null>(null)
   const [editingPickName, setEditingPickName] = useState('')
+  const [showTeamBreakdownModal, setShowTeamBreakdownModal] = useState(false)
+  const [allPicksForBreakdown, setAllPicksForBreakdown] = useState<{
+    id: string
+    user_id: string
+    pick_name: string
+    status: string
+    picks_count: number
+    created_at: string
+    updated_at: string
+    [key: string]: unknown
+  }[]>([])
+  const [currentWeekColumn, setCurrentWeekColumn] = useState<string>('reg1_team_matchup_id')
 
   const router = useRouter()
 
@@ -353,6 +366,96 @@ export default function DashboardPage() {
   
   // Check if user should see onboarding (first login, less than 10 picks, or before regular season)
   const shouldShowOnboarding = picksRemaining < 10 || !hasSeasonStarted
+
+  // Check if we should show the team breakdown button
+  const shouldShowTeamBreakdownButton = useCallback(() => {
+    if (!deadline) return false
+    
+    const now = new Date()
+    const deadlineDate = new Date(deadline)
+    
+    // Button appears after deadline passes
+    if (now < deadlineDate) return false
+    
+    // Button disappears on Tuesday at 10am CST
+    const tuesday10amCST = new Date(now)
+    tuesday10amCST.setUTCHours(16, 0, 0, 0) // 10am CST = 4pm UTC (during standard time)
+    
+    // Find the next Tuesday at 10am CST
+    const daysUntilTuesday = (2 - now.getDay() + 7) % 7 // Tuesday is day 2
+    const nextTuesday = new Date(now)
+    nextTuesday.setDate(now.getDate() + (daysUntilTuesday === 0 ? 7 : daysUntilTuesday))
+    nextTuesday.setUTCHours(16, 0, 0, 0)
+    
+    // If it's already past Tuesday 10am this week, use next Tuesday
+    if (now > nextTuesday) {
+      nextTuesday.setDate(nextTuesday.getDate() + 7)
+    }
+    
+    return now < nextTuesday
+  }, [deadline])
+
+  // Load all picks for team breakdown
+  const loadAllPicksForBreakdown = useCallback(async () => {
+    try {
+      if (!user) return
+
+      // Use the same season detection logic as the dashboard
+      const { getCurrentSeasonInfo } = await import('@/lib/season-detection-client')
+      const { isUserTester } = await import('@/lib/user-types-client')
+      const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
+      
+      const seasonInfo = await getCurrentSeasonInfo(user.id)
+      const isTester = await isUserTester(user.id)
+      const currentWeekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
+      
+      console.log('🔍 Team breakdown - current week column:', currentWeekColumn)
+      setCurrentWeekColumn(currentWeekColumn)
+
+      // Get all picks for the current week (use pagination to ensure we get all picks)
+      let allPicks: {
+        id: string
+        user_id: string
+        pick_name: string
+        status: string
+        picks_count: number
+        created_at: string
+        updated_at: string
+        [key: string]: unknown
+      }[] = []
+      let from = 0
+      const pageSize = 1000
+      let hasMore = true
+
+      while (hasMore) {
+        const { data: picksData, error } = await supabase
+          .from('picks')
+          .select('*')
+          .not(currentWeekColumn, 'is', null) // Only picks that have a team selected for current week
+          .range(from, from + pageSize - 1)
+
+        if (error) {
+          console.error('Error loading picks:', error)
+          break
+        }
+
+        if (picksData && picksData.length > 0) {
+          allPicks = [...allPicks, ...picksData]
+          from += pageSize
+          hasMore = picksData.length === pageSize
+        } else {
+          hasMore = false
+        }
+      }
+
+      const picksData = allPicks
+
+      console.log('🔍 Team breakdown - picks loaded:', picksData?.length || 0)
+      setAllPicksForBreakdown(picksData || [])
+    } catch (error) {
+      console.error('Error loading picks for breakdown:', error)
+    }
+  }, [user])
 
   // Countdown timer effect
   useEffect(() => {
@@ -371,6 +474,13 @@ export default function DashboardPage() {
 
     return () => clearInterval(interval)
   }, [deadline])
+
+  // Load picks for breakdown when button should be shown
+  useEffect(() => {
+    if (shouldShowTeamBreakdownButton()) {
+      loadAllPicksForBreakdown()
+    }
+  }, [shouldShowTeamBreakdownButton, loadAllPicksForBreakdown])
 
   const loadData = useCallback(async () => {
     try {
@@ -844,93 +954,118 @@ export default function DashboardPage() {
         WebkitBackfaceVisibility: 'hidden',
         backfaceVisibility: 'hidden'
       }}>
-        {/* Picks Deadline */}
+        {/* Picks Deadline or Team Breakdown Button */}
         {deadline && (
-          <div className={`border rounded-lg p-3 sm:p-6 mb-4 sm:mb-8 ${
-            countdown.isExpired 
-              ? 'bg-red-500/20 border-red-500/30' 
-              : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-              ? 'bg-red-500/20 border-red-500/30'
-              : 'bg-yellow-500/20 border-yellow-500/30'
-          }`}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-              <div className="flex items-center">
-                <Calendar className={`w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 ${
-                  countdown.isExpired 
-                    ? 'text-red-200' 
-                    : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                    ? 'text-red-200'
-                    : 'text-yellow-200'
-                }`} />
-                <div>
-                  <h3 className="text-sm sm:text-lg font-semibold text-white">Picks Deadline</h3>
-                  <p className={`text-xs sm:text-base ${
+          shouldShowTeamBreakdownButton() ? (
+            // Show Team Breakdown Button
+            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 sm:p-6 mb-4 sm:mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                <div className="flex items-center">
+                  <BarChart3 className="w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-green-200" />
+                  <div>
+                    <h3 className="text-sm sm:text-lg font-semibold text-white">See This Week's Picks!</h3>
+                    <p className="text-xs sm:text-base text-green-200">
+                      View team breakdown for {currentWeekDisplay}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowTeamBreakdownModal(true)}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>View Team Breakdown</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Show Countdown Timer
+            <div className={`border rounded-lg p-3 sm:p-6 mb-4 sm:mb-8 ${
+              countdown.isExpired 
+                ? 'bg-red-500/20 border-red-500/30' 
+                : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                ? 'bg-red-500/20 border-red-500/30'
+                : 'bg-yellow-500/20 border-yellow-500/30'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                <div className="flex items-center">
+                  <Calendar className={`w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 ${
                     countdown.isExpired 
                       ? 'text-red-200' 
                       : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
                       ? 'text-red-200'
                       : 'text-yellow-200'
-                  }`}>
-                    Deadline: {formatDeadlineForUser(deadline)} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
-                  </p>
+                  }`} />
+                  <div>
+                    <h3 className="text-sm sm:text-lg font-semibold text-white">Picks Deadline</h3>
+                    <p className={`text-xs sm:text-base ${
+                      countdown.isExpired 
+                        ? 'text-red-200' 
+                        : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                        ? 'text-red-200'
+                        : 'text-yellow-200'
+                    }`}>
+                      Deadline: {formatDeadlineForUser(deadline)} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center sm:text-right">
+                  <p className={`text-xs sm:text-sm mb-1 ${
+                    countdown.isExpired 
+                      ? 'text-red-200' 
+                      : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                      ? 'text-red-200'
+                      : 'text-yellow-200'
+                  }`}>Time Remaining</p>
+                  {countdown.isExpired ? (
+                    <p className="text-lg sm:text-2xl font-bold text-red-400">EXPIRED</p>
+                  ) : (
+                    <div className="text-lg sm:text-2xl font-bold text-white">
+                      {countdown.days > 0 && (
+                        <>
+                          <span className="inline-block mr-2">
+                            <span className={`text-sm sm:text-base ${
+                              countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                                ? 'text-red-200'
+                                : 'text-yellow-200'
+                            }`}>Days</span>
+                            <div>{countdown.days}</div>
+                          </span>
+                          <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                        </>
+                      )}
+                      <span className="inline-block mr-2">
+                        <span className={`text-sm sm:text-base ${
+                          countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                            ? 'text-red-200'
+                            : 'text-yellow-200'
+                        }`}>Hours</span>
+                        <div>{countdown.hours.toString().padStart(2, '0')}</div>
+                      </span>
+                      <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                      <span className="inline-block mr-2">
+                        <span className={`text-sm sm:text-base ${
+                          countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                            ? 'text-red-200'
+                            : 'text-yellow-200'
+                        }`}>Min</span>
+                        <div>{countdown.minutes.toString().padStart(2, '0')}</div>
+                      </span>
+                      <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
+                      <span className="inline-block">
+                        <span className={`text-sm sm:text-base ${
+                          countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
+                            ? 'text-red-200'
+                            : 'text-yellow-200'
+                        }`}>Sec</span>
+                        <div>{countdown.seconds.toString().padStart(2, '0')}</div>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="text-center sm:text-right">
-                <p className={`text-xs sm:text-sm mb-1 ${
-                  countdown.isExpired 
-                    ? 'text-red-200' 
-                    : countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                    ? 'text-red-200'
-                    : 'text-yellow-200'
-                }`}>Time Remaining</p>
-                {countdown.isExpired ? (
-                  <p className="text-lg sm:text-2xl font-bold text-red-400">EXPIRED</p>
-                ) : (
-                  <div className="text-lg sm:text-2xl font-bold text-white">
-                    {countdown.days > 0 && (
-                      <>
-                        <span className="inline-block mr-2">
-                          <span className={`text-sm sm:text-base ${
-                            countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                              ? 'text-red-200'
-                              : 'text-yellow-200'
-                          }`}>Days</span>
-                          <div>{countdown.days}</div>
-                        </span>
-                        <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
-                      </>
-                    )}
-                    <span className="inline-block mr-2">
-                      <span className={`text-sm sm:text-base ${
-                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                          ? 'text-red-200'
-                          : 'text-yellow-200'
-                      }`}>Hours</span>
-                      <div>{countdown.hours.toString().padStart(2, '0')}</div>
-                    </span>
-                    <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
-                    <span className="inline-block mr-2">
-                      <span className={`text-sm sm:text-base ${
-                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                          ? 'text-red-200'
-                          : 'text-yellow-200'
-                      }`}>Min</span>
-                      <div>{countdown.minutes.toString().padStart(2, '0')}</div>
-                    </span>
-                    <span className="text-white text-lg sm:text-2xl font-bold mr-2">:</span>
-                    <span className="inline-block">
-                      <span className={`text-sm sm:text-base ${
-                        countdown.days === 0 && countdown.hours === 0 && countdown.minutes < 60
-                          ? 'text-red-200'
-                          : 'text-yellow-200'
-                      }`}>Sec</span>
-                      <div>{countdown.seconds.toString().padStart(2, '0')}</div>
-                    </span>
-                  </div>
-                )}
-              </div>
             </div>
-          </div>
+          )
         )}
 
 
@@ -1479,6 +1614,14 @@ export default function DashboardPage() {
       <OnboardingPopup
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
+      />
+
+      {/* Team Picks Breakdown Modal */}
+      <TeamPicksBreakdownModal
+        isOpen={showTeamBreakdownModal}
+        onClose={() => setShowTeamBreakdownModal(false)}
+        picks={allPicksForBreakdown}
+        currentWeekColumn={currentWeekColumn}
       />
     </div>
   )
