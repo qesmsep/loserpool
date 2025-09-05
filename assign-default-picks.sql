@@ -34,8 +34,9 @@ BEGIN
       -- Find the matchup with the largest spread (most favored team)
       SELECT m.*, 
              CASE 
-               WHEN m.away_spread > m.home_spread THEN m.away_team
-               ELSE m.home_team
+               WHEN m.away_spread < 0 THEN m.away_team
+               WHEN m.home_spread < 0 THEN m.home_team
+               ELSE m.away_team
              END as favored_team,
              ABS(GREATEST(m.away_spread, m.home_spread)) as spread_magnitude
       INTO largest_spread_matchup
@@ -91,8 +92,9 @@ BEGIN
     m.away_team,
     m.home_team,
     CASE 
-      WHEN m.away_spread > m.home_spread THEN m.away_team
-      ELSE m.home_team
+      WHEN m.away_spread < 0 THEN m.away_team
+      WHEN m.home_spread < 0 THEN m.home_team
+      ELSE m.away_team
     END as favored_team,
     ABS(GREATEST(m.away_spread, m.home_spread)) as spread_magnitude,
     m.game_time
