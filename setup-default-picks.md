@@ -1,9 +1,10 @@
 # Default Picks Setup Guide
 
 ## Overview
-The app now automatically assigns default picks to users who haven't made their picks before TNF kickoff. Default picks are assigned to the team with the largest spread (most favored to win).
+The app now automatically assigns default picks to users who haven't made their picks before the first game kickoff. Default picks are assigned to the team with the largest spread (most favored to win).
 
 ## Features
+- ✅ **Automatic Assignment**: Runs every 5 minutes via cron job to check if deadline has passed
 - ✅ **Smart Assignment**: Only assigns to users who haven't made picks for current week
 - ✅ **Largest Spread Logic**: Picks the team with the biggest spread (most favored)
 - ✅ **Admin Control**: Manual trigger via admin panel
@@ -39,6 +40,20 @@ Run the `assign-default-picks.sql` file in your Supabase SQL editor:
 3. **Find matchup** with largest spread that user hasn't picked yet
 4. **Assign picks** to the favored team in that matchup
 5. **Log assignment** with details
+
+## Automatic Assignment
+
+### Cron Job
+- **Schedule**: Every 5 minutes (`*/5 * * * *`)
+- **Endpoint**: `/api/cron/assign-default-picks`
+- **Trigger**: Automatically runs when deadline passes (first game kickoff)
+- **Logic**: Uses the same corrected logic as the admin card to select most favored team
+
+### How It Works
+1. **Checks deadline**: Compares current time to first game kickoff
+2. **Assigns picks**: If deadline passed, calls `assign_default_picks()` database function
+3. **Uses correct logic**: Selects team with negative spread (most favored to win)
+4. **Logs results**: Detailed logging of all assignments
 
 ## Admin Usage
 
