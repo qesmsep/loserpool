@@ -30,16 +30,16 @@ export async function GET() {
 
     console.log('Found matchups:', matchups?.length || 0)
 
-    // Find the matchup with the smallest spread (most likely to win for loser pool)
+    // Find the matchup with the largest spread (most favored team = most likely to win)
     let bestDefaultPickMatchup = null
     if (matchups && matchups.length > 0) {
       // Filter out games that have already started
       const futureMatchups = matchups.filter(m => new Date(m.game_time) > new Date())
       
       if (futureMatchups.length > 0) {
-        // Find the matchup with the smallest spread (most competitive game = most likely to win)
+        // Find the matchup with the largest spread (most favored team = most likely to win)
         bestDefaultPickMatchup = futureMatchups.reduce((best, current) => {
-          // Calculate the spread magnitude for each team (smaller = more competitive)
+          // Calculate the spread magnitude for each team (larger = more favored)
           const currentAwaySpread = Math.abs(current.away_spread || 0)
           const currentHomeSpread = Math.abs(current.home_spread || 0)
           const currentMaxSpread = Math.max(currentAwaySpread, currentHomeSpread)
@@ -48,24 +48,24 @@ export async function GET() {
           const bestHomeSpread = Math.abs(best.home_spread || 0)
           const bestMaxSpread = Math.max(bestAwaySpread, bestHomeSpread)
           
-          // Choose the matchup with the SMALLEST spread (most competitive)
-          return currentMaxSpread < bestMaxSpread ? current : best
+          // Choose the matchup with the LARGEST spread (most favored team)
+          return currentMaxSpread > bestMaxSpread ? current : best
         })
 
         // Add computed fields
         if (bestDefaultPickMatchup) {
-          // Determine which team is the underdog (most likely to win in loser pool)
+          // Determine which team is most favored (most likely to win in loser pool)
           const awaySpread = bestDefaultPickMatchup.away_spread || 0
           const homeSpread = bestDefaultPickMatchup.home_spread || 0
           
-          if (awaySpread < homeSpread) {
-            // Away team is the underdog (more likely to win)
+          if (awaySpread > homeSpread) {
+            // Away team is most favored (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
-            bestDefaultPickMatchup.spread_magnitude = Math.abs(awaySpread)
+            bestDefaultPickMatchup.spread_magnitude = awaySpread
           } else {
-            // Home team is the underdog (more likely to win)
+            // Home team is most favored (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.home_team
-            bestDefaultPickMatchup.spread_magnitude = Math.abs(homeSpread)
+            bestDefaultPickMatchup.spread_magnitude = homeSpread
           }
         }
       }
