@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Clock, Trophy, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, Trophy, TrendingUp, Target, Users } from 'lucide-react'
 
 interface Pick {
   picks_count: number
@@ -28,13 +28,44 @@ interface Matchup {
   winner: string | null
 }
 
+interface DefaultPickData {
+  currentWeek: number
+  defaultPick: {
+    matchup_id: string
+    away_team: string
+    home_team: string
+    favored_team: string
+    spread_magnitude: number
+    game_time: string
+  } | null
+  usersNeedingPicks: Array<{
+    id: string
+    email: string
+    username: string
+    name: string
+    picksAvailable: number
+  }>
+  userCount: number
+  totalPicksToAssign: number
+  currentWeekMatchups: Array<{
+    id: string
+    away_team: string
+    home_team: string
+    away_spread: number | null
+    home_spread: number | null
+    game_time: string
+    status: string
+  }>
+}
+
 export default function AdminResultsPage() {
   const [matchups, setMatchups] = useState<Matchup[]>([])
+  const [defaultPickData, setDefaultPickData] = useState<DefaultPickData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const loadMatchups = async () => {
+    const loadData = async () => {
       try {
         setLoading(true)
         setError('')
@@ -53,28 +84,44 @@ export default function AdminResultsPage() {
           'Authorization': `Bearer ${accessToken}`
         }
         
-        // Use the admin API route to fetch matchups
-        const response = await fetch('/api/admin/results', {
-          credentials: 'include',
-          headers
-        })
+        // Load matchups and default pick data in parallel
+        const [matchupsResponse, defaultPickResponse] = await Promise.all([
+          fetch('/api/admin/results', {
+            credentials: 'include',
+            headers
+          }),
+          fetch('/api/admin/current-week-default-pick', {
+            credentials: 'include',
+            headers
+          })
+        ])
         
-        if (!response.ok) {
-          const errorData = await response.json()
+        if (!matchupsResponse.ok) {
+          const errorData = await matchupsResponse.json()
           throw new Error(errorData.error || 'Failed to fetch matchups')
         }
         
-        const data = await response.json()
-        setMatchups(data.matchups || [])
+        if (!defaultPickResponse.ok) {
+          const errorData = await defaultPickResponse.json()
+          throw new Error(errorData.error || 'Failed to fetch default pick data')
+        }
+        
+        const [matchupsData, defaultPickData] = await Promise.all([
+          matchupsResponse.json(),
+          defaultPickResponse.json()
+        ])
+        
+        setMatchups(matchupsData.matchups || [])
+        setDefaultPickData(defaultPickData)
       } catch (err) {
-        console.error('Error loading matchups:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load matchups')
+        console.error('Error loading data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setLoading(false)
       }
     }
 
-    loadMatchups()
+    loadData()
   }, [])
 
   // Calculate stats for each matchup
@@ -183,6 +230,83 @@ export default function AdminResultsPage() {
             </Link>
           </div>
         </div>
+
+        {/* Current Week Default Pick */}
+        {defaultPickData && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Target className="w-5 h-5 mr-2 text-orange-200" />
+              Week {defaultPickData.currentWeek} Default Pick
+            </h2>
+            
+            {defaultPickData.defaultPick ? (
+              <div className="space-y-4">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        {defaultPickData.defaultPick.away_team} @ {defaultPickData.defaultPick.home_team}
+                      </h3>
+                      <p className="text-blue-200">
+                        Game Time: {new Date(defaultPickData.defaultPick.game_time).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-orange-300">
+                        {defaultPickData.defaultPick.favored_team}
+                      </div>
+                      <div className="text-sm text-orange-200">
+                        Favored by {defaultPickData.defaultPick.spread_magnitude} points
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-orange-500/20 rounded-lg">
+                        <Users className="w-5 h-5 text-orange-200" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-orange-100">Users Needing Picks</p>
+                        <p className="text-xl font-bold text-white">{defaultPickData.userCount}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <Target className="w-5 h-5 text-blue-200" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-blue-100">Total Picks to Assign</p>
+                        <p className="text-xl font-bold text-white">{defaultPickData.totalPicksToAssign}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {defaultPickData.userCount > 0 && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                    <p className="text-yellow-200 text-sm">
+                      <strong>{defaultPickData.userCount}</strong> users with completed purchases haven't made picks for Week {defaultPickData.currentWeek}.
+                      They will automatically be assigned to pick <strong>{defaultPickData.defaultPick.favored_team}</strong> (the most favored team).
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-4">
+                <p className="text-gray-200">
+                  No default pick available for Week {defaultPickData.currentWeek}. 
+                  This could mean no games are scheduled or no spreads are available.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
