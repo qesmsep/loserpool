@@ -66,17 +66,26 @@ export async function GET() {
           const awaySpread = bestDefaultPickMatchup.away_spread || 0
           const homeSpread = bestDefaultPickMatchup.home_spread || 0
           
-          // The team with the LARGER positive spread is most favored
-          if (awaySpread > homeSpread) {
-            // Away team is most favored (most likely to win)
+          // The team with the NEGATIVE spread is the favorite (most likely to win)
+          if (awaySpread < 0) {
+            // Away team is the favorite (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
-            bestDefaultPickMatchup.spread_magnitude = awaySpread
+            bestDefaultPickMatchup.spread_magnitude = Math.abs(awaySpread)
             console.log('Selected away team as most favored:', bestDefaultPickMatchup.away_team, 'with spread:', awaySpread)
-          } else {
-            // Home team is most favored (most likely to win)
+          } else if (homeSpread < 0) {
+            // Home team is the favorite (most likely to win)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.home_team
-            bestDefaultPickMatchup.spread_magnitude = homeSpread
+            bestDefaultPickMatchup.spread_magnitude = Math.abs(homeSpread)
             console.log('Selected home team as most favored:', bestDefaultPickMatchup.home_team, 'with spread:', homeSpread)
+          } else {
+            // Fallback: pick the team with the larger positive spread (shouldn't happen)
+            if (awaySpread > homeSpread) {
+              bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
+              bestDefaultPickMatchup.spread_magnitude = awaySpread
+            } else {
+              bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.home_team
+              bestDefaultPickMatchup.spread_magnitude = homeSpread
+            }
           }
         }
       }
