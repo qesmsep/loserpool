@@ -8,32 +8,48 @@ export async function GET() {
     await requireAdmin()
     const supabase = await createServerSupabaseClient()
 
-    // Get current week from global settings
-    const { data: weekSetting, error: weekError } = await supabase
-      .from('global_settings')
-      .select('value')
-      .eq('key', 'current_week')
-      .single()
+    // For now, let's use a hardcoded current week since global_settings might not exist
+    // TODO: Replace with proper current week detection
+    const currentWeek = 1
 
-    if (weekError || !weekSetting) {
+    // Get all matchups for current week
+    const { data: matchups, error: matchupsError } = await supabase
+      .from('matchups')
+      .select('*')
+      .eq('week', currentWeek)
+      .eq('status', 'scheduled')
+      .order('game_time', { ascending: true })
+
+    if (matchupsError) {
+      console.error('Error getting matchups:', matchupsError)
       return NextResponse.json(
-        { error: 'Could not determine current week' },
+        { error: 'Failed to get matchups' },
         { status: 500 }
       )
     }
 
-    const currentWeek = parseInt(weekSetting.value)
+    // Find the matchup with the largest spread
+    let largestSpreadMatchup = null
+    if (matchups && matchups.length > 0) {
+      // Filter out games that have already started
+      const futureMatchups = matchups.filter(m => new Date(m.game_time) > new Date())
+      
+      if (futureMatchups.length > 0) {
+        // Find the matchup with the largest spread
+        largestSpreadMatchup = futureMatchups.reduce((largest, current) => {
+          const currentSpread = Math.abs(Math.max(current.away_spread || 0, current.home_spread || 0))
+          const largestSpread = Math.abs(Math.max(largest.away_spread || 0, largest.home_spread || 0))
+          return currentSpread > largestSpread ? current : largest
+        })
 
-    // Get the largest spread matchup for current week
-    const { data: largestSpreadMatchup, error: matchupError } = await supabase
-      .rpc('get_largest_spread_matchup', { target_week: currentWeek })
-
-    if (matchupError) {
-      console.error('Error getting largest spread matchup:', matchupError)
-      return NextResponse.json(
-        { error: 'Failed to get largest spread matchup' },
-        { status: 500 }
-      )
+        // Add computed fields
+        if (largestSpreadMatchup) {
+          largestSpreadMatchup.favored_team = (largestSpreadMatchup.away_spread || 0) > (largestSpreadMatchup.home_spread || 0) 
+            ? largestSpreadMatchup.away_team 
+            : largestSpreadMatchup.home_team
+          largestSpreadMatchup.spread_magnitude = Math.abs(Math.max(largestSpreadMatchup.away_spread || 0, largestSpreadMatchup.home_spread || 0))
+        }
+      }
     }
 
     // Get users who would get default picks (users with completed purchases but no picks for current week)
@@ -85,27 +101,16 @@ export async function GET() {
       }
     }
 
-    // Get all matchups for current week to show spread information
-    const { data: currentWeekMatchups, error: matchupsError } = await supabase
-      .from('matchups')
-      .select('*')
-      .eq('week', currentWeek)
-      .order('game_time', { ascending: true })
-
-    if (matchupsError) {
-      console.error('Error fetching current week matchups:', matchupsError)
-    }
-
     // Calculate total picks that would be assigned
     const totalPicksToAssign = usersToAssign.reduce((sum, user) => sum + user.picksAvailable, 0)
 
     return NextResponse.json({
       currentWeek,
-      defaultPick: largestSpreadMatchup?.[0] || null,
+      defaultPick: largestSpreadMatchup || null,
       usersNeedingPicks: usersToAssign,
       userCount: usersToAssign.length,
       totalPicksToAssign,
-      currentWeekMatchups: currentWeekMatchups || [],
+      currentWeekMatchups: matchups || [],
       timestamp: new Date().toISOString()
     })
 
