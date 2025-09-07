@@ -73,6 +73,47 @@ export interface ESPNSchedule {
 export class ESPNService {
   private baseUrl = 'https://site.api.espn.com/apis/site/v2/sports'
 
+  // Map ESPN team abbreviations to our database team abbreviations
+  private teamNameMap: { [key: string]: string } = {
+    'WSH': 'WAS',  // Washington Commanders
+    'LAR': 'LAR',  // Los Angeles Rams (same)
+    'LAC': 'LAC',  // Los Angeles Chargers (same)
+    'GB': 'GB',    // Green Bay Packers (same)
+    'CHI': 'CHI',  // Chicago Bears (same)
+    'DAL': 'DAL',  // Dallas Cowboys (same)
+    'NYG': 'NYG',  // New York Giants (same)
+    'PHI': 'PHI',  // Philadelphia Eagles (same)
+    'DET': 'DET',  // Detroit Lions (same)
+    'KC': 'KC',    // Kansas City Chiefs (same)
+    'CAR': 'CAR',  // Carolina Panthers (same)
+    'ATL': 'ATL',  // Atlanta Falcons (same)
+    'HOU': 'HOU',  // Houston Texans (same)
+    'BAL': 'BAL',  // Baltimore Ravens (same)
+    'CIN': 'CIN',  // Cincinnati Bengals (same)
+    'CLE': 'CLE',  // Cleveland Browns (same)
+    'JAX': 'JAX',  // Jacksonville Jaguars (same)
+    'IND': 'IND',  // Indianapolis Colts (same)
+    'TB': 'TB',    // Tampa Bay Buccaneers (same)
+    'MIN': 'MIN',  // Minnesota Vikings (same)
+    'TEN': 'TEN',  // Tennessee Titans (same)
+    'NO': 'NO',    // New Orleans Saints (same)
+    'SF': 'SF',    // San Francisco 49ers (same)
+    'PIT': 'PIT',  // Pittsburgh Steelers (same)
+    'ARI': 'ARI',  // Arizona Cardinals (same)
+    'LV': 'LV',    // Las Vegas Raiders (same)
+    'DEN': 'DEN',  // Denver Broncos (same)
+    'MIA': 'MIA',  // Miami Dolphins (same)
+    'SEA': 'SEA',  // Seattle Seahawks (same)
+    'BUF': 'BUF',  // Buffalo Bills (same)
+    'NYJ': 'NYJ',  // New York Jets (same)
+    'NE': 'NE'     // New England Patriots (same)
+  }
+
+  // Map ESPN team abbreviation to our database abbreviation
+  private mapTeamName(espnAbbreviation: string): string {
+    return this.teamNameMap[espnAbbreviation] || espnAbbreviation
+  }
+
   // Get NFL schedule for a specific season and week
   async getNFLSchedule(season: number, week: number, seasonType: string = '2'): Promise<ESPNGame[]> {
     try {
@@ -235,8 +276,8 @@ export class ESPNService {
 
     return {
       id: espnGame.id,
-      away_team: awayTeam.team.abbreviation,
-      home_team: homeTeam.team.abbreviation,
+      away_team: this.mapTeamName(awayTeam.team.abbreviation),
+      home_team: this.mapTeamName(homeTeam.team.abbreviation),
       away_score: awayScore,
       home_score: homeScore,
       away_spread: awaySpread,
