@@ -27,10 +27,32 @@ export async function POST(request: NextRequest) {
     const currentWeek = parseInt(weekSetting?.value || '1')
     console.log(`Current week: ${currentWeek}`)
 
-    // Get all matchups for current week to check if deadline has passed
+    // Check if default picks have already been assigned for this week
+    const { data: existingDefaultPicks, error: existingError } = await supabase
+      .from('global_settings')
+      .select('value')
+      .eq('key', `default_picks_assigned_week_${currentWeek}`)
+      .single()
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('Error checking existing default picks:', existingError)
+      return NextResponse.json({ success: false, error: existingError.message }, { status: 500 })
+    }
+
+    if (existingDefaultPicks?.value === 'true') {
+      console.log(`Default picks already assigned for week ${currentWeek}`)
+      return NextResponse.json({
+        success: true,
+        message: `Default picks already assigned for week ${currentWeek}`,
+        default_picks_assigned: true,
+        current_week: currentWeek
+      })
+    }
+
+    // Get all matchups for current week to find Thursday night game
     const { data: matchups, error: matchupsError } = await supabase
       .from('matchups')
-      .select('id, away_team, home_team, game_time, status')
+      .select('id, away_team, home_team, game_time, status, away_spread, home_spread')
       .eq('week', currentWeek)
       .eq('status', 'scheduled')
       .order('game_time', { ascending: true })
@@ -49,37 +71,34 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if the deadline has passed (first game has started or is in the past)
+    // Find Thursday night game (first game of the week)
+    const thursdayGame = matchups[0]
     const now = new Date()
-    const firstGameTime = new Date(matchups[0].game_time)
-    const deadlinePassed = now >= firstGameTime
+    const thursdayKickoff = new Date(thursdayGame.game_time)
+    
+    // Check if we're at or just past Thursday night kickoff (within 5 minutes)
+    const timeDiff = now.getTime() - thursdayKickoff.getTime()
+    const fiveMinutes = 5 * 60 * 1000 // 5 minutes in milliseconds
+    
+    console.log(`Thursday kickoff check: now=${now.toISOString()}, kickoff=${thursdayKickoff.toISOString()}, time_diff_minutes=${Math.round(timeDiff / (60 * 1000))}`)
 
-    console.log(`Deadline check: now=${now.toISOString()}, first_game=${firstGameTime.toISOString()}, deadline_passed=${deadlinePassed}`)
-
-    if (!deadlinePassed) {
-      console.log('Deadline has not passed yet. No default picks to assign.')
+    // Only run if we're within 5 minutes after kickoff (not before)
+    if (timeDiff < 0 || timeDiff > fiveMinutes) {
+      console.log('Not at Thursday night kickoff time. No default picks to assign.')
       return NextResponse.json({
         success: true,
-        message: 'Deadline has not passed yet',
+        message: 'Not at Thursday night kickoff time',
         default_picks_assigned: false,
-        deadline_time: firstGameTime.toISOString(),
-        current_time: now.toISOString()
+        thursday_kickoff: thursdayKickoff.toISOString(),
+        current_time: now.toISOString(),
+        time_diff_minutes: Math.round(timeDiff / (60 * 1000))
       })
     }
 
-    // Deadline has passed, check if default picks have already been assigned
-    const { data: existingDefaultPicks, error: existingError } = await supabase
-      .from('picks')
-      .select('id')
-      .eq('created_at', now.toISOString().split('T')[0]) // Check if any picks were created today
-      .limit(1)
-
-    if (existingError) {
-      console.error('Error checking existing default picks:', existingError)
-    }
-
+    // We're at Thursday night kickoff - assign default picks based on current odds
+    console.log('Thursday night kickoff detected. Assigning default picks...')
+    
     // Call the database function to assign default picks
-    console.log('Deadline has passed. Assigning default picks...')
     const { data: result, error: assignError } = await supabase
       .rpc('assign_default_picks', { target_week: currentWeek })
 
@@ -89,6 +108,19 @@ export async function POST(request: NextRequest) {
         success: false, 
         error: `Failed to assign default picks: ${assignError.message}` 
       }, { status: 500 })
+    }
+
+    // Mark that default picks have been assigned for this week
+    const { error: markError } = await supabase
+      .from('global_settings')
+      .upsert({
+        key: `default_picks_assigned_week_${currentWeek}`,
+        value: 'true',
+        description: `Default picks assigned for week ${currentWeek} at Thursday night kickoff`
+      })
+
+    if (markError) {
+      console.error('Error marking default picks as assigned:', markError)
     }
 
     // Get details about what was assigned
@@ -104,12 +136,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Default picks assigned successfully`,
+      message: `Default picks assigned successfully at Thursday night kickoff`,
       picks_assigned: result,
       current_week: currentWeek,
       largest_spread_matchup: largestSpreadMatchup?.[0] || null,
       execution_time_ms: executionTime,
-      deadline_time: firstGameTime.toISOString(),
+      thursday_kickoff: thursdayKickoff.toISOString(),
       assignment_time: now.toISOString()
     })
 

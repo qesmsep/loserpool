@@ -30,7 +30,7 @@
     },
     {
       "path": "/api/cron/assign-default-picks",
-      "schedule": "*/5 * * * *"
+      "schedule": "20 20 * * 4"
     }
   ]
 } 
