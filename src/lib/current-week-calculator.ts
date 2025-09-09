@@ -29,7 +29,7 @@ export async function calculateCurrentWeek(): Promise<CurrentWeekInfo> {
   // Get all available games to determine the season year and preseason cutoff
   const { data: allMatchups } = await supabase
     .from('matchups')
-    .select('season, game_time')
+    .select('season, game_time, status')
     .order('game_time', { ascending: true })
   
   if (!allMatchups || allMatchups.length === 0) {
