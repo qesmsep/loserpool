@@ -173,73 +173,66 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
       }
     }
   } else {
-    // We're in regular season - find the current regular season week
-    const currentRegularSeasonGames = regularSeasonGames.filter(m => {
-      const gameDate = new Date(m.game_time)
-      return gameDate >= now && m.status === 'scheduled'
-    })
-    
-    if (currentRegularSeasonGames.length > 0) {
-      // Find the current regular season week based on scheduled games
-      const currentWeek = parseInt(currentRegularSeasonGames[0].season.replace('REG', ''))
-      const seasonDisplay = `REG${currentWeek}`
-      
-      console.log('🔍 Season Detection - Regular season mode, current week:', currentWeek, 'seasonDisplay:', seasonDisplay)
-      
+    // We're in regular season - keep showing the earliest week that still has any non-final game
+    const weekNumbers = Array.from(new Set(
+      regularSeasonGames
+        .map(m => m.season)
+        .filter((s): s is string => typeof s === 'string' && s.startsWith('REG'))
+        .map(s => parseInt(s.replace('REG', '')))
+    )).sort((a, b) => a - b)
+
+    for (const weekNum of weekNumbers) {
+      const gamesThisWeek = regularSeasonGames.filter(m => parseInt((m.season || 'REG0').replace('REG', '')) === weekNum)
+      // If ANY game this week is not final, this is the current week
+      const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
+      if (anyNonFinal) {
+        const seasonDisplay = `REG${weekNum}`
+        console.log('🔍 Season Detection - Regular season mode (non-final present), current week:', weekNum, 'seasonDisplay:', seasonDisplay)
+        return {
+          currentSeason: 'REG',
+          currentWeek: weekNum,
+          seasonDisplay,
+          isPreseason: false,
+          isRegularSeason: true,
+          preseasonCutoff,
+          seasonYear
+        }
+      }
+    }
+
+    // All games in all discovered weeks are final; fall back to the last available regular week
+    if (weekNumbers.length > 0) {
+      const lastWeek = Math.max(...weekNumbers)
+      const seasonDisplay = `REG${lastWeek}`
+      console.log('🔍 Season Detection - All weeks final, using last regular week:', lastWeek)
       return {
         currentSeason: 'REG',
-        currentWeek,
+        currentWeek: lastWeek,
         seasonDisplay,
         isPreseason: false,
         isRegularSeason: true,
         preseasonCutoff,
         seasonYear
       }
-    } else {
-      // No current regular season games, find the next available regular season week
-      const futureRegularSeasonGames = regularSeasonGames.filter(m => {
-        const gameDate = new Date(m.game_time)
-        return gameDate > now
-      })
-      
-      if (futureRegularSeasonGames.length > 0) {
-        const nextWeek = parseInt(futureRegularSeasonGames[0].season.replace('REG', ''))
-        const seasonDisplay = `REG${nextWeek}`
-        
-        console.log('🔍 Season Detection - Regular season mode, next week:', nextWeek, 'seasonDisplay:', seasonDisplay)
-        
-        return {
-          currentSeason: 'REG',
-          currentWeek: nextWeek,
-          seasonDisplay,
-          isPreseason: false,
-          isRegularSeason: true,
-          preseasonCutoff,
-          seasonYear
-        }
-      } else {
-        // No future regular season games, use global settings as fallback
-        const { data: currentWeekSetting } = await supabase
-          .from('global_settings')
-          .select('value')
-          .eq('key', 'current_week')
-          .single()
-        
-        const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
-        const seasonDisplay = `REG${currentWeek}`
-        
-        console.log('🔍 Season Detection - No regular season games available, using global settings:', seasonDisplay)
-        
-        return {
-          currentSeason: 'REG',
-          currentWeek,
-          seasonDisplay,
-          isPreseason: false,
-          isRegularSeason: true,
-          preseasonCutoff,
-          seasonYear
-        }
-      }
+    }
+
+    // No regular season games found; use global settings as a final fallback
+    const { data: currentWeekSetting } = await supabase
+      .from('global_settings')
+      .select('value')
+      .eq('key', 'current_week')
+      .single()
+    const currentWeek = currentWeekSetting ? parseInt(currentWeekSetting.value) : 1
+    const seasonDisplay = `REG${currentWeek}`
+    console.log('🔍 Season Detection - No regular season games, using global settings:', seasonDisplay)
+    return {
+      currentSeason: 'REG',
+      currentWeek,
+      seasonDisplay,
+      isPreseason: false,
+      isRegularSeason: true,
+      preseasonCutoff,
+      seasonYear
     }
   }
 }

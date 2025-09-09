@@ -132,40 +132,42 @@ export async function calculateCurrentWeek(): Promise<CurrentWeekInfo> {
   } else {
     // We're in regular season or postseason
     if (regularSeasonGames.length > 0) {
-      // Find the current regular season week based on game times
-      const now = new Date()
-      const upcomingGames = regularSeasonGames.filter(m => 
-        new Date(m.game_time) > now
-      )
-      
-      if (upcomingGames.length > 0) {
-        // Find the earliest upcoming week
-        const currentWeek = Math.min(...upcomingGames.map(m => parseInt(m.season.replace('REG', ''))))
-        console.log('🔍 Current Week Calculator - Regular season mode, week:', currentWeek)
-        
-        return {
-          currentWeek,
-          currentSeason: 'REG',
-          seasonString: `REG${currentWeek}`,
-          isPreseason: false,
-          isRegularSeason: true,
-          isPostseason: false,
-          reason: `Regular season week ${currentWeek} (after ${preseasonCutoff.toISOString()})`
+      // Determine the earliest regular-season week that still has any non-final game
+      const weekNumbers = Array.from(new Set(
+        regularSeasonGames
+          .map(m => m.season)
+          .filter((s): s is string => typeof s === 'string' && s.startsWith('REG'))
+          .map(s => parseInt(s.replace('REG', '')))
+      )).sort((a, b) => a - b)
+
+      for (const weekNum of weekNumbers) {
+        const gamesThisWeek = regularSeasonGames.filter(m => parseInt((m.season || 'REG0').replace('REG', '')) === weekNum)
+        const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
+        if (anyNonFinal) {
+          console.log('🔍 Current Week Calculator - Regular season mode (non-final present), week:', weekNum)
+          return {
+            currentWeek: weekNum,
+            currentSeason: 'REG',
+            seasonString: `REG${weekNum}`,
+            isPreseason: false,
+            isRegularSeason: true,
+            isPostseason: false,
+            reason: `Regular season week ${weekNum} has non-final games (after ${preseasonCutoff.toISOString()})`
+          }
         }
-      } else {
-        // All regular season games are past, use the last regular season week
-        const maxRegularWeek = Math.max(...regularSeasonGames.map(m => parseInt(m.season.replace('REG', ''))))
-        console.log('🔍 Current Week Calculator - End of regular season, last week:', maxRegularWeek)
-        
-        return {
-          currentWeek: maxRegularWeek,
-          currentSeason: 'REG',
-          seasonString: `REG${maxRegularWeek}`,
-          isPreseason: false,
-          isRegularSeason: true,
-          isPostseason: false,
-          reason: `End of regular season week ${maxRegularWeek} (no postseason games available)`
-        }
+      }
+
+      // All discovered weeks are final; use the last week
+      const maxRegularWeek = Math.max(...weekNumbers)
+      console.log('🔍 Current Week Calculator - All weeks final, using last week:', maxRegularWeek)
+      return {
+        currentWeek: maxRegularWeek,
+        currentSeason: 'REG',
+        seasonString: `REG${maxRegularWeek}`,
+        isPreseason: false,
+        isRegularSeason: true,
+        isPostseason: false,
+        reason: `All regular season weeks are final; using last week ${maxRegularWeek}`
       }
     } else {
       // No regular season games, this shouldn't happen but default to week 1
