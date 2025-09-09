@@ -8,21 +8,10 @@ export async function POST() {
     await requireAdmin()
     const supabase = await createServerSupabaseClient()
 
-    // Get current week from global settings
-    const { data: weekSetting, error: weekError } = await supabase
-      .from('global_settings')
-      .select('value')
-      .eq('key', 'current_week')
-      .single()
-
-    if (weekError || !weekSetting) {
-      return NextResponse.json(
-        { error: 'Could not determine current week' },
-        { status: 500 }
-      )
-    }
-
-    const currentWeek = parseInt(weekSetting.value)
+    // Get current week using the same logic as the dashboard
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek = seasonInfo.currentWeek
 
     // Call the database function to assign default picks
     const { data: result, error: assignError } = await supabase
@@ -68,21 +57,10 @@ export async function GET() {
     await requireAdmin()
     const supabase = await createServerSupabaseClient()
 
-    // Get current week
-    const { data: weekSetting, error: weekError } = await supabase
-      .from('global_settings')
-      .select('value')
-      .eq('key', 'current_week')
-      .single()
-
-    if (weekError || !weekSetting) {
-      return NextResponse.json(
-        { error: 'Could not determine current week' },
-        { status: 500 }
-      )
-    }
-
-    const currentWeek = parseInt(weekSetting.value)
+    // Get current week using the same logic as the dashboard
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek = seasonInfo.currentWeek
 
     // Get the largest spread matchup for preview
     const { data: largestSpreadMatchup, error: matchupError } = await supabase

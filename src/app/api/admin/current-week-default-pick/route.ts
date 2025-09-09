@@ -7,9 +7,10 @@ export async function GET() {
     // await requireAdmin()
     const supabase = await createServerSupabaseClient()
 
-    // For now, let's use a hardcoded current week since global_settings might not exist
-    // TODO: Replace with proper current week detection
-    const currentWeek = 1
+    // Get current week using the same logic as the dashboard
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek = seasonInfo.currentWeek
 
     // Get all matchups for current week
     const { data: matchups, error: matchupsError } = await supabase
@@ -36,48 +37,59 @@ export async function GET() {
       const futureMatchups = matchups.filter(m => new Date(m.game_time) > new Date())
       
       if (futureMatchups.length > 0) {
-        // Find the matchup with the largest spread (most favored team = most likely to win)
+        // Find the matchup with the largest positive spread (most underdog team = most likely to lose)
         bestDefaultPickMatchup = futureMatchups.reduce((best, current) => {
-          // Calculate the spread magnitude for each team (larger = more favored)
-          const currentAwaySpread = Math.abs(current.away_spread || 0)
-          const currentHomeSpread = Math.abs(current.home_spread || 0)
-          const currentMaxSpread = Math.max(currentAwaySpread, currentHomeSpread)
+          // Calculate the positive spread for each team (larger positive = more underdog)
+          const currentAwayPositiveSpread = Math.max(0, current.away_spread || 0)
+          const currentHomePositiveSpread = Math.max(0, current.home_spread || 0)
+          const currentMaxPositiveSpread = Math.max(currentAwayPositiveSpread, currentHomePositiveSpread)
           
-          const bestAwaySpread = Math.abs(best.away_spread || 0)
-          const bestHomeSpread = Math.abs(best.home_spread || 0)
-          const bestMaxSpread = Math.max(bestAwaySpread, bestHomeSpread)
+          const bestAwayPositiveSpread = Math.max(0, best.away_spread || 0)
+          const bestHomePositiveSpread = Math.max(0, best.home_spread || 0)
+          const bestMaxPositiveSpread = Math.max(bestAwayPositiveSpread, bestHomePositiveSpread)
           
-          // Choose the matchup with the LARGEST spread (most favored team)
-          return currentMaxSpread > bestMaxSpread ? current : best
+          // Choose the matchup with the LARGEST positive spread (most underdog team)
+          return currentMaxPositiveSpread > bestMaxPositiveSpread ? current : best
         })
 
         // Add computed fields
         if (bestDefaultPickMatchup) {
           // Debug: Log the matchup data
+          console.log('Default pick calculation for week', currentWeek)
           console.log('Best matchup found:', {
+            id: bestDefaultPickMatchup.id,
             away_team: bestDefaultPickMatchup.away_team,
             home_team: bestDefaultPickMatchup.home_team,
             away_spread: bestDefaultPickMatchup.away_spread,
-            home_spread: bestDefaultPickMatchup.home_spread
+            home_spread: bestDefaultPickMatchup.home_spread,
+            game_time: bestDefaultPickMatchup.game_time
           })
+          console.log('All matchups considered:', futureMatchups.map(m => ({
+            id: m.id,
+            away_team: m.away_team,
+            home_team: m.home_team,
+            away_spread: m.away_spread,
+            home_spread: m.home_spread,
+            game_time: m.game_time
+          })))
           
-          // Determine which team is most favored (most likely to win in loser pool)
+          // Determine which team is the underdog (most likely to lose in loser pool)
           const awaySpread = bestDefaultPickMatchup.away_spread || 0
           const homeSpread = bestDefaultPickMatchup.home_spread || 0
           
-          // The team with the NEGATIVE spread is the favorite (most likely to win)
-          if (awaySpread < 0) {
-            // Away team is the favorite (most likely to win)
+          // The team with the POSITIVE spread is the underdog (most likely to lose)
+          if (awaySpread > 0) {
+            // Away team is the underdog (most likely to lose)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
-            bestDefaultPickMatchup.spread_magnitude = Math.abs(awaySpread)
-            console.log('Selected away team as most favored:', bestDefaultPickMatchup.away_team, 'with spread:', awaySpread)
-          } else if (homeSpread < 0) {
-            // Home team is the favorite (most likely to win)
+            bestDefaultPickMatchup.spread_magnitude = awaySpread
+            console.log('Selected away team as most likely to lose (underdog):', bestDefaultPickMatchup.away_team, 'with spread:', awaySpread)
+          } else if (homeSpread > 0) {
+            // Home team is the underdog (most likely to lose)
             bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.home_team
-            bestDefaultPickMatchup.spread_magnitude = Math.abs(homeSpread)
-            console.log('Selected home team as most favored:', bestDefaultPickMatchup.home_team, 'with spread:', homeSpread)
+            bestDefaultPickMatchup.spread_magnitude = homeSpread
+            console.log('Selected home team as most likely to lose (underdog):', bestDefaultPickMatchup.home_team, 'with spread:', homeSpread)
           } else {
-            // Fallback: pick the team with the larger positive spread (shouldn't happen)
+            // Fallback: pick the team with the larger positive spread (shouldn't happen with new logic)
             if (awaySpread > homeSpread) {
               bestDefaultPickMatchup.favored_team = bestDefaultPickMatchup.away_team
               bestDefaultPickMatchup.spread_magnitude = awaySpread
