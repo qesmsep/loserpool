@@ -277,9 +277,18 @@ export async function getUserSeasonFilter(userId: string): Promise<string> {
       return seasonInfo.seasonDisplay
     }
   } else {
-    // Non-testers always see regular season week 1
-    console.log('🔍 getUserSeasonFilter - Non-tester, returning REG1')
-    return 'REG1'
+    // Non-testers see current regular season week (not always week 1)
+    const seasonInfo = await getCurrentSeasonInfo()
+    
+    if (seasonInfo.isPreseason) {
+      // Before preseason cutoff, non-testers see regular season week 1
+      console.log('🔍 getUserSeasonFilter - Non-tester in preseason, returning REG1')
+      return 'REG1'
+    } else {
+      // After preseason cutoff, non-testers see current regular season week
+      console.log('🔍 getUserSeasonFilter - Non-tester in regular season, returning:', seasonInfo.seasonDisplay)
+      return seasonInfo.seasonDisplay
+    }
   }
 }
 
