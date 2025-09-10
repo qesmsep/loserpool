@@ -93,6 +93,9 @@ export default function AdminPage() {
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [showTeamBreakdownModal, setShowTeamBreakdownModal] = useState(false)
   const [defaultPickData, setDefaultPickData] = useState<DefaultPickData | null>(null)
+  const [weekCompletionStatus, setWeekCompletionStatus] = useState<any>(null)
+  const [currentWeekActive, setCurrentWeekActive] = useState<{ count: number; col: string } | null>(null)
+  const [currentWeekActiveError, setCurrentWeekActiveError] = useState(false)
 
   useEffect(() => {
     // Check if user is authenticated and is admin
@@ -199,6 +202,25 @@ export default function AdminPage() {
         } else {
           console.error('Default pick API error:', defaultPickResponse.status)
         }
+
+        // Use canonical server endpoint to get exact column name and DB count
+        try {
+          const res = await fetch('/api/admin/current-week-active-picks', {
+            credentials: 'include',
+            headers
+          })
+          if (!res.ok) {
+            setCurrentWeekActiveError(true)
+          } else {
+            const data = await res.json()
+            setCurrentWeekActive({ count: data.currentWeekActivePicksCount, col: data.weekColumnName })
+            setCurrentWeekActiveError(false)
+          }
+        } catch (e) {
+          setCurrentWeekActiveError(true)
+        }
+
+        // Note: week status and server-computed active picks count disabled to avoid noisy errors.
       } catch (error) {
         console.error('Error loading admin data:', error)
       } finally {
@@ -213,6 +235,99 @@ export default function AdminPage() {
   const totalPicksPurchased = purchases?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.picks_count, 0) || 0
   const activePicks = picks?.filter(p => p.status === 'active') || []
   const eliminatedPicks = picks?.filter(p => p.status === 'eliminated') || []
+  const safePicks = picks?.filter(p => p.status === 'safe') || []
+  const pendingPicks = picks?.filter(p => p.status === 'pending') || []
+
+  // Compute total of all non-null week-column values across all picks (adds every value that isn't null)
+  const weekColumns = [
+    'pre1_team_matchup_id','pre2_team_matchup_id','pre3_team_matchup_id',
+    'reg1_team_matchup_id','reg2_team_matchup_id','reg3_team_matchup_id','reg4_team_matchup_id','reg5_team_matchup_id','reg6_team_matchup_id','reg7_team_matchup_id','reg8_team_matchup_id','reg9_team_matchup_id','reg10_team_matchup_id','reg11_team_matchup_id','reg12_team_matchup_id','reg13_team_matchup_id','reg14_team_matchup_id','reg15_team_matchup_id','reg16_team_matchup_id','reg17_team_matchup_id','reg18_team_matchup_id',
+    'post1_team_matchup_id','post2_team_matchup_id','post3_team_matchup_id','post4_team_matchup_id'
+  ] as const
+
+  const totalActivePicksComputed = picks.reduce((sum, p) => {
+    let count = 0
+    for (const key of weekColumns) {
+      if ((p as unknown as Record<string, unknown>)[key]) count += 1
+    }
+    return sum + count
+  }, 0)
+
+  const weekNames: Record<string, string> = {
+    pre1_team_matchup_id: 'Pre Season Week 1',
+    pre2_team_matchup_id: 'Pre Season Week 2',
+    pre3_team_matchup_id: 'Pre Season Week 3',
+    reg1_team_matchup_id: 'Regular Season Week 1',
+    reg2_team_matchup_id: 'Regular Season Week 2',
+    reg3_team_matchup_id: 'Regular Season Week 3',
+    reg4_team_matchup_id: 'Regular Season Week 4',
+    reg5_team_matchup_id: 'Regular Season Week 5',
+    reg6_team_matchup_id: 'Regular Season Week 6',
+    reg7_team_matchup_id: 'Regular Season Week 7',
+    reg8_team_matchup_id: 'Regular Season Week 8',
+    reg9_team_matchup_id: 'Regular Season Week 9',
+    reg10_team_matchup_id: 'Regular Season Week 10',
+    reg11_team_matchup_id: 'Regular Season Week 11',
+    reg12_team_matchup_id: 'Regular Season Week 12',
+    reg13_team_matchup_id: 'Regular Season Week 13',
+    reg14_team_matchup_id: 'Regular Season Week 14',
+    reg15_team_matchup_id: 'Regular Season Week 15',
+    reg16_team_matchup_id: 'Regular Season Week 16',
+    reg17_team_matchup_id: 'Regular Season Week 17',
+    reg18_team_matchup_id: 'Regular Season Week 18',
+    post1_team_matchup_id: 'Post Season Week 1',
+    post2_team_matchup_id: 'Post Season Week 2',
+    post3_team_matchup_id: 'Post Season Week 3',
+    post4_team_matchup_id: 'Post Season Week 4'
+  }
+
+  const activePicksCount = {
+    totalActivePicks: totalActivePicksComputed,
+    breakdown: weekColumns.map((col) => ({
+      week_column: col,
+      week_name: weekNames[col],
+      pick_count: picks.reduce((sum, p) => sum + ((p as unknown as Record<string, unknown>)[col] ? 1 : 0), 0)
+    })).filter(item => item.pick_count > 0)
+  }
+
+  // Current week's non-null cells only
+  const getWeekColumnFromWeek = (week?: number | null): string | null => {
+    if (!week || week < 1) return null
+    if (week <= 3) return `pre${week}_team_matchup_id`
+    if (week <= 20) return `reg${week - 3}_team_matchup_id`
+    const postIdx = week - 20
+    if (postIdx >= 1 && postIdx <= 4) return `post${postIdx}_team_matchup_id`
+    return null
+  }
+
+  // Strict: use only the mapped current week column; if unknown, treat as error (null)
+  const currentWeekColumnName = getWeekColumnFromWeek(defaultPickData?.currentWeek)
+  const currentWeekActiveCount = currentWeekColumnName === null
+    ? null
+    : picks.reduce((sum, p) => sum + ((p as unknown as Record<string, unknown>)[currentWeekColumnName] ? 1 : 0), 0)
+
+  const handleConvertSafePicks = async () => {
+    try {
+      const response = await fetch('/api/admin/convert-safe-picks', {
+        method: 'POST',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Safe picks conversion result:', result)
+        
+        // Refresh the data to show updated counts
+        window.location.reload()
+      } else {
+        console.error('Failed to convert safe picks')
+        alert('Failed to convert safe picks. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error converting safe picks:', error)
+      alert('Error converting safe picks. Please try again.')
+    }
+  }
 
   if (authLoading || loading) {
     return (
@@ -275,9 +390,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowStatsModal(true)}
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors cursor-pointer"
+          <div
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6"
           >
             <div className="flex items-center">
               <div className="p-2 bg-orange-500/20 rounded-lg">
@@ -285,15 +399,100 @@ export default function AdminPage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-orange-100">Active Picks</p>
-                <p className="text-2xl font-bold text-white">{activePicks.length}</p>
-                {eliminatedPicks.length > 0 && (
-                  <p className="text-sm text-red-300">({eliminatedPicks.length} eliminated)</p>
-                )}
-                <p className="text-xs text-orange-200 mt-1">Click to view details</p>
+                <p className="text-2xl font-bold text-white">{currentWeekActiveError ? 'ERR' : (currentWeekActive?.count ?? 0)}</p>
+                <div className="text-xs text-orange-200 mt-1 space-y-1">
+                  {pendingPicks.length > 0 && (
+                    <p className="text-blue-300">({pendingPicks.length} pending)</p>
+                  )}
+                </div>
               </div>
             </div>
-          </button>
+          </div>
         </div>
+
+        {/* Automatic Conversion Status */}
+        {weekCompletionStatus && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Settings className="w-5 h-5 mr-2 text-green-200" />
+              Automatic Conversion Status
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Calendar className="w-5 h-5 text-blue-200" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-blue-100">Current Week</p>
+                    <p className="text-xl font-bold text-white">
+                      {weekCompletionStatus.currentWeek?.current_week || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <Trophy className="w-5 h-5 text-green-200" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-green-100">Games Completed</p>
+                    <p className="text-xl font-bold text-white">
+                      {weekCompletionStatus.currentWeek?.completed_games || 0} / {weekCompletionStatus.currentWeek?.total_games || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center">
+                  <div className={`p-2 rounded-lg ${
+                    weekCompletionStatus.currentWeek?.is_complete 
+                      ? 'bg-green-500/20' 
+                      : 'bg-yellow-500/20'
+                  }`}>
+                    <Target className={`w-5 h-5 ${
+                      weekCompletionStatus.currentWeek?.is_complete 
+                        ? 'text-green-200' 
+                        : 'text-yellow-200'
+                    }`} />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-white">Auto Conversion</p>
+                    <p className={`text-xl font-bold ${
+                      weekCompletionStatus.currentWeek?.is_complete 
+                        ? 'text-green-300' 
+                        : 'text-yellow-300'
+                    }`}>
+                      {weekCompletionStatus.currentWeek?.is_complete ? 'Ready' : 'Waiting'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {weekCompletionStatus.currentWeek?.is_complete && (
+              <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <p className="text-green-200 text-sm">
+                  ✅ <strong>Week {weekCompletionStatus.currentWeek?.current_week} is complete!</strong> 
+                  Safe picks have been automatically converted to pending status.
+                </p>
+              </div>
+            )}
+            
+            {!weekCompletionStatus.currentWeek?.is_complete && weekCompletionStatus.currentWeek?.total_games > 0 && (
+              <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                <p className="text-yellow-200 text-sm">
+                  ⏳ <strong>Week {weekCompletionStatus.currentWeek?.current_week} is {weekCompletionStatus.currentWeek?.completion_percentage}% complete.</strong> 
+                  Automatic conversion will trigger when all games finish.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Current Week Default Pick */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 mb-8">
@@ -413,6 +612,18 @@ export default function AdminPage() {
             <h3 className="text-lg font-semibold text-white mb-2">Team Picks Breakdown</h3>
             <p className="text-blue-200">View teams picked to lose and pick counts</p>
           </button>
+
+          <button
+            onClick={handleConvertSafePicks}
+            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors cursor-pointer text-left"
+          >
+            <h3 className="text-lg font-semibold text-white mb-2">Manual Conversion</h3>
+            <p className="text-blue-200">Manually trigger safe picks conversion</p>
+            <p className="text-green-300 text-sm mt-1">Automatic conversion runs when games complete</p>
+            {safePicks.length > 0 && (
+              <p className="text-yellow-300 text-sm mt-1">{safePicks.length} picks ready to convert</p>
+            )}
+          </button>
         </div>
 
         {/* Recent Purchases */}
@@ -456,6 +667,9 @@ export default function AdminPage() {
           onClose={() => setShowStatsModal(false)}
           activePicks={activePicks}
           eliminatedPicks={eliminatedPicks}
+          safePicks={safePicks}
+          pendingPicks={pendingPicks}
+          activePicksCount={activePicksCount}
           users={users}
           totalRevenue={totalRevenue}
         />
