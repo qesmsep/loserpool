@@ -52,7 +52,7 @@ export async function GET() {
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
     const seasonInfo = await getCurrentSeasonInfo()
     // Use the same number the default-pick API returns
-    const currentWeek = (seasonInfo as any)?.currentWeek
+    const currentWeek: number | undefined = (seasonInfo as unknown as { currentWeek?: number })?.currentWeek
     if (!currentWeek || typeof currentWeek !== 'number') {
       return NextResponse.json({ error: 'no_current_week' }, { status: 500 })
     }
