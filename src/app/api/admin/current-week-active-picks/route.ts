@@ -65,7 +65,7 @@ export async function GET() {
       'post1_team_matchup_id','post2_team_matchup_id','post3_team_matchup_id','post4_team_matchup_id'
     ]
     if (!weekColumnName || !allowedCols.includes(weekColumnName)) {
-      return NextResponse.json({ error: 'invalid_week_column', weekColumnName, currentWeekNumber }, { status: 500 })
+      return NextResponse.json({ error: 'invalid_week_column', weekColumnName, currentWeek }, { status: 500 })
     }
 
     if (!weekColumnName) {

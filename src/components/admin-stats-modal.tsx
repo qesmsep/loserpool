@@ -46,13 +46,26 @@ interface User {
   last_name: string | null
 }
 
+interface ActivePicksBreakdownItem {
+  week_column: string
+  week_name: string
+  pick_count: number
+}
+
+interface ActivePicksCount {
+  totalActivePicks: number
+  breakdown: ActivePicksBreakdownItem[]
+}
+
 interface AdminStatsModalProps {
   isOpen: boolean
   onClose: () => void
   activePicks: Pick[]
   eliminatedPicks: Pick[]
+  safePicks: Pick[]
+  pendingPicks: Pick[]
+  activePicksCount: ActivePicksCount
   users: User[]
-
   totalRevenue: number
 }
 
@@ -61,11 +74,13 @@ export default function AdminStatsModal({
   onClose,
   activePicks,
   eliminatedPicks,
+  safePicks,
+  pendingPicks,
+  activePicksCount,
   users,
-
   totalRevenue
 }: AdminStatsModalProps) {
-  const [activeTab, setActiveTab] = useState<'active' | 'eliminated' | 'summary'>('summary')
+  const [activeTab, setActiveTab] = useState<'active' | 'eliminated' | 'safe' | 'pending' | 'breakdown' | 'summary'>('summary')
 
   if (!isOpen) return null
 
@@ -136,6 +151,36 @@ export default function AdminStatsModal({
             }`}
           >
             Eliminated Picks ({eliminatedPicks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('safe')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'safe'
+                ? 'text-white border-b-2 border-yellow-500'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            Safe Picks ({safePicks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'pending'
+                ? 'text-white border-b-2 border-blue-500'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            Pending Picks ({pendingPicks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('breakdown')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'breakdown'
+                ? 'text-white border-b-2 border-purple-500'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            Week Breakdown
           </button>
         </div>
 
@@ -255,6 +300,104 @@ export default function AdminStatsModal({
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'safe' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4">Safe Picks Details</h3>
+              {safePicks.length === 0 ? (
+                <p className="text-blue-200 text-center py-8">No safe picks found</p>
+              ) : (
+                <div className="space-y-3">
+                  {safePicks.map((pick) => (
+                    <div key={pick.id} className="bg-white/5 border border-white/20 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-white">{pick.pick_name}</h4>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-200">
+                          {pick.picks_count} pick{pick.picks_count > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
+                          <p className="text-blue-200">Team: {getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)}</p>
+                        </div>
+                        <div>
+                          <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>
+                          <p className="text-blue-200">Updated: {new Date(pick.updated_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'pending' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4">Pending Picks Details</h3>
+              {pendingPicks.length === 0 ? (
+                <p className="text-blue-200 text-center py-8">No pending picks found</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingPicks.map((pick) => (
+                    <div key={pick.id} className="bg-white/5 border border-white/20 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-white">{pick.pick_name}</h4>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-200">
+                          {pick.picks_count} pick{pick.picks_count > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-blue-200">User: {getUserName(pick.user_id)}</p>
+                          <p className="text-blue-200">Status: Waiting for next week&apos;s pick</p>
+                        </div>
+                        <div>
+                          <p className="text-blue-200">Created: {new Date(pick.created_at).toLocaleDateString()}</p>
+                          <p className="text-blue-200">Updated: {new Date(pick.updated_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'breakdown' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white mb-4">Active Picks by Week</h3>
+              {activePicksCount?.breakdown && activePicksCount.breakdown.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="bg-white/5 border border-white/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-white">Total Active Picks</h4>
+                      <span className="px-3 py-1 text-sm font-semibold rounded-full bg-orange-500/20 text-orange-200">
+                        {activePicksCount.totalActivePicks}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {activePicksCount.breakdown.map((week: ActivePicksBreakdownItem, index: number) => (
+                    <div key={index} className="bg-white/5 border border-white/20 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-white">{week.week_name}</h4>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-500/20 text-purple-200">
+                          {week.pick_count} picks
+                        </span>
+                      </div>
+                      <div className="text-sm text-blue-200">
+                        <p>Column: {week.week_column}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-blue-200 text-center py-8">No active picks breakdown available</p>
               )}
             </div>
           )}
