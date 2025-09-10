@@ -306,28 +306,7 @@ export default function AdminPage() {
     ? null
     : picks.reduce((sum, p) => sum + ((p as unknown as Record<string, unknown>)[currentWeekColumnName] ? 1 : 0), 0)
 
-  const handleConvertSafePicks = async () => {
-    try {
-      const response = await fetch('/api/admin/convert-safe-picks', {
-        method: 'POST',
-        credentials: 'include'
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log('Safe picks conversion result:', result)
-        
-        // Refresh the data to show updated counts
-        window.location.reload()
-      } else {
-        console.error('Failed to convert safe picks')
-        alert('Failed to convert safe picks. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error converting safe picks:', error)
-      alert('Error converting safe picks. Please try again.')
-    }
-  }
+  // Manual conversion removed
 
   if (authLoading || loading) {
     return (
@@ -425,62 +404,27 @@ export default function AdminPage() {
               <p className="text-blue-200">Loading default pick information...</p>
             </div>
           ) : defaultPickData && defaultPickData.defaultPick ? (
-            <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="space-y-2">
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-base font-semibold text-white">
                       {defaultPickData.defaultPick.away_team} @ {defaultPickData.defaultPick.home_team}
                     </h3>
-                    <p className="text-blue-200">
-                      Game Time: {new Date(defaultPickData.defaultPick.game_time).toLocaleString()}
+                    <p className="text-xs text-blue-200">
+                      {new Date(defaultPickData.defaultPick.game_time).toLocaleString()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-orange-300">
+                    <div className="text-xl font-bold text-orange-300">
                       {defaultPickData.defaultPick.favored_team}
                     </div>
-                    <div className="text-sm text-orange-200">
-                      Favored by {defaultPickData.defaultPick.spread_magnitude} points
+                    <div className="text-xs text-orange-200">
+                      Favored by {defaultPickData.defaultPick.spread_magnitude}
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-orange-500/20 rounded-lg">
-                      <Users className="w-5 h-5 text-orange-200" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-orange-100">Users Needing Picks</p>
-                      <p className="text-xl font-bold text-white">{defaultPickData.userCount}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-500/20 rounded-lg">
-                      <Target className="w-5 h-5 text-blue-200" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-blue-100">Total Picks to Assign</p>
-                      <p className="text-xl font-bold text-white">{defaultPickData.totalPicksToAssign}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {defaultPickData.userCount > 0 && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                  <p className="text-yellow-200 text-sm">
-                    <strong>{defaultPickData.userCount}</strong> users with completed purchases haven&apos;t made picks for Week {defaultPickData.currentWeek}.
-                    They will automatically be assigned to pick <strong>{defaultPickData.defaultPick.favored_team}</strong> (the most favored team).
-                  </p>
-                </div>
-              )}
             </div>
           ) : defaultPickData ? (
             <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-4">
@@ -532,17 +476,36 @@ export default function AdminPage() {
             <p className="text-blue-200">View teams picked to lose and pick counts</p>
           </button>
 
-          <button
-            onClick={handleConvertSafePicks}
-            className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6 hover:bg-white/15 transition-colors cursor-pointer text-left"
-          >
-            <h3 className="text-lg font-semibold text-white mb-2">Manual Conversion</h3>
-            <p className="text-blue-200">Manually trigger safe picks conversion</p>
-            <p className="text-green-300 text-sm mt-1">Automatic conversion runs when games complete</p>
-            {safePicks.length > 0 && (
-              <p className="text-yellow-300 text-sm mt-1">{safePicks.length} picks ready to convert</p>
+          {/* Replace Manual Conversion with condensed Default Pick card */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 p-6">
+            <h3 className="text-lg font-semibold text-white mb-2">Default Pick</h3>
+            {defaultPickData && defaultPickData.defaultPick ? (
+              <div className="space-y-2">
+                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-white">
+                        {defaultPickData.defaultPick.away_team} @ {defaultPickData.defaultPick.home_team}
+                      </h4>
+                      <p className="text-xs text-blue-200">
+                        {new Date(defaultPickData.defaultPick.game_time).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-orange-300">
+                        {defaultPickData.defaultPick.favored_team}
+                      </div>
+                      <div className="text-xs text-orange-200">
+                        Favored by {defaultPickData.defaultPick.spread_magnitude}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-blue-200">No default pick available.</p>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Recent Purchases */}
