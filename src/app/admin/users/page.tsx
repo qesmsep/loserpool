@@ -1244,7 +1244,7 @@ export default function AdminUsersPage() {
                     : 'bg-white/10 text-blue-200 hover:bg-white/20'
                 }`}
               >
-                Needs This Week's Pick ({users.filter(u => u.activePicks > 0 && (!u.currentWeekPicks || u.currentWeekPicks.length === 0)).length})
+                Needs This Week&apos;s Pick ({users.filter(u => u.activePicks > 0 && (!u.currentWeekPicks || u.currentWeekPicks.length === 0)).length})
               </button>
             </div>
           </div>
@@ -1333,17 +1333,17 @@ export default function AdminUsersPage() {
               </select>
             </div>
 
-            {/* This Week's Pick Filter */}
+            {/* This Week&apos;s Pick Filter */}
             <div>
-              <label className="block text-xs font-medium text-blue-200 mb-1">This Week's Pick</label>
+              <label className="block text-xs font-medium text-blue-200 mb-1">This Week&apos;s Pick</label>
               <select
                 value={filters.thisWeekPick}
                 onChange={(e) => setFilters({...filters, thisWeekPick: e.target.value as 'all' | 'needs_pick' | 'has_pick'})}
                 className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Users</option>
-                <option value="needs_pick">Needs This Week's Pick</option>
-                <option value="has_pick">Has This Week's Pick</option>
+                <option value="needs_pick">Needs This Week&apos;s Pick</option>
+                <option value="has_pick">Has This Week&apos;s Pick</option>
               </select>
             </div>
           </div>
