@@ -83,30 +83,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
     }
 
-    // Get current week
-    const { data: settings } = await supabaseAdmin
-      .from('global_settings')
-      .select('key, value')
-      .in('key', ['current_week'])
-
-    const weekSetting = settings?.find(s => s.key === 'current_week')
-    const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
-
-    // Get current week column - SIMPLIFIED LOGIC (no testers)
-    let weekColumn: string
-    if (currentWeek >= 1 && currentWeek <= 18) {
-      // Regular season weeks 1-18 map directly to reg1_team_matchup_id through reg18_team_matchup_id
-      weekColumn = `reg${currentWeek}_team_matchup_id`
-    } else if (currentWeek > 18) {
-      // Postseason weeks
-      weekColumn = `post${currentWeek - 18}_team_matchup_id`
-    } else {
-      // Preseason weeks (fallback)
-      weekColumn = `pre${currentWeek}_team_matchup_id`
+    // Determine current week and mapping using the same logic as Active Picks card
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek: number | undefined = (seasonInfo as unknown as { currentWeek?: number })?.currentWeek
+    if (!currentWeek || typeof currentWeek !== 'number') {
+      return NextResponse.json({ error: 'no_current_week' }, { status: 500 })
     }
-
-    console.log(`🔍 Week mapping: current_week=${currentWeek} → column=${weekColumn}`)
-    console.log(`🔍 This means we're looking for picks in the ${weekColumn} column`)
+    const weekColumn = `reg${currentWeek}_team_matchup_id`
+    console.log(`🔍 Week mapping (aligned): current_week=${currentWeek} → column=${weekColumn}`)
 
     // Fetch picks data with current week information - FIXED APPROACH
     console.log(`🔍 Fetching picks with column: ${weekColumn}`)

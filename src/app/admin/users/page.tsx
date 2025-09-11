@@ -188,7 +188,8 @@ export default function AdminUsersPage() {
     purchaseStatus: 'all' as 'all' | 'no_purchases' | 'has_purchases' | 'has_picks_left',
     adminStatus: 'all' as 'all' | 'admin' | 'non_admin',
     eliminationStatus: 'all' as 'all' | 'eliminated' | 'active',
-    pendingPicks: 'all' as 'all' | 'has_pending' | 'no_pending'
+    pendingPicks: 'all' as 'all' | 'has_pending' | 'no_pending',
+    thisWeekPick: 'all' as 'all' | 'needs_pick' | 'has_pick'
   })
 
   // Filter users based on search term and filters
@@ -244,6 +245,18 @@ export default function AdminUsersPage() {
       if (filters.pendingPicks === 'no_pending' && user.pendingPicks > 0) return false
     }
 
+    // This week's pick filter
+    if (filters.thisWeekPick !== 'all') {
+      const hasCurrentWeekPick = !!(user.currentWeekPicks && user.currentWeekPicks.length > 0)
+      if (filters.thisWeekPick === 'needs_pick') {
+        // Show users who have active picks but have not made a pick for this week
+        if (!(user.activePicks > 0) || hasCurrentWeekPick) return false
+      }
+      if (filters.thisWeekPick === 'has_pick') {
+        if (!hasCurrentWeekPick) return false
+      }
+    }
+
     return true
   })
 
@@ -271,6 +284,9 @@ export default function AdminUsersPage() {
     if (filters.pendingPicks !== 'all') {
       descriptions.push(`Pending Picks: ${filters.pendingPicks === 'has_pending' ? 'Has Pending' : 'No Pending'}`)
     }
+    if (filters.thisWeekPick !== 'all') {
+      descriptions.push(`This Week: ${filters.thisWeekPick === 'needs_pick' ? 'Needs Pick' : 'Has Pick'}`)
+    }
     
     return descriptions.length > 0 ? descriptions.join('_') : 'all_users'
   }
@@ -283,7 +299,8 @@ export default function AdminUsersPage() {
       purchaseStatus: 'all',
       adminStatus: 'all',
       eliminationStatus: 'all',
-      pendingPicks: 'all'
+      pendingPicks: 'all',
+      thisWeekPick: 'all'
     })
   }
 
@@ -1110,7 +1127,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'no_purchases',
                   adminStatus: 'all',
                   eliminationStatus: 'all',
-                  pendingPicks: 'all'
+                  pendingPicks: 'all',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.purchaseStatus === 'no_purchases' && filters.userType === 'all'
@@ -1127,7 +1145,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'has_picks_left',
                   adminStatus: 'all',
                   eliminationStatus: 'all',
-                  pendingPicks: 'all'
+                  pendingPicks: 'all',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.purchaseStatus === 'has_picks_left' && filters.userType === 'all'
@@ -1144,7 +1163,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'all',
                   adminStatus: 'all',
                   eliminationStatus: 'eliminated',
-                  pendingPicks: 'all'
+                  pendingPicks: 'all',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.eliminationStatus === 'eliminated' && filters.purchaseStatus === 'all'
@@ -1161,7 +1181,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'all',
                   adminStatus: 'admin',
                   eliminationStatus: 'all',
-                  pendingPicks: 'all'
+                  pendingPicks: 'all',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.adminStatus === 'admin' && filters.purchaseStatus === 'all'
@@ -1178,7 +1199,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'all',
                   adminStatus: 'all',
                   eliminationStatus: 'all',
-                  pendingPicks: 'all'
+                  pendingPicks: 'all',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.userType === 'registered' && filters.purchaseStatus === 'all'
@@ -1195,7 +1217,8 @@ export default function AdminUsersPage() {
                   purchaseStatus: 'all',
                   adminStatus: 'all',
                   eliminationStatus: 'all',
-                  pendingPicks: 'has_pending'
+                  pendingPicks: 'has_pending',
+                  thisWeekPick: 'all'
                 })}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
                   filters.pendingPicks === 'has_pending' && filters.userType === 'all'
@@ -1204,6 +1227,24 @@ export default function AdminUsersPage() {
                 }`}
               >
                 Has Pending Picks ({users.filter(u => u.pendingPicks > 0).length})
+              </button>
+
+              <button
+                onClick={() => setFilters({
+                  userType: 'all',
+                  purchaseStatus: 'all',
+                  adminStatus: 'all',
+                  eliminationStatus: 'all',
+                  pendingPicks: 'all',
+                  thisWeekPick: 'needs_pick'
+                })}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  filters.thisWeekPick === 'needs_pick' && filters.userType === 'all' && filters.purchaseStatus === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white/10 text-blue-200 hover:bg-white/20'
+                }`}
+              >
+                Needs This Week's Pick ({users.filter(u => u.activePicks > 0 && (!u.currentWeekPicks || u.currentWeekPicks.length === 0)).length})
               </button>
             </div>
           </div>
@@ -1291,6 +1332,20 @@ export default function AdminUsersPage() {
                 <option value="no_pending">No Pending</option>
               </select>
             </div>
+
+            {/* This Week's Pick Filter */}
+            <div>
+              <label className="block text-xs font-medium text-blue-200 mb-1">This Week's Pick</label>
+              <select
+                value={filters.thisWeekPick}
+                onChange={(e) => setFilters({...filters, thisWeekPick: e.target.value as 'all' | 'needs_pick' | 'has_pick'})}
+                className="w-full px-3 py-1 text-sm border border-white/30 rounded bg-white/10 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Users</option>
+                <option value="needs_pick">Needs This Week's Pick</option>
+                <option value="has_pick">Has This Week's Pick</option>
+              </select>
+            </div>
           </div>
 
           {/* Filter Summary */}
@@ -1312,6 +1367,9 @@ export default function AdminUsersPage() {
             )}
             {filters.pendingPicks !== 'all' && (
               <span className="ml-2">• Pending: {filters.pendingPicks === 'has_pending' ? 'Has Pending' : 'No Pending'}</span>
+            )}
+            {filters.thisWeekPick !== 'all' && (
+              <span className="ml-2">• This Week: {filters.thisWeekPick === 'needs_pick' ? 'Needs Pick' : 'Has Pick'}</span>
             )}
           </div>
         </div>

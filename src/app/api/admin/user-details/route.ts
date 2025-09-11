@@ -114,14 +114,13 @@ export async function GET(request: NextRequest) {
 
     // Use the existing service role client
 
-    // Get current week
-    const { data: settings } = await supabaseAdmin
-      .from('global_settings')
-      .select('key, value')
-      .in('key', ['current_week'])
-
-    const weekSetting = settings?.find(s => s.key === 'current_week')
-    const currentWeek = weekSetting ? parseInt(weekSetting.value) : 1
+    // Determine current week using the same logic as the Active Picks card
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek: number | undefined = (seasonInfo as unknown as { currentWeek?: number })?.currentWeek
+    if (!currentWeek || typeof currentWeek !== 'number') {
+      return NextResponse.json({ error: 'no_current_week' }, { status: 500 })
+    }
 
     // Get user details
     const { data: user, error: userError } = await supabaseAdmin
@@ -135,21 +134,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 })
     }
 
-    // Get current week column
-    let weekColumn: string
-    if (currentWeek <= 3) {
-      weekColumn = `pre${currentWeek}_team_matchup_id`
-    } else if (currentWeek <= 20) {
-      weekColumn = `reg${currentWeek - 3}_team_matchup_id`
-    } else {
-      weekColumn = `post${currentWeek - 20}_team_matchup_id`
-    }
-    
-    // Fix: For regular season weeks 1-17, we need to use reg1_team_matchup_id through reg17_team_matchup_id
-    // The current calculation is wrong for weeks 1-3
-    if (currentWeek >= 1 && currentWeek <= 17) {
-      weekColumn = `reg${currentWeek}_team_matchup_id`
-    }
+    // Get current week column (regular season mapping)
+    const weekColumn = `reg${currentWeek}_team_matchup_id`
     
     console.log('🔍 DEBUG: Current week:', currentWeek, 'Week column:', weekColumn)
 
@@ -260,6 +246,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       user,
       currentWeek,
+      weekColumnName: weekColumn,
       picks: picksWithDetails,
       purchases,
       stats: {
