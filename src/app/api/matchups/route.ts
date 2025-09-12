@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    // Use the new season detection system instead of default_week
-    const { getUserSeasonFilter } = await import('@/lib/season-detection')
-    const seasonFilter = await getUserSeasonFilter(userId)
+    // Use currentWeek logic (season-agnostic detection)
+    const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const seasonInfo = await getCurrentSeasonInfo()
+    const seasonFilter = seasonInfo.seasonDisplay // e.g., 'REG2'
 
-    // Get matchups for the user's season filter
+    // Get matchups for the detected current week/season
     const { data: matchups, error } = await supabase
       .from('matchups')
       .select('*')
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Format the week display for the dashboard based on user's season filter
+    // Format the week display for the dashboard based on detected season/week
     let weekDisplay: string
     if (seasonFilter.startsWith('PRE')) {
       const week = seasonFilter.replace('PRE', '')
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
       matchups: matchups || [],
       seasonFilter,
       week_display: weekDisplay, // This is what the dashboard expects
+      current_week: seasonInfo.currentWeek,
       userId
     })
 

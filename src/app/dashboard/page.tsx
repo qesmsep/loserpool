@@ -358,6 +358,8 @@ export default function DashboardPage() {
     [key: string]: unknown
   }[]>([])
   const [currentWeekColumn, setCurrentWeekColumn] = useState<string>('reg1_team_matchup_id')
+  const [apiSeasonFilter, setApiSeasonFilter] = useState<string>('REG1')
+  const [apiCurrentWeek, setApiCurrentWeek] = useState<number>(1)
 
   const router = useRouter()
 
@@ -400,14 +402,19 @@ export default function DashboardPage() {
     try {
       if (!user) return
 
-      // Use the same season detection logic as the dashboard
-      const { getCurrentSeasonInfo } = await import('@/lib/season-detection-client')
+      // Use the same detected week/season from the API used above
       const { isUserTester } = await import('@/lib/user-types-client')
-      const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
-      
-      const seasonInfo = await getCurrentSeasonInfo(user.id)
       const isTester = await isUserTester(user.id)
-      const currentWeekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
+      
+      // Determine column from apiSeasonFilter/apiCurrentWeek
+      let currentWeekColumn = 'reg1_team_matchup_id'
+      if (apiSeasonFilter && apiSeasonFilter.startsWith('PRE')) {
+        currentWeekColumn = isTester
+          ? `pre${apiCurrentWeek}_team_matchup_id`
+          : 'reg1_team_matchup_id'
+      } else {
+        currentWeekColumn = `reg${apiCurrentWeek}_team_matchup_id`
+      }
       
       console.log('🔍 Team breakdown - current week column:', currentWeekColumn)
       setCurrentWeekColumn(currentWeekColumn)
@@ -455,7 +462,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error loading picks for breakdown:', error)
     }
-  }, [user])
+  }, [user, apiSeasonFilter, apiCurrentWeek])
 
   // Countdown timer effect
   useEffect(() => {
@@ -541,15 +548,17 @@ export default function DashboardPage() {
       // Get current week display from API
       let week = 1 // Default fallback
       try {
-        const weekDisplayResponse = await fetch(`/api/current-week-display?userId=${user.id}`, {
+        const weekDisplayResponse = await fetch(`/api/matchups?userId=${user.id}`, {
           credentials: 'include'
         })
         const weekDisplayResult = await weekDisplayResponse.json()
         
         if (weekDisplayResult.success) {
-          week = weekDisplayResult.current_week
+          week = weekDisplayResult.current_week || parseInt((weekDisplayResult.seasonFilter || 'REG1').replace('REG', '').replace('PRE', '').replace('POST', '')) || 1
           setCurrentWeek(week)
           setCurrentWeekDisplay(weekDisplayResult.week_display)
+          setApiSeasonFilter(weekDisplayResult.seasonFilter)
+          setApiCurrentWeek(week)
         } else {
           // Fallback to database settings
           const { data: settings } = await supabase
@@ -598,6 +607,8 @@ export default function DashboardPage() {
     
     if (currentWeekResult.success) {
       setCurrentWeekDisplay(currentWeekResult.week_display)
+      setApiSeasonFilter(currentWeekResult.seasonFilter)
+      setApiCurrentWeek(currentWeekResult.current_week || week)
       
       matchupsData = currentWeekResult.matchups.map((matchup: ApiMatchup) => ({
         id: matchup.id,
@@ -632,7 +643,7 @@ export default function DashboardPage() {
       .from('matchups')
       .select('*')
       .eq('week', week)
-      .eq('season', seasonFilter)
+      .eq('season', apiSeasonFilter || seasonFilter)
       .order('game_time', { ascending: true })
       
     matchupsData = dbMatchupsData || []
