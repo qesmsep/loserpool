@@ -10,7 +10,47 @@ export async function GET() {
     // Get current week using the same logic as the dashboard
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
     const seasonInfo = await getCurrentSeasonInfo()
-    const currentWeek = seasonInfo.currentWeek
+    let currentWeek = seasonInfo.currentWeek
+
+    // Check if a precomputed next-week default pick exists (set by Tuesday 8am cron)
+    const { data: storedSetting } = await supabase
+      .from('global_settings')
+      .select('value')
+      .eq('key', 'next_week_default_pick')
+      .maybeSingle()
+
+    if (storedSetting?.value) {
+      try {
+        const stored = JSON.parse(storedSetting.value)
+        // If stored week matches current week or currentWeek + 1, use it and set response week accordingly
+        if (stored?.week === currentWeek || stored?.week === currentWeek + 1) {
+          currentWeek = stored.week
+          const favoredTeamFromStored: string = stored.favored_team
+          const awayTeam: string = stored.away_team
+          const homeTeam: string = stored.home_team
+          // API historically returns the underdog in favored_team; UI inverts to show favorite
+          const apiFavoredTeam = favoredTeamFromStored === awayTeam ? homeTeam : awayTeam
+
+          return NextResponse.json({
+            currentWeek,
+            defaultPick: {
+              matchup_id: stored.matchup_id,
+              away_team: awayTeam,
+              home_team: homeTeam,
+              favored_team: apiFavoredTeam,
+              spread_magnitude: stored.spread_magnitude,
+              game_time: stored.game_time
+            },
+            usersNeedingPicks: [],
+            userCount: 0,
+            totalPicksToAssign: 0
+          })
+        }
+      } catch (e) {
+        // If parsing fails, ignore and fall back to live computation
+        console.warn('Failed to parse next_week_default_pick; falling back to live computation')
+      }
+    }
 
     // Get all matchups for current week
     const { data: matchups, error: matchupsError } = await supabase

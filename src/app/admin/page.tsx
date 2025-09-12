@@ -308,6 +308,13 @@ export default function AdminPage() {
 
   // Manual conversion removed
 
+  // Select the likely winner (favorite) for the default pick card
+  const favoriteTeamThisWeek = defaultPickData?.defaultPick
+    ? (defaultPickData.defaultPick.favored_team === defaultPickData.defaultPick.away_team
+      ? defaultPickData.defaultPick.home_team
+      : defaultPickData.defaultPick.away_team)
+    : null
+
   if (authLoading || loading) {
     return (
       <div className="app-bg min-h-screen flex items-center justify-center">
@@ -447,7 +454,7 @@ export default function AdminPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-orange-300">
-                        {defaultPickData.defaultPick.favored_team}
+                        {favoriteTeamThisWeek}
                       </div>
                       <div className="text-xs text-orange-200">
                         Favored by {defaultPickData.defaultPick.spread_magnitude}

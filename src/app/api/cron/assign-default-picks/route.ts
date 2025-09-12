@@ -96,18 +96,58 @@ export async function POST(request: NextRequest) {
     }
 
     // We're at Thursday night kickoff - assign default picks based on current odds
-    console.log('Thursday night kickoff detected. Assigning default picks...')
-    
-    // Call the database function to assign default picks
-    const { data: result, error: assignError } = await supabase
-      .rpc('assign_default_picks', { target_week: currentWeek })
+    console.log('Thursday night kickoff detected. Assigning default picks to NULL week cells...')
 
-    if (assignError) {
-      console.error('Error assigning default picks:', assignError)
-      return NextResponse.json({ 
-        success: false, 
-        error: `Failed to assign default picks: ${assignError.message}` 
-      }, { status: 500 })
+    // Helper: map numeric week to wide picks table column name
+    const getWeekColumnFromWeek = (week?: number | null): string | null => {
+      if (!week || week < 1) return null
+      if (week <= 3) return `pre${week}_team_matchup_id`
+      if (week <= 20) return `reg${week - 3}_team_matchup_id`
+      const postIdx = week - 20
+      if (postIdx >= 1 && postIdx <= 4) return `post${postIdx}_team_matchup_id`
+      return null
+    }
+
+    const weekColumnName = getWeekColumnFromWeek(currentWeek)
+    if (!weekColumnName) {
+      return NextResponse.json({ success: false, error: 'Could not determine week column' }, { status: 500 })
+    }
+
+    // Get the largest spread matchup and its favorite
+    const { data: largestSpreadRows, error: largestErr } = await supabase
+      .rpc('get_largest_spread_matchup', { target_week: currentWeek })
+
+    if (largestErr || !largestSpreadRows || largestSpreadRows.length === 0) {
+      console.error('Error determining largest spread matchup:', largestErr)
+      return NextResponse.json({ success: false, error: 'No largest spread matchup found' }, { status: 500 })
+    }
+
+    const largest = largestSpreadRows[0]
+    const favoriteTeam: string = largest.favored_team
+    const matchupId: string = largest.matchup_id
+
+    // Compute team_matchup_id for the favorite team
+    const { data: teamIdResult, error: teamIdError } = await supabase
+      .rpc('get_team_matchup_id', { p_matchup_id: matchupId, p_team_name: favoriteTeam })
+
+    if (teamIdError || !teamIdResult) {
+      console.error('Error generating team_matchup_id for favorite:', teamIdError)
+      return NextResponse.json({ success: false, error: 'Failed to compute team_matchup_id' }, { status: 500 })
+    }
+
+    const favoriteTeamMatchupId: string = teamIdResult
+
+    // Update all picks rows that have NULL for this week's column to the favorite team_matchup_id
+    const { data: updatedRows, error: updateError } = await supabase
+      .from('picks')
+      .update({ [weekColumnName]: favoriteTeamMatchupId })
+      .is(weekColumnName, null)
+      .in('status', ['active', 'pending', 'safe'])
+      .select('id')
+
+    if (updateError) {
+      console.error('Error updating picks with default team:', updateError)
+      return NextResponse.json({ success: false, error: 'Failed to assign default picks' }, { status: 500 })
     }
 
     // Mark that default picks have been assigned for this week
@@ -123,23 +163,18 @@ export async function POST(request: NextRequest) {
       console.error('Error marking default picks as assigned:', markError)
     }
 
-    // Get details about what was assigned
-    const { data: largestSpreadMatchup, error: matchupError } = await supabase
-      .rpc('get_largest_spread_matchup', { target_week: currentWeek })
-
-    if (matchupError) {
-      console.error('Error getting largest spread matchup:', matchupError)
-    }
+    // Already computed largest spread matchup above
 
     const executionTime = Date.now() - startTime
-    console.log(`Default pick assignment completed in ${executionTime}ms: ${result} picks assigned`)
+    const assignedCount = Array.isArray(updatedRows) ? updatedRows.length : 0
+    console.log(`Default pick assignment completed in ${executionTime}ms: ${assignedCount} picks assigned`)
 
     return NextResponse.json({
       success: true,
       message: `Default picks assigned successfully at Thursday night kickoff`,
-      picks_assigned: result,
+      picks_assigned: assignedCount,
       current_week: currentWeek,
-      largest_spread_matchup: largestSpreadMatchup?.[0] || null,
+      largest_spread_matchup: largest,
       execution_time_ms: executionTime,
       thursday_kickoff: thursdayKickoff.toISOString(),
       assignment_time: now.toISOString()

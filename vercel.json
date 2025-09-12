@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/assign-default-picks",
       "schedule": "20 20 * * 4"
+    },
+    {
+      "path": "/api/cron/set-next-week-default-pick",
+      "schedule": "0 8 * * 2"
     }
   ]
 } 
