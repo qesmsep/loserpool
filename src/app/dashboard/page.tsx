@@ -666,17 +666,23 @@ export default function DashboardPage() {
       // Load user's picks for their default week
       console.log('Debug: Loading picks for user:', user.id)
       
-      // Use the client-side season detection system to get the correct column name
-      const { getCurrentSeasonInfo } = await import('@/lib/season-detection-client')
+      // Use the same detected week/season from the API used above
       const { isUserTester } = await import('@/lib/user-types-client')
-      const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
-      
-      const seasonInfo = await getCurrentSeasonInfo(user.id)
       const isTester = await isUserTester(user.id)
-      const userDefaultWeekColumn = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
+      
+      // Determine column from apiSeasonFilter/apiCurrentWeek
+      let userDefaultWeekColumn = 'reg1_team_matchup_id'
+      if (apiSeasonFilter && apiSeasonFilter.startsWith('PRE')) {
+        userDefaultWeekColumn = isTester
+          ? `pre${apiCurrentWeek}_team_matchup_id`
+          : 'reg1_team_matchup_id'
+      } else {
+        userDefaultWeekColumn = `reg${apiCurrentWeek}_team_matchup_id`
+      }
       
       console.log('Debug: Season detection info:', {
-        seasonInfo,
+        apiSeasonFilter,
+        apiCurrentWeek,
         isTester,
         userDefaultWeekColumn,
         userType: profileData?.user_type,
