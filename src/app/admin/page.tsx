@@ -745,7 +745,7 @@ export default function AdminPage() {
                     </h3>
                     
                     {/* Desktop Layout - 3 columns */}
-                    <div className="hidden md:grid grid-cols-3 gap-4">
+                    <div className="hidden lg:grid grid-cols-3 gap-4">
                       {[0, 1, 2].map((colIndex) => {
                         // Calculate teams for this column - distribute all teams across 3 columns
                         const totalTeams = weekData.teamPicks.length
@@ -814,8 +814,8 @@ export default function AdminPage() {
                       })}
                     </div>
 
-                    {/* Mobile Layout - Single column */}
-                    <div className="md:hidden space-y-2">
+                    {/* Mobile/Tablet Layout - Single column */}
+                    <div className="lg:hidden space-y-2">
                       {weekData.teamPicks.map((teamPick) => {
                         const teamColors = getTeamColors(teamPick.teamData)
                         const displayName = teamPick.teamData?.name || teamPick.team
