@@ -136,6 +136,19 @@ export default function AdminPage() {
   const [teamPickBreakdown, setTeamPickBreakdown] = useState<TeamPickBreakdown[]>([])
   const [currentTeamBreakdownWeek, setCurrentTeamBreakdownWeek] = useState<number | null>(null)
   const [loadingTeamBreakdown, setLoadingTeamBreakdown] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+    
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
 
   useEffect(() => {
     // Check if user is authenticated and is admin
@@ -745,77 +758,80 @@ export default function AdminPage() {
                     </h3>
                     
                     {/* Desktop Layout - 3 columns */}
-                    <div className="desktop-team-breakdown hidden md:grid grid-cols-3 gap-4">
-                      {[0, 1, 2].map((colIndex) => {
-                        // Calculate teams for this column - distribute all teams across 3 columns
-                        const totalTeams = weekData.teamPicks.length
-                        const teamsPerColumn = Math.ceil(totalTeams / 3)
-                        const startIndex = colIndex * teamsPerColumn
-                        const endIndex = Math.min(startIndex + teamsPerColumn, totalTeams)
-                        const columnTeams = weekData.teamPicks.slice(startIndex, endIndex)
-                        
-                        return (
-                          <div key={colIndex} className="space-y-2">
-                            {columnTeams.map((teamPick) => {
-                              const teamColors = getTeamColors(teamPick.teamData)
-                              const displayName = teamPick.teamData?.name || teamPick.team
-                              
-                              // Determine pick count color based on game result
-                              let pickCountBgColor = '#6B7280' // Default gray for pending
-                              let pickCountTextColor = 'white'
-                              
-                              if (teamPick.gameResult === 'won') {
-                                // Team won - picks are incorrect (RED)
-                                pickCountBgColor = '#DC2626' // red-600
-                                pickCountTextColor = 'white'
-                              } else if (teamPick.gameResult === 'lost') {
-                                // Team lost - picks are correct (GREEN)
-                                pickCountBgColor = '#16A34A' // green-600
-                                pickCountTextColor = 'white'
-                              } else if (teamPick.gameResult === 'tie') {
-                                // Tie - picks are incorrect (RED)
-                                pickCountBgColor = '#DC2626' // red-600
-                                pickCountTextColor = 'white'
-                              }
-                              
-                              return (
-                                <div 
-                                  key={teamPick.team} 
-                                  className="flex items-center justify-between p-2 rounded border border-white/10 hover:bg-white/5 transition-colors"
-                                  style={{ 
-                                    borderLeftColor: teamColors.primary,
-                                    borderLeftWidth: '4px'
-                                  }}
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="text-white text-sm font-medium">
-                                      {displayName}
-                                    </span>
-                                    {teamPick.teamData?.abbreviation && (
-                                      <span className="text-xs text-blue-200">
-                                        {teamPick.teamData.abbreviation}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span 
-                                    className="text-lg font-bold px-3 py-2 rounded-lg"
+                    {!isMobile && (
+                      <div className="grid grid-cols-3 gap-4">
+                        {[0, 1, 2].map((colIndex) => {
+                          // Calculate teams for this column - distribute all teams across 3 columns
+                          const totalTeams = weekData.teamPicks.length
+                          const teamsPerColumn = Math.ceil(totalTeams / 3)
+                          const startIndex = colIndex * teamsPerColumn
+                          const endIndex = Math.min(startIndex + teamsPerColumn, totalTeams)
+                          const columnTeams = weekData.teamPicks.slice(startIndex, endIndex)
+                          
+                          return (
+                            <div key={colIndex} className="space-y-2">
+                              {columnTeams.map((teamPick) => {
+                                const teamColors = getTeamColors(teamPick.teamData)
+                                const displayName = teamPick.teamData?.name || teamPick.team
+                                
+                                // Determine pick count color based on game result
+                                let pickCountBgColor = '#6B7280' // Default gray for pending
+                                let pickCountTextColor = 'white'
+                                
+                                if (teamPick.gameResult === 'won') {
+                                  // Team won - picks are incorrect (RED)
+                                  pickCountBgColor = '#DC2626' // red-600
+                                  pickCountTextColor = 'white'
+                                } else if (teamPick.gameResult === 'lost') {
+                                  // Team lost - picks are correct (GREEN)
+                                  pickCountBgColor = '#16A34A' // green-600
+                                  pickCountTextColor = 'white'
+                                } else if (teamPick.gameResult === 'tie') {
+                                  // Tie - picks are incorrect (RED)
+                                  pickCountBgColor = '#DC2626' // red-600
+                                  pickCountTextColor = 'white'
+                                }
+                                
+                                return (
+                                  <div 
+                                    key={teamPick.team} 
+                                    className="flex items-center justify-between p-2 rounded border border-white/10 hover:bg-white/5 transition-colors"
                                     style={{ 
-                                      backgroundColor: pickCountBgColor,
-                                      color: pickCountTextColor
+                                      borderLeftColor: teamColors.primary,
+                                      borderLeftWidth: '4px'
                                     }}
                                   >
-                                    {teamPick.pickCount}
-                                  </span>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
-                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-white text-sm font-medium">
+                                        {displayName}
+                                      </span>
+                                      {teamPick.teamData?.abbreviation && (
+                                        <span className="text-xs text-blue-200">
+                                          {teamPick.teamData.abbreviation}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span 
+                                      className="text-lg font-bold px-3 py-2 rounded-lg"
+                                      style={{ 
+                                        backgroundColor: pickCountBgColor,
+                                        color: pickCountTextColor
+                                      }}
+                                    >
+                                      {teamPick.pickCount}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
 
                     {/* Mobile/Tablet Layout - Single column */}
-                    <div className="mobile-team-breakdown md:hidden space-y-2">
+                    {isMobile && (
+                      <div className="space-y-2">
                       {weekData.teamPicks.map((teamPick) => {
                         const teamColors = getTeamColors(teamPick.teamData)
                         const displayName = teamPick.teamData?.name || teamPick.team
@@ -869,7 +885,8 @@ export default function AdminPage() {
                           </div>
                         )
                       })}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

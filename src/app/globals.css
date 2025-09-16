@@ -314,23 +314,51 @@ div[style*="display:-webkit-grid"] {
   min-height: 100vh;
 }
 
-/* Team picks breakdown responsive layout fixes */
+/* Team picks breakdown responsive layout fixes - AGGRESSIVE OVERRIDE */
 @media (max-width: 767px) {
-  .desktop-team-breakdown {
+  div.desktop-team-breakdown,
+  .desktop-team-breakdown,
+  [class*="desktop-team-breakdown"] {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
   
-  .mobile-team-breakdown {
+  div.mobile-team-breakdown,
+  .mobile-team-breakdown,
+  [class*="mobile-team-breakdown"] {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    position: relative !important;
   }
 }
 
 @media (min-width: 768px) {
-  .desktop-team-breakdown {
+  div.desktop-team-breakdown,
+  .desktop-team-breakdown,
+  [class*="desktop-team-breakdown"] {
     display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    position: relative !important;
   }
   
-  .mobile-team-breakdown {
+  div.mobile-team-breakdown,
+  .mobile-team-breakdown,
+  [class*="mobile-team-breakdown"] {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
 }
