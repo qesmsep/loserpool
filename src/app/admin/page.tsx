@@ -814,8 +814,8 @@ export default function AdminPage() {
                       })}
                     </div>
 
-                    {/* Mobile Layout - 2 columns */}
-                    <div className="md:hidden grid grid-cols-2 gap-3">
+                    {/* Mobile Layout - Single column */}
+                    <div className="md:hidden space-y-2">
                       {weekData.teamPicks.map((teamPick) => {
                         const teamColors = getTeamColors(teamPick.teamData)
                         const displayName = teamPick.teamData?.name || teamPick.team
