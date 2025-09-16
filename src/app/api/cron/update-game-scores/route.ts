@@ -263,7 +263,8 @@ export async function POST(request: NextRequest) {
                    }
             
             // If game is final, update pick statuses (including ties)
-            if (newStatus === 'final' && winner) {
+            // Only process if the game status just changed to final or if picks haven't been updated recently
+            if (newStatus === 'final' && winner && (matchup.status !== 'final' || !matchup.last_api_update)) {
               await updatePickStatuses(matchup.id, winner)
             }
           }
@@ -466,15 +467,30 @@ async function updatePickStatuses(matchupId: string, winner: string) {
 }
 
 // Function to process pick status updates for all final games that haven't been processed yet
-async function processFinalGamePickUpdates(supabase: ReturnType<typeof createServiceRoleClient>, matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string }[]) {
+async function processFinalGamePickUpdates(supabase: ReturnType<typeof createServiceRoleClient>, matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string; last_api_update?: string }[]) {
   const finalGames = matchups.filter(m => m.status === 'final');
   console.log(`Found ${finalGames.length} final games to process pick updates for.`);
 
   for (const matchup of finalGames) {
     const winner = matchup.winner;
     console.log(`Processing final game: ${matchup.away_team} @ ${matchup.home_team}, winner: ${winner}`);
+    
+    // Only process if we have a winner and the game was recently updated
     if (winner) {
-      await updatePickStatuses(matchup.id, winner);
+      // Check if picks for this matchup have already been processed recently
+      const { data: recentPicks } = await supabase
+        .from('picks')
+        .select('updated_at')
+        .or('reg1_team_matchup_id.like.*' + matchup.id + '*,reg2_team_matchup_id.like.*' + matchup.id + '*,reg3_team_matchup_id.like.*' + matchup.id + '*')
+        .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+        .limit(1);
+      
+      if (!recentPicks || recentPicks.length === 0) {
+        console.log(`Processing picks for ${matchup.away_team} @ ${matchup.home_team} - no recent updates found`);
+        await updatePickStatuses(matchup.id, winner);
+      } else {
+        console.log(`Skipping ${matchup.away_team} @ ${matchup.home_team} - picks already processed recently`);
+      }
     } else {
       console.warn(`Game ${matchup.away_team} @ ${matchup.home_team} is final but no winner found.`);
     }
