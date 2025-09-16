@@ -445,14 +445,14 @@ export default function AdminPage() {
   }
 
   // Current week's non-null cells only
-  const getWeekColumnFromWeek = (week?: number | null): string | null => {
-    if (!week || week < 1) return null
-    if (week <= 3) return `pre${week}_team_matchup_id`
-    if (week <= 20) return `reg${week - 3}_team_matchup_id`
-    const postIdx = week - 20
-    if (postIdx >= 1 && postIdx <= 4) return `post${postIdx}_team_matchup_id`
-    return null
-  }
+  // const getWeekColumnFromWeek = (week?: number | null): string | null => {
+  //   if (!week || week < 1) return null
+  //   if (week <= 3) return `pre${week}_team_matchup_id`
+  //   if (week <= 20) return `reg${week - 3}_team_matchup_id`
+  //   const postIdx = week - 20
+  //   if (postIdx >= 1 && postIdx <= 4) return `post${postIdx}_team_matchup_id`
+  //   return null
+  // }
 
   // Strict: use only the mapped current week column; if unknown, treat as error (null)
   // const currentWeekColumnName = getWeekColumnFromWeek(defaultPickData?.currentWeek)

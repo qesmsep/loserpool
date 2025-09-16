@@ -149,7 +149,7 @@ export async function GET(request: Request) {
         break
       }
 
-      allTeamPicksData = allTeamPicksData.concat(teamPicksData)
+      allTeamPicksData = allTeamPicksData.concat(teamPicksData as unknown as Array<{ [key: string]: string | number | null }>)
       
       if (teamPicksData.length < pageSize) {
         break
@@ -314,10 +314,10 @@ export async function GET(request: Request) {
             console.log(`🔍 API: No matchup result found for ${teamKey}, actualMatchupId: ${actualMatchupId}`)
           }
           
-          const current = teamCounts.get(teamKey) || { pickCount: 0, teamData: null, gameResult: 'pending' }
+          const current = teamCounts.get(teamKey) || { pickCount: 0, teamData: undefined, gameResult: 'pending' }
           teamCounts.set(teamKey, {
-            pickCount: current.pickCount + pickCount,
-            teamData: teamData || current.teamData,
+            pickCount: current.pickCount + (pickCount as number),
+            teamData: teamData || current.teamData || undefined,
             gameResult: gameResult
           })
         }
@@ -330,7 +330,7 @@ export async function GET(request: Request) {
         team, 
         pickCount: data.pickCount,
         teamData: data.teamData,
-        gameResult: data.gameResult
+        gameResult: data.gameResult as 'pending' | 'won' | 'lost' | 'tie'
       }))
       .sort((a, b) => b.pickCount - a.pickCount)
 

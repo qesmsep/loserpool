@@ -193,12 +193,12 @@ export async function GET(request: Request) {
       if (week === currentWeek) {
         // Current week: Active picks = Sum of picks_count for all picks with status NOT ELIMINATED
         const currentWeekPicks = allPicks.filter(pick => pick.status !== 'eliminated')
-        activePicks = currentWeekPicks.reduce((sum, pick) => sum + (pick.picks_count || 0), 0)
+        activePicks = currentWeekPicks.reduce((sum, pick) => sum + ((pick.picks_count as number) || 0), 0)
         console.log(`🔍 Weekly Stats: Current Week ${week} has ${currentWeekPicks.length} active picks with total count ${activePicks}`)
       } else {
         // Past/future weeks: Active picks = Sum of picks_count for picks that have a non-null value in this week's column
         const weekPicks = allPicks.filter(pick => (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined)
-        activePicks = weekPicks.reduce((sum, pick) => sum + (pick.picks_count || 0), 0)
+        activePicks = weekPicks.reduce((sum, pick) => sum + ((pick.picks_count as number) || 0), 0)
         
         if (week <= 3) { // Debug first few weeks
           console.log(`🔍 Weekly Stats: Week ${week} has ${weekPicks.length} picks with total count ${activePicks}`)
@@ -281,7 +281,7 @@ export async function GET(request: Request) {
               }
               
               if (isIncorrect) {
-                eliminatedPicks += pick.picks_count || 0
+                eliminatedPicks += (pick.picks_count as number) || 0
               }
             }
           }
@@ -348,7 +348,7 @@ export async function GET(request: Request) {
         
         const debugResults = {
           totalWeek1Picks: week1Picks.length,
-          totalWeek1PickCount: week1Picks.reduce((sum, pick) => sum + (pick.picks_count || 0), 0),
+          totalWeek1PickCount: week1Picks.reduce((sum, pick) => sum + ((pick.picks_count as number) || 0), 0),
           matchups: week1Matchups.map(m => ({
             id: m.id,
             game: `${m.away_team} @ ${m.home_team}`,
@@ -356,8 +356,8 @@ export async function GET(request: Request) {
             status: m.status,
             winner: matchupResults.get(m.id)?.winner || 'TBD'
           })),
-          eliminatedPicks: [] as Array<{ user_id: string; team_picked: string; matchup_id: string; picks_count: number }>,
-          correctPicks: [] as Array<{ user_id: string; team_picked: string; matchup_id: string; picks_count: number }>,
+          eliminatedPicks: [] as Array<{ userId: string | number | null; matchupId: string; pickedTeam: string; game: string; winner: string | null; picksCount: string | number; isEliminated: boolean; reason: string }>,
+          correctPicks: [] as Array<{ userId: string | number | null; matchupId: string; pickedTeam: string; game: string; winner: string | null; picksCount: string | number; isEliminated: boolean; reason: string }>,
           summary: {
             totalEliminated: 0,
             totalCorrect: 0,
@@ -372,7 +372,7 @@ export async function GET(request: Request) {
           if (!matchupId) continue
           
           // Extract actual matchup ID and team
-          const parts = matchupId.split('_')
+          const parts = (matchupId as string).split('_')
           if (parts.length >= 2) {
             const actualMatchupId = parts[0]
             const teamKey = parts.slice(1).join('_')
@@ -428,11 +428,11 @@ export async function GET(request: Request) {
               if (isEliminated) {
                 debugResults.eliminatedPicks.push(pickInfo)
                 debugResults.summary.totalEliminated++
-                debugResults.summary.totalEliminatedPickCount += pick.picks_count || 0
+                debugResults.summary.totalEliminatedPickCount += (pick.picks_count as number) || 0
               } else {
                 debugResults.correctPicks.push(pickInfo)
                 debugResults.summary.totalCorrect++
-                debugResults.summary.totalCorrectPickCount += pick.picks_count || 0
+                debugResults.summary.totalCorrectPickCount += (pick.picks_count as number) || 0
               }
             }
           }

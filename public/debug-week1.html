@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Week 1 Elimination Debug</title>
+</head>
+<body>
+    <h1>Week 1 Elimination Debug</h1>
+    <button onclick="runDebug()">Run Week 1 Elimination Debug</button>
+    <div id="results"></div>
+
+    <script>
+        async function runDebug() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Loading...';
+            
+            try {
+                // Get the current session token
+                const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
+                const supabase = createClient(
+                    'YOUR_SUPABASE_URL', // This will be replaced by the actual URL
+                    'YOUR_SUPABASE_ANON_KEY' // This will be replaced by the actual key
+                );
+                
+                const { data: { session } } = await supabase.auth.getSession();
+                const accessToken = session?.access_token;
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                if (accessToken) {
+                    headers['Authorization'] = `Bearer ${accessToken}`;
+                }
+                
+                const response = await fetch('/api/admin/weekly-stats?debug-week1=true', {
+                    credentials: 'include',
+                    headers
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.debugResults) {
+                        displayResults(data.debugResults);
+                    } else {
+                        resultsDiv.innerHTML = 'No debug results found. Make sure you are logged in as an admin.';
+                    }
+                } else {
+                    resultsDiv.innerHTML = `Error: ${response.status} - ${await response.text()}`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `
+                <h2>Week 1 Elimination Analysis</h2>
+                <p><strong>Total Week 1 Picks:</strong> ${results.totalWeek1Picks} users, ${results.totalWeek1PickCount} total picks</p>
+                
+                <h3>Summary</h3>
+                <ul>
+                    <li><strong>Eliminated:</strong> ${results.summary.totalEliminated} users (${results.summary.totalEliminatedPickCount} picks)</li>
+                    <li><strong>Correct:</strong> ${results.summary.totalCorrect} users (${results.summary.totalCorrectPickCount} picks)</li>
+                </ul>
+                
+                <h3>Week 1 Games</h3>
+                <ul>
+            `;
+            
+            results.matchups.forEach(matchup => {
+                html += `<li>${matchup.game} - ${matchup.score} (${matchup.status}) - Winner: ${matchup.winner}</li>`;
+            });
+            
+            html += `</ul>
+                
+                <h3>Eliminated Picks (${results.eliminatedPicks.length})</h3>
+                <ul>
+            `;
+            
+            results.eliminatedPicks.forEach(pick => {
+                html += `<li>User ${pick.userId}: Picked ${pick.pickedTeam} in ${pick.game} - ${pick.reason} (${pick.picksCount} picks)</li>`;
+            });
+            
+            html += `</ul>
+                
+                <h3>Correct Picks (${results.correctPicks.length})</h3>
+                <ul>
+            `;
+            
+            results.correctPicks.forEach(pick => {
+                html += `<li>User ${pick.userId}: Picked ${pick.pickedTeam} in ${pick.game} - ${pick.reason} (${pick.picksCount} picks)</li>`;
+            });
+            
+            html += '</ul>';
+            
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
