@@ -313,3 +313,24 @@ div[style*="display:-webkit-grid"] {
   min-height: -webkit-fill-available;
   min-height: 100vh;
 }
+
+/* Team picks breakdown responsive layout fixes */
+@media (max-width: 767px) {
+  .desktop-team-breakdown {
+    display: none !important;
+  }
+  
+  .mobile-team-breakdown {
+    display: block !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-team-breakdown {
+    display: grid !important;
+  }
+  
+  .mobile-team-breakdown {
+    display: none !important;
+  }
+}

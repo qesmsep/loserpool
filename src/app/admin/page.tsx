@@ -690,7 +690,7 @@ export default function AdminPage() {
                           <div className="text-xs text-red-200 mb-1">Eliminated</div>
                           <div className="text-lg font-bold text-red-200">{stat.eliminatedPicks}</div>
                         </div>
-                        <div>
+                    <div>
                           <div className="text-xs text-green-200 mb-1">Remaining</div>
                           <div className="text-lg font-bold text-green-200">{stat.remainingPicks}</div>
                         </div>
@@ -745,7 +745,7 @@ export default function AdminPage() {
                     </h3>
                     
                     {/* Desktop Layout - 3 columns */}
-                    <div className="hidden md:grid grid-cols-3 gap-4">
+                    <div className="desktop-team-breakdown hidden md:grid grid-cols-3 gap-4">
                       {[0, 1, 2].map((colIndex) => {
                         // Calculate teams for this column - distribute all teams across 3 columns
                         const totalTeams = weekData.teamPicks.length
@@ -815,7 +815,7 @@ export default function AdminPage() {
                     </div>
 
                     {/* Mobile/Tablet Layout - Single column */}
-                    <div className="md:hidden space-y-2">
+                    <div className="mobile-team-breakdown md:hidden space-y-2">
                       {weekData.teamPicks.map((teamPick) => {
                         const teamColors = getTeamColors(teamPick.teamData)
                         const displayName = teamPick.teamData?.name || teamPick.team
@@ -865,7 +865,7 @@ export default function AdminPage() {
                               }}
                             >
                               {teamPick.pickCount}
-                            </span>
+                    </span>
                           </div>
                         )
                       })}
