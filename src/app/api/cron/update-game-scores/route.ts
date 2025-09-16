@@ -388,7 +388,7 @@ async function updatePickStatuses(matchupId: string, winner: string) {
 
     // Update picks based on winner (LOSER POOL LOGIC)
     for (const pick of picksForThisMatchup) {
-      let newStatus = 'active'
+      let newStatus = pick.status // Preserve current status (active or safe)
       
       // Find which week column contains this matchup allocation and extract the team name
       const weekColumns = [
