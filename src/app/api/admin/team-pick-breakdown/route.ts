@@ -128,7 +128,7 @@ export async function GET(request: Request) {
     }
 
     // Get team pick breakdown for the specific week with pagination
-    let allTeamPicksData: any[] = []
+        let allTeamPicksData: Array<{ [key: string]: string | number | null }> = []
     let from = 0
     const pageSize = 1000
     
@@ -184,7 +184,7 @@ export async function GET(request: Request) {
     }
 
     // Create a map of team names to team data
-    const teamsMap = new Map<string, any>()
+    const teamsMap = new Map<string, { name: string; abbreviation: string; primary_color: string; secondary_color: string }>()
     if (teamsData) {
       for (const team of teamsData) {
         // Map both full name and abbreviation to team data
@@ -228,13 +228,13 @@ export async function GET(request: Request) {
     }
 
     // Count picks by team using the same logic as the existing modal
-    const teamCounts = new Map<string, { pickCount: number; teamData: any; gameResult: string }>()
+    const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
     
     console.log(`🔍 API: Found ${allTeamPicksData?.length || 0} picks for ${targetWeekInfo.column}`)
     
     if (allTeamPicksData && allTeamPicksData.length > 0) {
       for (const pick of allTeamPicksData) {
-        const matchupId = (pick as any)[targetWeekInfo.column]
+        const matchupId = (pick as { [key: string]: string | number | null })[targetWeekInfo.column] as string
         if (!matchupId) continue
         
         console.log(`🔍 API: Pick has matchupId: ${matchupId}`)

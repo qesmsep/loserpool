@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Settings, Users, Calendar, Trophy, Target } from 'lucide-react'
+import { Settings, Users, Calendar, Trophy } from 'lucide-react'
 import AdminHeader from '@/components/admin-header'
 import AdminStatsModal from '@/components/admin-stats-modal'
 import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
@@ -288,7 +288,7 @@ export default function AdminPage() {
             setCurrentWeekActive({ count: data.currentWeekActivePicksCount, col: data.weekColumnName })
             setCurrentWeekActiveError(false)
           }
-        } catch (e) {
+        } catch {
           setCurrentWeekActiveError(true)
         }
 
@@ -456,9 +456,6 @@ export default function AdminPage() {
 
   // Strict: use only the mapped current week column; if unknown, treat as error (null)
   const currentWeekColumnName = getWeekColumnFromWeek(defaultPickData?.currentWeek)
-  const currentWeekActiveCount = currentWeekColumnName === null
-    ? null
-    : picks.reduce((sum, p) => sum + ((p as unknown as Record<string, unknown>)[currentWeekColumnName] ? 1 : 0), 0)
 
   // Manual conversion removed
 
@@ -724,7 +721,7 @@ export default function AdminPage() {
                         
                         return (
                           <div key={colIndex} className="space-y-2">
-                            {columnTeams.map((teamPick, index) => {
+                            {columnTeams.map((teamPick) => {
                               const teamColors = getTeamColors(teamPick.teamData)
                               const displayName = teamPick.teamData?.name || teamPick.team
                               

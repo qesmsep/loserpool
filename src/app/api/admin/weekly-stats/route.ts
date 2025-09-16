@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     console.log('🔍 API: User is admin, proceeding with weekly stats calculation')
 
     // Get all picks using pagination to ensure we get every record
-    let allPicks: any[] = []
+    let allPicks: Array<{ [key: string]: string | number | null }> = []
     let hasMore = true
     let from = 0
     const pageSize = 1000
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
     }
 
     // Create a map of team names to team data
-    const teamsMap = new Map<string, any>()
+    const teamsMap = new Map<string, { name: string; abbreviation: string; primary_color: string; secondary_color: string }>()
     if (teamsData) {
       for (const team of teamsData) {
         teamsMap.set(team.name, team)
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
     }
 
     // Create a map of matchup_id to matchup data
-    const matchupMap = new Map<string, any>()
+    const matchupMap = new Map<string, { id: string; week: number; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string }>()
     matchups?.forEach(matchup => {
       matchupMap.set(matchup.id, matchup)
     })
@@ -222,12 +222,12 @@ export async function GET(request: Request) {
         // Past weeks: Calculate eliminated picks based on actual game results
         // Get all picks for this week
         const weekPicks = allPicks.filter(pick => 
-          (pick as any)[column] !== null && (pick as any)[column] !== undefined
+          (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined
         )
         
         // Count picks that were incorrect (teams that won or tied)
         for (const pick of weekPicks) {
-          const matchupId = (pick as any)[column]
+          const matchupId = (pick as { [key: string]: string | number | null })[column] as string
           if (!matchupId) continue
           
           // Extract actual matchup ID (remove team suffix)
@@ -356,8 +356,8 @@ export async function GET(request: Request) {
             status: m.status,
             winner: matchupResults.get(m.id)?.winner || 'TBD'
           })),
-          eliminatedPicks: [] as any[],
-          correctPicks: [] as any[],
+          eliminatedPicks: [] as Array<{ user_id: string; team_picked: string; matchup_id: string; picks_count: number }>,
+          correctPicks: [] as Array<{ user_id: string; team_picked: string; matchup_id: string; picks_count: number }>,
           summary: {
             totalEliminated: 0,
             totalCorrect: 0,
