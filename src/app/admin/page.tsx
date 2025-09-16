@@ -455,7 +455,7 @@ export default function AdminPage() {
   }
 
   // Strict: use only the mapped current week column; if unknown, treat as error (null)
-  const currentWeekColumnName = getWeekColumnFromWeek(defaultPickData?.currentWeek)
+  // const currentWeekColumnName = getWeekColumnFromWeek(defaultPickData?.currentWeek)
 
   // Manual conversion removed
 

@@ -197,7 +197,7 @@ export async function GET(request: Request) {
         console.log(`🔍 Weekly Stats: Current Week ${week} has ${currentWeekPicks.length} active picks with total count ${activePicks}`)
       } else {
         // Past/future weeks: Active picks = Sum of picks_count for picks that have a non-null value in this week's column
-        const weekPicks = allPicks.filter(pick => (pick as any)[column] !== null && (pick as any)[column] !== undefined)
+        const weekPicks = allPicks.filter(pick => (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined)
         activePicks = weekPicks.reduce((sum, pick) => sum + (pick.picks_count || 0), 0)
         
         if (week <= 3) { // Debug first few weeks
