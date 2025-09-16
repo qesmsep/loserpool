@@ -97,6 +97,64 @@ function getEliminatedTeamName(pick: Pick): string | null {
   return null
 }
 
+// Helper function to get the elimination week for eliminated picks
+function getEliminationWeek(pick: Pick, matchups: Matchup[]): string | null {
+  // If eliminationDetails already has the week, use it
+  if (pick.eliminationDetails?.week) {
+    return pick.eliminationDetails.week
+  }
+  
+  // Try to find the matchup for this pick to determine the week
+  if (pick.matchup_id) {
+    const matchup = matchups.find(m => m.id === pick.matchup_id)
+    if (matchup) {
+      if (matchup.week <= 0) {
+        return `Preseason Week ${Math.abs(matchup.week) + 1}`
+      } else {
+        return `Week ${matchup.week}`
+      }
+    }
+  }
+  
+  // Fallback: try to determine from week columns
+  const weekColumns = [
+    { column: 'pre1_team_matchup_id', week: 'Preseason Week 1' },
+    { column: 'pre2_team_matchup_id', week: 'Preseason Week 2' },
+    { column: 'pre3_team_matchup_id', week: 'Preseason Week 3' },
+    { column: 'reg1_team_matchup_id', week: 'Week 1' },
+    { column: 'reg2_team_matchup_id', week: 'Week 2' },
+    { column: 'reg3_team_matchup_id', week: 'Week 3' },
+    { column: 'reg4_team_matchup_id', week: 'Week 4' },
+    { column: 'reg5_team_matchup_id', week: 'Week 5' },
+    { column: 'reg6_team_matchup_id', week: 'Week 6' },
+    { column: 'reg7_team_matchup_id', week: 'Week 7' },
+    { column: 'reg8_team_matchup_id', week: 'Week 8' },
+    { column: 'reg9_team_matchup_id', week: 'Week 9' },
+    { column: 'reg10_team_matchup_id', week: 'Week 10' },
+    { column: 'reg11_team_matchup_id', week: 'Week 11' },
+    { column: 'reg12_team_matchup_id', week: 'Week 12' },
+    { column: 'reg13_team_matchup_id', week: 'Week 13' },
+    { column: 'reg14_team_matchup_id', week: 'Week 14' },
+    { column: 'reg15_team_matchup_id', week: 'Week 15' },
+    { column: 'reg16_team_matchup_id', week: 'Week 16' },
+    { column: 'reg17_team_matchup_id', week: 'Week 17' },
+    { column: 'reg18_team_matchup_id', week: 'Week 18' },
+    { column: 'post1_team_matchup_id', week: 'Wild Card' },
+    { column: 'post2_team_matchup_id', week: 'Divisional' },
+    { column: 'post3_team_matchup_id', week: 'Conference' },
+    { column: 'post4_team_matchup_id', week: 'Super Bowl' }
+  ]
+  
+  for (const { column, week } of weekColumns) {
+    const value = (pick as Record<string, unknown>)[column]
+    if (value && typeof value === 'string') {
+      return week
+    }
+  }
+  
+  return null
+}
+
 // Helper function to get elimination details for eliminated picks
 function getEliminationDetails(pick: Pick, matchups: Matchup[]): {
   week: string
@@ -1177,15 +1235,18 @@ export default function DashboardPage() {
                           let teamDisplayName = 'NOT PICKED YET'
                           
                           if (pick.status === 'eliminated') {
-                            // For eliminated picks, show elimination details
+                            // For eliminated picks, show elimination details with week
                             if (pick.eliminationDetails) {
                               teamDisplayName = `${getFullTeamName(pick.eliminationDetails.chosenTeam)} vs ${getFullTeamName(pick.eliminationDetails.opponent)}`
                             } else {
                               const eliminatedTeam = getEliminatedTeamName(pick)
+                              const eliminationWeek = getEliminationWeek(pick, matchups)
                               if (eliminatedTeam) {
-                                teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                                const weekText = eliminationWeek ? ` (eliminated ${eliminationWeek})` : ' (ELIMINATED)'
+                                teamDisplayName = `${getFullTeamName(eliminatedTeam)}${weekText}`
                               } else {
-                                teamDisplayName = 'ELIMINATED'
+                                const weekText = eliminationWeek ? `ELIMINATED ${eliminationWeek}` : 'ELIMINATED'
+                                teamDisplayName = weekText
                               }
                             }
                           } else if (teamName) {
@@ -1315,15 +1376,18 @@ export default function DashboardPage() {
                           let teamDisplayName = 'NOT PICKED YET'
                           
                           if (pick.status === 'eliminated') {
-                            // For eliminated picks, show elimination details
+                            // For eliminated picks, show elimination details with week
                             if (pick.eliminationDetails) {
                               teamDisplayName = `${getFullTeamName(pick.eliminationDetails.chosenTeam)} vs ${getFullTeamName(pick.eliminationDetails.opponent)}`
                             } else {
                               const eliminatedTeam = getEliminatedTeamName(pick)
+                              const eliminationWeek = getEliminationWeek(pick, matchups)
                               if (eliminatedTeam) {
-                                teamDisplayName = `${getFullTeamName(eliminatedTeam)} (ELIMINATED)`
+                                const weekText = eliminationWeek ? ` (eliminated ${eliminationWeek})` : ' (ELIMINATED)'
+                                teamDisplayName = `${getFullTeamName(eliminatedTeam)}${weekText}`
                               } else {
-                                teamDisplayName = 'ELIMINATED'
+                                const weekText = eliminationWeek ? `ELIMINATED ${eliminationWeek}` : 'ELIMINATED'
+                                teamDisplayName = weekText
                               }
                             }
                           } else if (teamName) {
