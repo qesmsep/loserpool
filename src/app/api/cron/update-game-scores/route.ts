@@ -263,9 +263,12 @@ export async function POST(request: NextRequest) {
                    }
             
             // If game is final, update pick statuses (including ties)
-            // Only process if the game status just changed to final or if picks haven't been updated recently
-            if (newStatus === 'final' && winner && (matchup.status !== 'final' || !matchup.last_api_update)) {
+            // Only process if the game status just changed to final (wasn't final before)
+            if (newStatus === 'final' && winner && matchup.status !== 'final') {
+              console.log(`Game ${matchup.away_team} @ ${matchup.home_team} just became final - processing picks`)
               await updatePickStatuses(matchup.id, winner)
+            } else if (newStatus === 'final' && winner && matchup.status === 'final') {
+              console.log(`Game ${matchup.away_team} @ ${matchup.home_team} was already final - skipping pick processing`)
             }
           }
         } else {
@@ -436,6 +439,14 @@ async function updatePickStatuses(matchupId: string, winner: string) {
       // Debug logging
       console.log(`Pick ${pick.id}: teamPicked=${teamPicked}, winningTeam=${winningTeam}, currentStatus=${pick.status}, newStatus=${newStatus}`)
 
+      // Safety check: Don't update if the pick was updated very recently (within last 5 minutes)
+      // This prevents overriding manual fixes
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      if (pick.updated_at && pick.updated_at > fiveMinutesAgo) {
+        console.log(`Skipping pick ${pick.id} - was updated recently (${pick.updated_at}), likely a manual fix`)
+        continue
+      }
+
       const { error: updateError } = await supabase
         .from('picks')
         .update({ 
@@ -478,10 +489,11 @@ async function processFinalGamePickUpdates(supabase: ReturnType<typeof createSer
     // Only process if we have a winner and the game was recently updated
     if (winner) {
       // Check if picks for this matchup have already been processed recently
+      // Use exact match with underscore to avoid substring matches
       const { data: recentPicks } = await supabase
         .from('picks')
         .select('updated_at')
-        .or('reg1_team_matchup_id.like.*' + matchup.id + '*,reg2_team_matchup_id.like.*' + matchup.id + '*,reg3_team_matchup_id.like.*' + matchup.id + '*')
+        .or(`reg1_team_matchup_id.like.${matchup.id}_%,reg2_team_matchup_id.like.${matchup.id}_%,reg3_team_matchup_id.like.${matchup.id}_%,reg4_team_matchup_id.like.${matchup.id}_%,reg5_team_matchup_id.like.${matchup.id}_%,reg6_team_matchup_id.like.${matchup.id}_%,reg7_team_matchup_id.like.${matchup.id}_%,reg8_team_matchup_id.like.${matchup.id}_%,reg9_team_matchup_id.like.${matchup.id}_%,reg10_team_matchup_id.like.${matchup.id}_%,reg11_team_matchup_id.like.${matchup.id}_%,reg12_team_matchup_id.like.${matchup.id}_%,reg13_team_matchup_id.like.${matchup.id}_%,reg14_team_matchup_id.like.${matchup.id}_%,reg15_team_matchup_id.like.${matchup.id}_%,reg16_team_matchup_id.like.${matchup.id}_%,reg17_team_matchup_id.like.${matchup.id}_%,reg18_team_matchup_id.like.${matchup.id}_%`)
         .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
         .limit(1);
       
