@@ -344,7 +344,7 @@ async function updatePickStatuses(matchupId: string, winner: string) {
     const { data: allPicks, error: fetchError } = await supabase
       .from('picks')
       .select('*')
-      .in('status', ['active', 'safe']) // Get both active and safe picks that need status updates
+      .in('status', ['active', 'safe', 'eliminated']) // Include eliminated picks to fix incorrect eliminations
 
     if (fetchError) {
       console.error(`Error fetching picks for matchup ${matchupId}:`, fetchError)
@@ -431,6 +431,9 @@ async function updatePickStatuses(matchupId: string, winner: string) {
         newStatus = 'safe'
         console.log(`User pick SURVIVES: ${teamPicked} lost, user picked ${teamPicked}`)
       }
+      
+      // Debug logging
+      console.log(`Pick ${pick.id}: teamPicked=${teamPicked}, winningTeam=${winningTeam}, currentStatus=${pick.status}, newStatus=${newStatus}`)
 
       const { error: updateError } = await supabase
         .from('picks')
