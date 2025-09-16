@@ -82,6 +82,42 @@ interface DefaultPickData {
   totalPicksToAssign: number
 }
 
+interface WeeklyStats {
+  week: number
+  weekName: string
+  activePicks: number
+  eliminatedPicks: number
+  remainingPicks: number
+}
+
+interface TeamPickBreakdown {
+  week: number
+  weekName: string
+  teamPicks: Array<{
+    team: string
+    pickCount: number
+    teamData?: {
+      name: string
+      abbreviation: string
+      primary_color: string
+      secondary_color: string
+    }
+    gameResult: 'won' | 'lost' | 'tie' | 'pending'
+  }>
+}
+
+// Helper function to get team colors from team data
+const getTeamColors = (teamData?: { primary_color: string; secondary_color: string }) => {
+  if (!teamData) {
+    return { primary: '#6B7280', secondary: '#9CA3AF' }
+  }
+  
+  return {
+    primary: teamData.primary_color || '#6B7280',
+    secondary: teamData.secondary_color || '#9CA3AF'
+  }
+}
+
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
@@ -96,6 +132,10 @@ export default function AdminPage() {
   // Removed weekCompletionStatus UI/state to simplify and avoid unused state/types
   const [currentWeekActive, setCurrentWeekActive] = useState<{ count: number; col: string } | null>(null)
   const [currentWeekActiveError, setCurrentWeekActiveError] = useState(false)
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats[]>([])
+  const [teamPickBreakdown, setTeamPickBreakdown] = useState<TeamPickBreakdown[]>([])
+  const [currentTeamBreakdownWeek, setCurrentTeamBreakdownWeek] = useState<number | null>(null)
+  const [loadingTeamBreakdown, setLoadingTeamBreakdown] = useState(false)
 
   useEffect(() => {
     // Check if user is authenticated and is admin
@@ -155,7 +195,7 @@ export default function AdminPage() {
         }
 
         // Fetch all the data we need
-        const [usersResponse, purchasesResponse, picksResponse, defaultPickResponse] = await Promise.all([
+        const [usersResponse, purchasesResponse, picksResponse, defaultPickResponse, weeklyStatsResponse, teamPickBreakdownResponse] = await Promise.all([
           fetch('/api/admin/users', { 
             credentials: 'include',
             headers
@@ -171,13 +211,23 @@ export default function AdminPage() {
           fetch('/api/admin/current-week-default-pick', { 
             credentials: 'include',
             headers
+          }),
+          fetch('/api/admin/weekly-stats', { 
+            credentials: 'include',
+            headers
+          }),
+          fetch('/api/admin/team-pick-breakdown', { 
+            credentials: 'include',
+            headers
           })
         ])
 
         console.log('🔍 Admin page: API responses:', {
           users: usersResponse.status,
           purchases: purchasesResponse.status,
-          picks: picksResponse.status
+          picks: picksResponse.status,
+          weeklyStats: weeklyStatsResponse.status,
+          teamPickBreakdown: teamPickBreakdownResponse.status
         })
 
         if (usersResponse.ok) {
@@ -201,6 +251,28 @@ export default function AdminPage() {
           setDefaultPickData(defaultPickData)
         } else {
           console.error('Default pick API error:', defaultPickResponse.status)
+        }
+
+        if (weeklyStatsResponse.ok) {
+          const weeklyStatsData = await weeklyStatsResponse.json()
+          setWeeklyStats(weeklyStatsData.weeklyStats || [])
+        } else {
+          console.error('Weekly stats API error:', weeklyStatsResponse.status)
+        }
+
+        if (teamPickBreakdownResponse.ok) {
+          const teamPickBreakdownData = await teamPickBreakdownResponse.json()
+          console.log('🔍 Admin page: Team pick breakdown data:', teamPickBreakdownData)
+          console.log('🔍 Admin page: First team pick details:', teamPickBreakdownData.teamPickBreakdown?.[0]?.teamPicks?.[0])
+          setTeamPickBreakdown(teamPickBreakdownData.teamPickBreakdown || [])
+          // Set the current week for team breakdown
+          if (teamPickBreakdownData.teamPickBreakdown && teamPickBreakdownData.teamPickBreakdown.length > 0) {
+            setCurrentTeamBreakdownWeek(teamPickBreakdownData.teamPickBreakdown[0].week)
+          }
+        } else {
+          console.error('Team pick breakdown API error:', teamPickBreakdownResponse.status)
+          const errorText = await teamPickBreakdownResponse.text()
+          console.error('Team pick breakdown API error details:', errorText)
         }
 
         // Use canonical server endpoint to get exact column name and DB count
@@ -230,6 +302,88 @@ export default function AdminPage() {
 
     loadData()
   }, [user, authLoading])
+
+  // Function to debug Week 1 eliminations
+  const debugWeek1Eliminations = async () => {
+    try {
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
+      const response = await fetch('/api/admin/weekly-stats?debug-week1=true', {
+        credentials: 'include',
+        headers
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.debugResults) {
+          console.log('🔍 Week 1 Debug Results:', data.debugResults)
+          console.log('🔍 Eliminated Picks:', data.debugResults.eliminatedPicks)
+          console.log('🔍 Correct Picks:', data.debugResults.correctPicks)
+          console.log('🔍 Summary:', data.debugResults.summary)
+          alert(`Week 1 Debug Complete! Check console for details.\n\nEliminated: ${data.debugResults.summary.totalEliminated} users (${data.debugResults.summary.totalEliminatedPickCount} picks)\nCorrect: ${data.debugResults.summary.totalCorrect} users (${data.debugResults.summary.totalCorrectPickCount} picks)`)
+        } else {
+          alert('No debug results found')
+        }
+      } else {
+        console.error('Error loading Week 1 debug:', response.status)
+        alert(`Error: ${response.status}`)
+      }
+    } catch (error) {
+      console.error('Error loading Week 1 debug:', error)
+      alert(`Error: ${error}`)
+    }
+  }
+
+  // Function to load team breakdown for a specific week
+  const loadTeamBreakdownForWeek = async (week: number) => {
+    if (loadingTeamBreakdown) return
+    
+    setLoadingTeamBreakdown(true)
+    try {
+      // Get the current session token
+      const { supabase } = await import('@/lib/supabase')
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
+      const response = await fetch(`/api/admin/team-pick-breakdown?week=${week}`, {
+        credentials: 'include',
+        headers
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`🔍 Admin page: Loaded team breakdown for week ${week}:`, data)
+        console.log(`🔍 Admin page: First team pick game result:`, data.teamPickBreakdown?.[0]?.teamPicks?.[0]?.gameResult)
+        setTeamPickBreakdown(data.teamPickBreakdown || [])
+        setCurrentTeamBreakdownWeek(week)
+      } else {
+        console.error('Error loading team breakdown for week:', week)
+      }
+    } catch (error) {
+      console.error('Error loading team breakdown:', error)
+    } finally {
+      setLoadingTeamBreakdown(false)
+    }
+  }
 
   const totalRevenue = purchases?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount_paid, 0) || 0
   const totalPicksPurchased = purchases?.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.picks_count, 0) || 0
@@ -469,39 +623,181 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Recent Purchases */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+        {/* Weekly Pick Statistics */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-8">
           <div className="px-6 py-4 border-b border-white/20">
-            <h2 className="text-xl font-semibold text-white">Recent Purchases</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Weekly Pick Statistics</h2>
+              <button
+                onClick={debugWeek1Eliminations}
+                className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded text-sm transition-colors"
+              >
+                Debug Week 1
+              </button>
+            </div>
           </div>
           <div className="p-6">
-            {purchases && purchases.length > 0 ? (
-              <div className="space-y-4">
-                {purchases.slice(0, 5).map((purchase) => (
-                  <div key={purchase.id} className="flex items-center justify-between p-3 border border-white/20 rounded">
-                    <div>
-                      <p className="font-medium text-white">
-                        {purchase.picks_count} pick{purchase.picks_count > 1 ? 's' : ''}
-                      </p>
-                      <p className="text-sm text-blue-200">
-                        ${(purchase.amount_paid / 100).toFixed(2)} - {purchase.created_at}
-                      </p>
+            {weeklyStats && weeklyStats.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/20">
+                      <th className="text-left py-3 px-4 font-semibold text-white">Week</th>
+                      <th className="text-right py-3 px-4 font-semibold text-white">Active Picks</th>
+                      <th className="text-right py-3 px-4 font-semibold text-white">Picks Eliminated</th>
+                      <th className="text-right py-3 px-4 font-semibold text-white">Remaining Picks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklyStats.map((stat) => (
+                      <tr key={stat.week} className="border-b border-white/10 hover:bg-white/5">
+                        <td className="py-3 px-4 text-white">
+                          <div>
+                            <div className="font-medium">{stat.weekName}</div>
+                            <div className="text-xs text-blue-200">Week {stat.week}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right text-blue-200 font-medium">
+                          {stat.activePicks}
+                        </td>
+                        <td className="py-3 px-4 text-right text-red-200 font-medium">
+                          {stat.eliminatedPicks}
+                        </td>
+                        <td className="py-3 px-4 text-right text-green-200 font-medium">
+                          {stat.remainingPicks}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-blue-200 text-center py-4">No weekly statistics available</p>
+            )}
+          </div>
+        </div>
+
+        {/* Week over Week Team Picks Breakdown */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-8">
+          <div className="px-6 py-4 border-b border-white/20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-white">Team Picks Breakdown</h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => currentTeamBreakdownWeek && loadTeamBreakdownForWeek(currentTeamBreakdownWeek - 1)}
+                  disabled={loadingTeamBreakdown || !currentTeamBreakdownWeek || currentTeamBreakdownWeek <= 1}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-sm transition-colors"
+                >
+                  ← Previous Week
+                </button>
+                <span className="text-white text-sm px-2">
+                  {currentTeamBreakdownWeek ? `Week ${currentTeamBreakdownWeek}` : 'Loading...'}
+                </span>
+                <button
+                  onClick={() => currentTeamBreakdownWeek && loadTeamBreakdownForWeek(currentTeamBreakdownWeek + 1)}
+                  disabled={loadingTeamBreakdown || !currentTeamBreakdownWeek}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-sm transition-colors"
+                >
+                  Next Week →
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            {loadingTeamBreakdown ? (
+              <p className="text-blue-200 text-center py-4">Loading team breakdown...</p>
+            ) : teamPickBreakdown && teamPickBreakdown.length > 0 ? (
+              <div className="space-y-6">
+                {teamPickBreakdown.map((weekData) => (
+                  <div key={weekData.week} className="border border-white/20 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-white mb-3">
+                      {weekData.weekName}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      {[0, 1, 2].map((colIndex) => {
+                        // Calculate teams for this column - distribute all teams across 3 columns
+                        const totalTeams = weekData.teamPicks.length
+                        const teamsPerColumn = Math.ceil(totalTeams / 3)
+                        const startIndex = colIndex * teamsPerColumn
+                        const endIndex = Math.min(startIndex + teamsPerColumn, totalTeams)
+                        const columnTeams = weekData.teamPicks.slice(startIndex, endIndex)
+                        
+                        return (
+                          <div key={colIndex} className="space-y-2">
+                            {columnTeams.map((teamPick, index) => {
+                              const teamColors = getTeamColors(teamPick.teamData)
+                              const displayName = teamPick.teamData?.name || teamPick.team
+                              
+                              // Determine pick count color based on game result
+                              let pickCountBgColor = '#6B7280' // Default gray for pending
+                              let pickCountTextColor = 'white'
+                              
+                              console.log(`🔍 UI: Team ${displayName}, gameResult: ${teamPick.gameResult}`)
+                              
+                              if (teamPick.gameResult === 'won') {
+                                // Team won - picks are incorrect (RED)
+                                pickCountBgColor = '#DC2626' // red-600
+                                pickCountTextColor = 'white'
+                                console.log(`🔍 UI: Setting RED for ${displayName} (won)`)
+                              } else if (teamPick.gameResult === 'lost') {
+                                // Team lost - picks are correct (GREEN)
+                                pickCountBgColor = '#16A34A' // green-600
+                                pickCountTextColor = 'white'
+                                console.log(`🔍 UI: Setting GREEN for ${displayName} (lost)`)
+                              } else if (teamPick.gameResult === 'tie') {
+                                // Tie - picks are incorrect (RED)
+                                pickCountBgColor = '#DC2626' // red-600
+                                pickCountTextColor = 'white'
+                                console.log(`🔍 UI: Setting RED for ${displayName} (tie)`)
+                              } else {
+                                console.log(`🔍 UI: Setting GRAY for ${displayName} (${teamPick.gameResult})`)
+                              }
+                              // 'pending' uses gray (no result colors for incomplete games)
+                              
+                              return (
+                                <div 
+                                  key={teamPick.team} 
+                                  className="flex items-center justify-between p-2 rounded border border-white/10 hover:bg-white/5 transition-colors"
+                                  style={{ 
+                                    borderLeftColor: teamColors.primary,
+                                    borderLeftWidth: '4px'
+                                  }}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-white text-sm font-medium">
+                                      {displayName}
+                                    </span>
+                                    {teamPick.teamData?.abbreviation && (
+                                      <span className="text-xs text-blue-200">
+                                        {teamPick.teamData.abbreviation}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span 
+                                    className="text-lg font-bold px-3 py-2 rounded-lg"
+                                    style={{ 
+                                      backgroundColor: pickCountBgColor,
+                                      color: pickCountTextColor
+                                    }}
+                                  >
+                                    {teamPick.pickCount}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })}
                     </div>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      purchase.status === 'completed' ? 'bg-green-500/20 text-green-200' :
-                      purchase.status === 'pending' ? 'bg-yellow-500/20 text-yellow-200' :
-                      'bg-red-500/20 text-red-200'
-                    }`}>
-                      {purchase.status}
-                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-blue-200 text-center py-4">No purchases found</p>
+              <p className="text-blue-200 text-center py-4">No team pick breakdown available</p>
             )}
           </div>
         </div>
+
       </div>
 
       {/* Stats Modal */}
