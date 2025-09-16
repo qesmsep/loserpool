@@ -622,9 +622,9 @@ export default function AdminPage() {
 
         {/* Weekly Pick Statistics */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-8">
-          <div className="px-6 py-4 border-b border-white/20">
+          <div className="px-3 sm:px-6 py-4 border-b border-white/20">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Weekly Pick Statistics</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-white">Weekly Pick Statistics</h2>
               <button
                 onClick={debugWeek1Eliminations}
                 className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded text-sm transition-colors"
@@ -633,41 +633,72 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {weeklyStats && weeklyStats.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="text-left py-3 px-4 font-semibold text-white">Week</th>
-                      <th className="text-right py-3 px-4 font-semibold text-white">Active Picks</th>
-                      <th className="text-right py-3 px-4 font-semibold text-white">Picks Eliminated</th>
-                      <th className="text-right py-3 px-4 font-semibold text-white">Remaining Picks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeklyStats.map((stat) => (
-                      <tr key={stat.week} className="border-b border-white/10 hover:bg-white/5">
-                        <td className="py-3 px-4 text-white">
-                          <div>
-                            <div className="font-medium">{stat.weekName}</div>
-                            <div className="text-xs text-blue-200">Week {stat.week}</div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right text-blue-200 font-medium">
-                          {stat.activePicks}
-                        </td>
-                        <td className="py-3 px-4 text-right text-red-200 font-medium">
-                          {stat.eliminatedPicks}
-                        </td>
-                        <td className="py-3 px-4 text-right text-green-200 font-medium">
-                          {stat.remainingPicks}
-                        </td>
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-3 px-4 font-semibold text-white">Week</th>
+                        <th className="text-right py-3 px-4 font-semibold text-white">Active Picks</th>
+                        <th className="text-right py-3 px-4 font-semibold text-white">Picks Eliminated</th>
+                        <th className="text-right py-3 px-4 font-semibold text-white">Remaining Picks</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {weeklyStats.map((stat) => (
+                        <tr key={stat.week} className="border-b border-white/10 hover:bg-white/5">
+                          <td className="py-3 px-4 text-white">
+                            <div>
+                              <div className="font-medium">{stat.weekName}</div>
+                              <div className="text-xs text-blue-200">Week {stat.week}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right text-blue-200 font-medium">
+                            {stat.activePicks}
+                          </td>
+                          <td className="py-3 px-4 text-right text-red-200 font-medium">
+                            {stat.eliminatedPicks}
+                          </td>
+                          <td className="py-3 px-4 text-right text-green-200 font-medium">
+                            {stat.remainingPicks}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden space-y-3">
+                  {weeklyStats.map((stat) => (
+                    <div key={stat.week} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <div className="font-semibold text-white">{stat.weekName}</div>
+                          <div className="text-xs text-blue-200">Week {stat.week}</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                          <div className="text-xs text-blue-200 mb-1">Active</div>
+                          <div className="text-lg font-bold text-blue-200">{stat.activePicks}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-red-200 mb-1">Eliminated</div>
+                          <div className="text-lg font-bold text-red-200">{stat.eliminatedPicks}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-green-200 mb-1">Remaining</div>
+                          <div className="text-lg font-bold text-green-200">{stat.remainingPicks}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <p className="text-blue-200 text-center py-4">No weekly statistics available</p>
             )}
@@ -676,41 +707,45 @@ export default function AdminPage() {
 
         {/* Week over Week Team Picks Breakdown */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 mb-8">
-          <div className="px-6 py-4 border-b border-white/20">
+          <div className="px-3 sm:px-6 py-4 border-b border-white/20">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Team Picks Breakdown</h2>
-              <div className="flex items-center space-x-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-white">Team Picks Breakdown</h2>
+              <div className="flex items-center space-x-1 sm:space-x-2">
                 <button
                   onClick={() => currentTeamBreakdownWeek && loadTeamBreakdownForWeek(currentTeamBreakdownWeek - 1)}
                   disabled={loadingTeamBreakdown || !currentTeamBreakdownWeek || currentTeamBreakdownWeek <= 1}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-sm transition-colors"
+                  className="px-2 sm:px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-xs sm:text-sm transition-colors"
                 >
-                  ← Previous Week
+                  <span className="hidden sm:inline">← Previous Week</span>
+                  <span className="sm:hidden">←</span>
                 </button>
-                <span className="text-white text-sm px-2">
+                <span className="text-white text-xs sm:text-sm px-1 sm:px-2">
                   {currentTeamBreakdownWeek ? `Week ${currentTeamBreakdownWeek}` : 'Loading...'}
                 </span>
                 <button
                   onClick={() => currentTeamBreakdownWeek && loadTeamBreakdownForWeek(currentTeamBreakdownWeek + 1)}
                   disabled={loadingTeamBreakdown || !currentTeamBreakdownWeek}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-sm transition-colors"
+                  className="px-2 sm:px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-xs sm:text-sm transition-colors"
                 >
-                  Next Week →
+                  <span className="hidden sm:inline">Next Week →</span>
+                  <span className="sm:hidden">→</span>
                 </button>
               </div>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {loadingTeamBreakdown ? (
               <p className="text-blue-200 text-center py-4">Loading team breakdown...</p>
             ) : teamPickBreakdown && teamPickBreakdown.length > 0 ? (
               <div className="space-y-6">
                 {teamPickBreakdown.map((weekData) => (
-                  <div key={weekData.week} className="border border-white/20 rounded-lg p-4">
+                  <div key={weekData.week} className="border border-white/20 rounded-lg p-3 sm:p-4">
                     <h3 className="text-lg font-semibold text-white mb-3">
                       {weekData.weekName}
                     </h3>
-                    <div className="grid grid-cols-3 gap-4">
+                    
+                    {/* Desktop Layout - 3 columns */}
+                    <div className="hidden md:grid grid-cols-3 gap-4">
                       {[0, 1, 2].map((colIndex) => {
                         // Calculate teams for this column - distribute all teams across 3 columns
                         const totalTeams = weekData.teamPicks.length
@@ -729,27 +764,19 @@ export default function AdminPage() {
                               let pickCountBgColor = '#6B7280' // Default gray for pending
                               let pickCountTextColor = 'white'
                               
-                              console.log(`🔍 UI: Team ${displayName}, gameResult: ${teamPick.gameResult}`)
-                              
                               if (teamPick.gameResult === 'won') {
                                 // Team won - picks are incorrect (RED)
                                 pickCountBgColor = '#DC2626' // red-600
                                 pickCountTextColor = 'white'
-                                console.log(`🔍 UI: Setting RED for ${displayName} (won)`)
                               } else if (teamPick.gameResult === 'lost') {
                                 // Team lost - picks are correct (GREEN)
                                 pickCountBgColor = '#16A34A' // green-600
                                 pickCountTextColor = 'white'
-                                console.log(`🔍 UI: Setting GREEN for ${displayName} (lost)`)
                               } else if (teamPick.gameResult === 'tie') {
                                 // Tie - picks are incorrect (RED)
                                 pickCountBgColor = '#DC2626' // red-600
                                 pickCountTextColor = 'white'
-                                console.log(`🔍 UI: Setting RED for ${displayName} (tie)`)
-                              } else {
-                                console.log(`🔍 UI: Setting GRAY for ${displayName} (${teamPick.gameResult})`)
                               }
-                              // 'pending' uses gray (no result colors for incomplete games)
                               
                               return (
                                 <div 
@@ -782,6 +809,63 @@ export default function AdminPage() {
                                 </div>
                               )
                             })}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Mobile Layout - 2 columns */}
+                    <div className="md:hidden grid grid-cols-2 gap-3">
+                      {weekData.teamPicks.map((teamPick) => {
+                        const teamColors = getTeamColors(teamPick.teamData)
+                        const displayName = teamPick.teamData?.name || teamPick.team
+                        
+                        // Determine pick count color based on game result
+                        let pickCountBgColor = '#6B7280' // Default gray for pending
+                        let pickCountTextColor = 'white'
+                        
+                        if (teamPick.gameResult === 'won') {
+                          // Team won - picks are incorrect (RED)
+                          pickCountBgColor = '#DC2626' // red-600
+                          pickCountTextColor = 'white'
+                        } else if (teamPick.gameResult === 'lost') {
+                          // Team lost - picks are correct (GREEN)
+                          pickCountBgColor = '#16A34A' // green-600
+                          pickCountTextColor = 'white'
+                        } else if (teamPick.gameResult === 'tie') {
+                          // Tie - picks are incorrect (RED)
+                          pickCountBgColor = '#DC2626' // red-600
+                          pickCountTextColor = 'white'
+                        }
+                        
+                        return (
+                          <div 
+                            key={teamPick.team} 
+                            className="flex items-center justify-between p-2 rounded border border-white/10 hover:bg-white/5 transition-colors"
+                            style={{ 
+                              borderLeftColor: teamColors.primary,
+                              borderLeftWidth: '3px'
+                            }}
+                          >
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-white text-sm font-medium truncate">
+                                {displayName}
+                              </span>
+                              {teamPick.teamData?.abbreviation && (
+                                <span className="text-xs text-blue-200">
+                                  {teamPick.teamData.abbreviation}
+                                </span>
+                              )}
+                            </div>
+                            <span 
+                              className="text-base font-bold px-2 py-1 rounded-lg ml-2 flex-shrink-0"
+                              style={{ 
+                                backgroundColor: pickCountBgColor,
+                                color: pickCountTextColor
+                              }}
+                            >
+                              {teamPick.pickCount}
+                            </span>
                           </div>
                         )
                       })}
