@@ -477,6 +477,16 @@ export default function DashboardPage() {
       console.log('🔍 Team breakdown - current week column:', currentWeekColumn)
       setCurrentWeekColumn(currentWeekColumn)
 
+      // Get all matchups for the current week to create a lookup set first
+      const { data: currentWeekMatchups } = await supabase
+        .from('matchups')
+        .select('id')
+        .eq('week', apiCurrentWeek)
+        .eq('season', apiSeasonFilter)
+      
+      const currentWeekMatchupIds = new Set(currentWeekMatchups?.map(m => m.id) || [])
+      console.log('🔍 Team breakdown - current week matchups:', currentWeekMatchupIds.size)
+
       // Get all picks for the current week (use pagination to ensure we get all picks)
       let allPicks: {
         id: string
@@ -505,7 +515,21 @@ export default function DashboardPage() {
         }
 
         if (picksData && picksData.length > 0) {
-          allPicks = [...allPicks, ...picksData]
+          // Filter picks for current week during pagination to avoid memory issues
+          const filteredPagePicks = picksData.filter(pick => {
+            const matchupId = (pick as Record<string, unknown>)[currentWeekColumn] as string
+            if (matchupId) {
+              // Extract the matchup ID from the team_matchup_id format (e.g., "matchup_id_team_name")
+              const parts = matchupId.split('_')
+              const actualMatchupId = parts[0]
+              
+              // Check if this matchup is for the current week
+              return currentWeekMatchupIds.has(actualMatchupId)
+            }
+            return false
+          })
+          
+          allPicks = [...allPicks, ...filteredPagePicks]
           from += pageSize
           hasMore = picksData.length === pageSize
         } else {
@@ -513,10 +537,8 @@ export default function DashboardPage() {
         }
       }
 
-      const picksData = allPicks
-
-      console.log('🔍 Team breakdown - picks loaded:', picksData?.length || 0)
-      setAllPicksForBreakdown(picksData || [])
+      console.log('🔍 Team breakdown - picks loaded and filtered for current week:', allPicks?.length || 0)
+      setAllPicksForBreakdown(allPicks || [])
     } catch (error) {
       console.error('Error loading picks for breakdown:', error)
     }

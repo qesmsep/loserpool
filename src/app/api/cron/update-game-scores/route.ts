@@ -439,14 +439,6 @@ async function updatePickStatuses(matchupId: string, winner: string) {
       // Debug logging
       console.log(`Pick ${pick.id}: teamPicked=${teamPicked}, winningTeam=${winningTeam}, currentStatus=${pick.status}, newStatus=${newStatus}`)
 
-      // Safety check: Don't update if the pick was updated very recently (within last 5 minutes)
-      // This prevents overriding manual fixes
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      if (pick.updated_at && pick.updated_at > fiveMinutesAgo) {
-        console.log(`Skipping pick ${pick.id} - was updated recently (${pick.updated_at}), likely a manual fix`)
-        continue
-      }
-
       const { error: updateError } = await supabase
         .from('picks')
         .update({ 
