@@ -93,9 +93,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const requestedWeek = searchParams.get('week')
     
-    // If a specific week is requested, return only that week
-    // Otherwise, return all weeks that have picks
-    const targetWeek = requestedWeek ? parseInt(requestedWeek) : null
+    // Determine which week to load
+    const targetWeek = requestedWeek ? parseInt(requestedWeek) : currentWeek
 
     // Define week columns and their names (excluding preseason)
     const weekColumns = [
@@ -123,10 +122,11 @@ export async function GET(request: Request) {
       { column: 'post4_team_matchup_id', week: 22, name: 'Post Season Week 4' }
     ]
 
-    // Determine which weeks to process
+    // If a specific week is requested, return only that week
+    // Otherwise, return all weeks that have picks
     let weeksToProcess: Array<{ column: string; week: number; name: string }>
     
-    if (targetWeek !== null) {
+    if (requestedWeek) {
       // Single week requested
       const targetWeekInfo = weekColumns.find(w => w.week === targetWeek)
       if (!targetWeekInfo) {
@@ -156,10 +156,14 @@ export async function GET(request: Request) {
     const allMatchupsData: Array<{ id: string; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string; week: number; season: string }> = []
     
     for (const weekInfo of weeksToProcess) {
+      // For each week, we need to find the correct season value
+      // Week 1-3 might be REG1, REG2, REG3, etc.
+      const weekSeasonFilter = `REG${weekInfo.week}`
+      
       const { data: matchupsData, error: matchupsError } = await supabaseAdmin
         .from('matchups')
         .select('id, away_team, home_team, away_score, home_score, status, week, season')
-        .eq('season', seasonFilter)
+        .eq('season', weekSeasonFilter)
         .eq('week', weekInfo.week)
 
       if (matchupsError) {
@@ -167,6 +171,7 @@ export async function GET(request: Request) {
         continue
       }
 
+      console.log(`🔍 API: Week ${weekInfo.week} (${weekSeasonFilter}): Found ${matchupsData?.length || 0} matchups`)
       if (matchupsData) {
         allMatchupsData.push(...matchupsData)
       }

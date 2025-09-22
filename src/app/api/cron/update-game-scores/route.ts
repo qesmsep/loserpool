@@ -533,7 +533,13 @@ async function reconcileCurrentWeekPicks(
     let picksUpdated = 0
     const userIdsToRefresh = new Set<string>()
 
-    for (const pick of picks || []) {
+    // Normalize result rows to a type-safe structure for this routine
+    type ReconcilePickRow = { id: string; user_id: string | null; status: string } & Record<string, unknown>
+    const pickRows: ReconcilePickRow[] = (picks as unknown as Array<Record<string, unknown>>) 
+      ? (picks as unknown as Array<Record<string, unknown>>).map(p => p as ReconcilePickRow)
+      : []
+
+    for (const pick of pickRows) {
       // Safely index dynamic week column name
       const pickRecord = pick as unknown as { [key: string]: unknown }
       const teamMatchupValueUnknown = pickRecord[weekColumn as string]
@@ -587,12 +593,12 @@ async function reconcileCurrentWeekPicks(
       const { error: updError } = await supabase
         .from('picks')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', pick.id as string)
+        .eq('id', pick.id)
 
       picksProcessed++
       if (!updError) {
         picksUpdated++
-        if (pick.user_id) userIdsToRefresh.add(pick.user_id as string)
+        if (pick.user_id) userIdsToRefresh.add(pick.user_id)
       } else {
         console.error(`Failed to update pick ${pick.id}:`, updError)
       }
