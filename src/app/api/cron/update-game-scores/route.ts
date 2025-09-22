@@ -517,29 +517,41 @@ async function reconcileCurrentWeekPicks(
       })
     }
 
-    // Load picks for this week that are not already eliminated
-    const { data: picks, error: picksError } = await supabase
-      .from('picks')
-      .select(`id, user_id, status, ${weekColumn}`)
-      .not(weekColumn, 'is', null)
-      .neq('status', 'eliminated')
+    // Page through all picks for this week that are not already eliminated (stable order)
+    const PAGE_SIZE = 1000
+    let offset = 0
+    type ReconcilePickRow = { id: string; user_id: string | null; status: string } & Record<string, unknown>
+    const allPickRows: ReconcilePickRow[] = []
 
-    if (picksError) {
-      console.error('Error loading picks for reconcile:', picksError)
-      return { picksProcessed: 0, picksUpdated: 0 }
+    for (;;) {
+      const { data: pageRows, error: pageError } = await supabase
+        .from('picks')
+        .select(`id, user_id, status, ${weekColumn}`)
+        .not(weekColumn, 'is', null)
+        .neq('status', 'eliminated')
+        .order('id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1)
+
+      if (pageError) {
+        console.error('Error loading picks page for reconcile:', pageError)
+        break
+      }
+
+      const normalized: ReconcilePickRow[] = (pageRows as unknown as Array<Record<string, unknown>> || []).map(r => r as ReconcilePickRow)
+      allPickRows.push(...normalized)
+
+      if (!pageRows || pageRows.length < PAGE_SIZE) {
+        break
+      }
+
+      offset += PAGE_SIZE
     }
 
     let picksProcessed = 0
     let picksUpdated = 0
     const userIdsToRefresh = new Set<string>()
 
-    // Normalize result rows to a type-safe structure for this routine
-    type ReconcilePickRow = { id: string; user_id: string | null; status: string } & Record<string, unknown>
-    const pickRows: ReconcilePickRow[] = (picks as unknown as Array<Record<string, unknown>>) 
-      ? (picks as unknown as Array<Record<string, unknown>>).map(p => p as ReconcilePickRow)
-      : []
-
-    for (const pick of pickRows) {
+    for (const pick of allPickRows) {
       // Safely index dynamic week column name
       const pickRecord = pick as unknown as { [key: string]: unknown }
       const teamMatchupValueUnknown = pickRecord[weekColumn as string]
