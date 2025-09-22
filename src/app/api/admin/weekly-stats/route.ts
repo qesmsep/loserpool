@@ -215,74 +215,69 @@ export async function GET(request: Request) {
       const activePicks = weekActivePicks.get(week) || 0
       let eliminatedPicks = 0
       
-      if (week === currentWeek) {
-        // Current week: Eliminated picks = 0 (week hasn't finished)
-        eliminatedPicks = 0
-      } else {
-        // Past weeks: Calculate eliminated picks based on actual game results
-        // Get all picks for this week
-        const weekPicks = allPicks.filter(pick => 
-          (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined
-        )
+      // Calculate eliminated picks based on actual game results (for both current and past weeks)
+      // Get all picks for this week
+      const weekPicks = allPicks.filter(pick => 
+        (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined
+      )
+      
+      // Count picks that were incorrect (teams that won or tied) based on finalized games
+      for (const pick of weekPicks) {
+        const matchupId = (pick as { [key: string]: string | number | null })[column] as string
+        if (!matchupId) continue
         
-        // Count picks that were incorrect (teams that won or tied)
-        for (const pick of weekPicks) {
-          const matchupId = (pick as { [key: string]: string | number | null })[column] as string
-          if (!matchupId) continue
+        // Extract actual matchup ID (remove team suffix)
+        const parts = matchupId.split('_')
+        if (parts.length >= 2) {
+          const actualMatchupId = parts[0]
+          const teamKey = parts.slice(1).join('_')
           
-          // Extract actual matchup ID (remove team suffix)
-          const parts = matchupId.split('_')
-          if (parts.length >= 2) {
-            const actualMatchupId = parts[0]
-            const teamKey = parts.slice(1).join('_')
+          // Get matchup result
+          const matchup = matchupMap.get(actualMatchupId)
+          if (matchup && matchup.status === 'final') {
+            // Determine if the picked team won or lost
+            let isIncorrect = false
             
-            // Get matchup result
-            const matchup = matchupMap.get(actualMatchupId)
-            if (matchup && matchup.status === 'final') {
-              // Determine if the picked team won or lost
-              let isIncorrect = false
+            if (matchup.away_score !== null && matchup.home_score !== null) {
+              let winner: string | null = null
+              if (matchup.away_score > matchup.home_score) {
+                winner = matchup.away_team
+              } else if (matchup.home_score > matchup.away_score) {
+                winner = matchup.home_team
+              }
+              // Ties result in winner = null
               
-              if (matchup.away_score !== null && matchup.home_score !== null) {
-                let winner: string | null = null
-                if (matchup.away_score > matchup.home_score) {
-                  winner = matchup.away_team
-                } else if (matchup.home_score > matchup.away_score) {
-                  winner = matchup.home_team
-                }
-                // Ties result in winner = null
-                
-                if (winner === null) {
-                  // Tie - all picks are incorrect
-                  isIncorrect = true
-                } else {
-                  // Find team data for proper name matching
-                  let teamData = teamsMap.get(teamKey)
-                  if (!teamData) {
-                    for (const [key, data] of teamsMap.entries()) {
-                      if (key.toLowerCase().includes(teamKey.toLowerCase()) || 
-                          teamKey.toLowerCase().includes(key.toLowerCase())) {
-                        teamData = data
-                        break
-                      }
+              if (winner === null) {
+                // Tie - all picks are incorrect
+                isIncorrect = true
+              } else {
+                // Find team data for proper name matching
+                let teamData = teamsMap.get(teamKey)
+                if (!teamData) {
+                  for (const [key, data] of teamsMap.entries()) {
+                    if (key.toLowerCase().includes(teamKey.toLowerCase()) || 
+                        teamKey.toLowerCase().includes(key.toLowerCase())) {
+                      teamData = data
+                      break
                     }
                   }
-                  
-                  const pickedTeamName = teamData?.name || teamKey
-                  
-                  // Check if picked team won (incorrect in loser pool)
-                  if (winner === pickedTeamName || 
-                      (teamData?.abbreviation && winner === teamData.abbreviation) ||
-                      (winner && pickedTeamName && 
-                       (winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
-                        pickedTeamName.toLowerCase().includes(winner.toLowerCase())))) {
-                    isIncorrect = true
-                  }
+                }
+                
+                const pickedTeamName = teamData?.name || teamKey
+                
+                // Check if picked team won (incorrect in loser pool)
+                if (winner === pickedTeamName || 
+                    (teamData?.abbreviation && winner === teamData.abbreviation) ||
+                    (winner && pickedTeamName && 
+                     (winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
+                      pickedTeamName.toLowerCase().includes(winner.toLowerCase())))) {
+                  isIncorrect = true
                 }
               }
-              
-              if (isIncorrect) {
-                eliminatedPicks += (pick.picks_count as number) || 0
-              }
+            }
+            
+            if (isIncorrect) {
+              eliminatedPicks += (pick.picks_count as number) || 0
             }
           }
         }
@@ -293,7 +288,8 @@ export async function GET(request: Request) {
 
       // Only include weeks that have some activity
       if (activePicks > 0 || eliminatedPicks > 0) {
-        console.log(`🔍 Weekly Stats: Week ${week} (${name})`)
+        const weekType = week === currentWeek ? ' (CURRENT WEEK)' : ''
+        console.log(`🔍 Weekly Stats: Week ${week} (${name})${weekType}`)
         console.log(`🔍 Weekly Stats: Active Picks: ${activePicks}, Eliminated: ${eliminatedPicks}, Remaining: ${remainingPicks}`)
         
         weeklyStats.push({

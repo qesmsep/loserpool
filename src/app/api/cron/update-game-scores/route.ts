@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { espnService, ESPNGame } from '@/lib/espn-service'
+import { getCurrentSeasonInfo } from '@/lib/season-detection'
 import { updateUserTypeBasedOnPicks } from '@/lib/user-types'
 
 export async function POST(request: NextRequest) {
@@ -19,41 +20,25 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServiceRoleClient()
     
-    // Use 2025 season
-    const currentYear = '2025'
-    console.log(`Using season year: ${currentYear}`)
+    // Determine current season/week using season detection (authoritative)
+    const seasonInfo = await getCurrentSeasonInfo()
+    const currentWeek = seasonInfo.currentWeek
+    const seasonType = seasonInfo.isPreseason ? 'PRE' : 'REG'
+    const currentYear = String(seasonInfo.seasonYear)
+    console.log(`Season detection → ${seasonType}${currentWeek}, year=${currentYear}`)
 
-        // Get current week from ESPN API
-    let currentWeek: number
-    try {
-      currentWeek = await espnService.getCurrentNFLWeek(parseInt(currentYear))
-      console.log(`Current week from ESPN API: ${currentWeek}`)
-    } catch (error) {
-      console.error('Error getting current week from ESPN API:', error)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to get current week from ESPN API',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, { status: 500 })
-    }
-
-    // Get all available games from ESPN API for different weeks and season types
+    // Get ESPN games only for the current season week
     const allEspnGames: ESPNGame[] = []
-    const seasonTypes = ['PRE', 'REG', 'POST']
-    const weeksToCheck = [1, 2, 3, 4, 5] // Check multiple weeks
-    
-    for (const st of seasonTypes) {
-      for (const week of weeksToCheck) {
-        try {
-          const games = await espnService.getNFLSchedule(parseInt(currentYear), week, st)
-          if (games.length > 0) {
-            allEspnGames.push(...games)
-            console.log(`Found ${games.length} ${st} games for week ${week}`)
-          }
-        } catch (error) {
-          console.log(`No ${st} games found for week ${week}:`, error instanceof Error ? error.message : 'Unknown error')
-        }
+    try {
+      const games = await espnService.getNFLSchedule(parseInt(currentYear), currentWeek, seasonType)
+      if (games.length > 0) {
+        allEspnGames.push(...games)
+        console.log(`Found ${games.length} ${seasonType} games for current week ${currentWeek}`)
+      } else {
+        console.log(`No ${seasonType} games found for current week ${currentWeek}`)
       }
+    } catch (error) {
+      console.log(`Failed to fetch ESPN games for ${seasonType}${currentWeek}:`, error instanceof Error ? error.message : 'Unknown error')
     }
     
     if (allEspnGames.length === 0) {
@@ -67,10 +52,11 @@ export async function POST(request: NextRequest) {
     
     console.log(`Found ${allEspnGames.length} total games from ESPN API`)
 
-    // Get all matchups from our database
+    // Get matchups for current week from our database
     const { data: matchups, error: fetchError } = await supabase
       .from('matchups')
       .select('*')
+      .eq('season', seasonInfo.seasonDisplay)
       .order('game_time', { ascending: true })
 
     if (fetchError) {
@@ -78,44 +64,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: fetchError.message }, { status: 500 })
     }
 
-    // Process pick status updates for all final games that haven't been processed yet
+    // Process pick status updates for final games in the current week that haven't been processed yet
     console.log('Starting to process final game pick updates...')
     await processFinalGamePickUpdates(supabase, matchups)
     console.log('Finished processing final game pick updates.')
 
-    // Also get all weeks in our database to see what we have
-    const { data: allWeeks } = await supabase
-      .from('matchups')
-      .select('week')
-      .order('week', { ascending: true })
-
-    const uniqueWeeks = [...new Set(allWeeks?.map(m => m.week) || [])]
-    console.log(`Database has games for weeks: ${uniqueWeeks.join(', ')}`)
-    console.log(`ESPN API current week: ${currentWeek}`)
-    console.log(`Database matchups for week ${currentWeek}: ${matchups?.length || 0}`)
+    console.log(`Database matchups for ${seasonInfo.seasonDisplay}: ${matchups?.length || 0}`)
 
     if (!matchups || matchups.length === 0) {
       console.log('No matchups found in database for current week')
-      
-      // Check if this is a season mismatch
-      const earliestWeek = Math.min(...uniqueWeeks)
-      const latestWeek = Math.max(...uniqueWeeks)
-      
-      let message = 'No matchups found in database for current week'
-      if (earliestWeek > currentWeek) {
-        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (future), ESPN API has week ${currentWeek} (current 2024 season)`
-      } else if (latestWeek < currentWeek) {
-        message = `Season mismatch: Database has weeks ${earliestWeek}-${latestWeek} (past), ESPN API has week ${currentWeek} (current 2024 season)`
-      }
-      
       return NextResponse.json({ 
         success: true, 
-        message,
+        message: 'No matchups found in database for current week',
         games_updated: 0,
         debug: {
           currentWeek,
-          databaseWeeks: uniqueWeeks,
-          seasonMismatch: earliestWeek > currentWeek || latestWeek < currentWeek
+          seasonDisplay: seasonInfo.seasonDisplay
         }
       })
     }
@@ -129,7 +93,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`Found ${matchups.length} matchups in database and ${allEspnGames.length} games from ESPN API`)
+    console.log(`Found ${matchups.length} matchups in DB and ${allEspnGames.length} ESPN games for ${seasonInfo.seasonDisplay}`)
 
     let gamesUpdated = 0
     const errors: string[] = []
@@ -192,19 +156,21 @@ export async function POST(request: NextRequest) {
           }
         }
 
-                       // Check if we need to update this matchup
-               const needsUpdate =
-                 newStatus !== matchup.status ||
-                 awayScore !== matchup.away_score ||
-                 homeScore !== matchup.home_score ||
-                 awaySpread !== matchup.away_spread ||
-                 homeSpread !== matchup.home_spread ||
-                 overUnder !== matchup.over_under ||
-                 temperature !== matchup.temperature ||
-                 windSpeed !== matchup.wind_speed ||
-                 weather !== matchup.weather_forecast ||
-                 quarterInfo !== matchup.quarter_info ||
-                 broadcastInfo !== matchup.broadcast_info
+        // Check if we need to update this matchup
+        const needsUpdate =
+          newStatus !== matchup.status ||
+          awayScore !== matchup.away_score ||
+          homeScore !== matchup.home_score ||
+          awaySpread !== matchup.away_spread ||
+          homeSpread !== matchup.home_spread ||
+          overUnder !== matchup.over_under ||
+          temperature !== matchup.temperature ||
+          windSpeed !== matchup.wind_speed ||
+          weather !== matchup.weather_forecast ||
+          quarterInfo !== matchup.quarter_info ||
+          broadcastInfo !== matchup.broadcast_info ||
+          // Ensure we persist winner changes even if nothing else changed
+          winner !== (matchup as any).winner
 
                if (needsUpdate) {
                  const updateData: {
@@ -284,7 +250,10 @@ export async function POST(request: NextRequest) {
 
     const executionTime = Date.now() - startTime
     
-    console.log(`Game score update completed in ${executionTime}ms: ${gamesUpdated} games updated`)
+    // Reconcile current week picks regardless of pick update recency
+    const reconcileResult = await reconcileCurrentWeekPicks(supabase, seasonInfo)
+
+    console.log(`Game score update completed in ${executionTime}ms: ${gamesUpdated} games updated; ${reconcileResult.picksProcessed} picks reconciled, ${reconcileResult.picksUpdated} picks updated`)
 
     return NextResponse.json({
       success: true,
@@ -292,15 +261,16 @@ export async function POST(request: NextRequest) {
       total_matchups_checked: matchups.length,
       execution_time_ms: executionTime,
       errors: errors.length > 0 ? errors : null,
-              debug: {
-          currentWeek,
-          espnGamesCount: allEspnGames.length,
-          databaseMatchupsCount: matchups.length,
-                  databaseWeeks: uniqueWeeks,
-          databaseSeasons: [...new Set(matchups?.map(m => m.season) || [])],
+      debug: {
+        currentWeek,
+        seasonDisplay: seasonInfo.seasonDisplay,
+        espnGamesCount: allEspnGames.length,
+        databaseMatchupsCount: matchups.length,
+        databaseSeasons: [...new Set(matchups?.map(m => m.season) || [])],
         espnGameKeys: Array.from(espnGameMap.keys()),
-        databaseGameKeys: matchups.map(m => `${m.away_team}-${m.home_team}`).slice(0, 5), // First 5 for debugging
-        message: matchups.length === 0 ? 'No database matchups for current week' : 'Database matchups found for current week'
+        databaseGameKeys: matchups.map(m => `${m.away_team}-${m.home_team}`).slice(0, 5),
+        picksReconciled: reconcileResult.picksProcessed,
+        picksUpdated: reconcileResult.picksUpdated
       }
     })
 
@@ -470,12 +440,22 @@ async function updatePickStatuses(matchupId: string, winner: string) {
 }
 
 // Function to process pick status updates for all final games that haven't been processed yet
-async function processFinalGamePickUpdates(supabase: ReturnType<typeof createServiceRoleClient>, matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string; last_api_update?: string }[]) {
+async function processFinalGamePickUpdates(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string; away_score?: number | null; home_score?: number | null; last_api_update?: string }[]
+) {
   const finalGames = matchups.filter(m => m.status === 'final');
   console.log(`Found ${finalGames.length} final games to process pick updates for.`);
 
   for (const matchup of finalGames) {
-    const winner = matchup.winner;
+    let winner = matchup.winner as string | null;
+    // Derive winner from scores if missing
+    if (!winner && (matchup.away_score !== undefined && matchup.home_score !== undefined) && (matchup.away_score !== null && matchup.home_score !== null)) {
+      if (matchup.away_score > matchup.home_score) winner = 'away';
+      else if (matchup.home_score > matchup.away_score) winner = 'home';
+      else winner = 'tie';
+      console.log(`Derived missing winner for ${matchup.away_team} @ ${matchup.home_team}: ${winner}`);
+    }
     console.log(`Processing final game: ${matchup.away_team} @ ${matchup.home_team}, winner: ${winner}`);
     
     // Only process if we have a winner and the game was recently updated
@@ -485,7 +465,7 @@ async function processFinalGamePickUpdates(supabase: ReturnType<typeof createSer
       const { data: recentPicks } = await supabase
         .from('picks')
         .select('updated_at')
-        .or(`reg1_team_matchup_id.like.${matchup.id}_%,reg2_team_matchup_id.like.${matchup.id}_%,reg3_team_matchup_id.like.${matchup.id}_%,reg4_team_matchup_id.like.${matchup.id}_%,reg5_team_matchup_id.like.${matchup.id}_%,reg6_team_matchup_id.like.${matchup.id}_%,reg7_team_matchup_id.like.${matchup.id}_%,reg8_team_matchup_id.like.${matchup.id}_%,reg9_team_matchup_id.like.${matchup.id}_%,reg10_team_matchup_id.like.${matchup.id}_%,reg11_team_matchup_id.like.${matchup.id}_%,reg12_team_matchup_id.like.${matchup.id}_%,reg13_team_matchup_id.like.${matchup.id}_%,reg14_team_matchup_id.like.${matchup.id}_%,reg15_team_matchup_id.like.${matchup.id}_%,reg16_team_matchup_id.like.${matchup.id}_%,reg17_team_matchup_id.like.${matchup.id}_%,reg18_team_matchup_id.like.${matchup.id}_%`)
+        .or(`pre1_team_matchup_id.like.${matchup.id}_%,pre2_team_matchup_id.like.${matchup.id}_%,pre3_team_matchup_id.like.${matchup.id}_%,reg1_team_matchup_id.like.${matchup.id}_%,reg2_team_matchup_id.like.${matchup.id}_%,reg3_team_matchup_id.like.${matchup.id}_%,reg4_team_matchup_id.like.${matchup.id}_%,reg5_team_matchup_id.like.${matchup.id}_%,reg6_team_matchup_id.like.${matchup.id}_%,reg7_team_matchup_id.like.${matchup.id}_%,reg8_team_matchup_id.like.${matchup.id}_%,reg9_team_matchup_id.like.${matchup.id}_%,reg10_team_matchup_id.like.${matchup.id}_%,reg11_team_matchup_id.like.${matchup.id}_%,reg12_team_matchup_id.like.${matchup.id}_%,reg13_team_matchup_id.like.${matchup.id}_%,reg14_team_matchup_id.like.${matchup.id}_%,reg15_team_matchup_id.like.${matchup.id}_%,reg16_team_matchup_id.like.${matchup.id}_%,reg17_team_matchup_id.like.${matchup.id}_%,reg18_team_matchup_id.like.${matchup.id}_%,post1_team_matchup_id.like.${matchup.id}_%,post2_team_matchup_id.like.${matchup.id}_%,post3_team_matchup_id.like.${matchup.id}_%,post4_team_matchup_id.like.${matchup.id}_%`)
         .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
         .limit(1);
       
@@ -498,6 +478,135 @@ async function processFinalGamePickUpdates(supabase: ReturnType<typeof createSer
     } else {
       console.warn(`Game ${matchup.away_team} @ ${matchup.home_team} is final but no winner found.`);
     }
+  }
+}
+
+// Function to reconcile current week picks across all users
+async function reconcileCurrentWeekPicks(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string }
+): Promise<{ picksProcessed: number; picksUpdated: number }> {
+  try {
+    // Determine the week column to inspect
+    const weekColumn = seasonInfo.isPreseason
+      ? `pre${seasonInfo.currentWeek}_team_matchup_id`
+      : `reg${seasonInfo.currentWeek}_team_matchup_id`
+
+    // Load current week matchups with outcome info
+    const { data: matchups, error: matchupsError } = await supabase
+      .from('matchups')
+      .select('id, status, winner, away_team, home_team, away_score, home_score')
+      .eq('season', seasonInfo.seasonDisplay)
+
+    if (matchupsError) {
+      console.error('Error loading current week matchups for reconcile:', matchupsError)
+      return { picksProcessed: 0, picksUpdated: 0 }
+    }
+
+    const matchupsById = new Map<string, { id: string; status: string; winner: string | null; away_team: string; home_team: string; away_score: number | null; home_score: number | null }>()
+    for (const m of matchups || []) {
+      matchupsById.set(m.id, {
+        id: m.id,
+        status: m.status,
+        winner: m.winner,
+        away_team: m.away_team,
+        home_team: m.home_team,
+        away_score: m.away_score ?? null,
+        home_score: m.home_score ?? null
+      })
+    }
+
+    // Load picks for this week that are not already eliminated
+    const { data: picks, error: picksError } = await supabase
+      .from('picks')
+      .select(`id, user_id, status, ${weekColumn}`)
+      .not(weekColumn, 'is', null)
+      .neq('status', 'eliminated')
+
+    if (picksError) {
+      console.error('Error loading picks for reconcile:', picksError)
+      return { picksProcessed: 0, picksUpdated: 0 }
+    }
+
+    let picksProcessed = 0
+    let picksUpdated = 0
+    const userIdsToRefresh = new Set<string>()
+
+    for (const pick of picks || []) {
+      const teamMatchupValue = (pick as Record<string, unknown>)[weekColumn]
+      if (!teamMatchupValue || typeof teamMatchupValue !== 'string') continue
+
+      const underscoreIndex = teamMatchupValue.indexOf('_')
+      if (underscoreIndex <= 0) continue
+
+      const matchupId = teamMatchupValue.slice(0, underscoreIndex)
+      const teamPicked = teamMatchupValue.slice(underscoreIndex + 1)
+
+      const matchup = matchupsById.get(matchupId)
+      if (!matchup) continue
+
+      // Only reconcile for final games
+      if (matchup.status !== 'final') continue
+
+      let winner = matchup.winner
+      if (!winner && matchup.away_score !== null && matchup.home_score !== null) {
+        if (matchup.away_score > matchup.home_score) winner = 'away'
+        else if (matchup.home_score > matchup.away_score) winner = 'home'
+        else winner = 'tie'
+      }
+      if (!winner) continue
+
+      // Determine the winning team abbreviation for comparison
+      let winningTeamAbbr: string | null = null
+      if (winner === 'tie') {
+        winningTeamAbbr = null
+      } else if (winner === 'away') {
+        winningTeamAbbr = matchup.away_team
+      } else if (winner === 'home') {
+        winningTeamAbbr = matchup.home_team
+      }
+
+      let newStatus: 'safe' | 'eliminated' | null = null
+      if (winner === 'tie') {
+        newStatus = 'eliminated'
+      } else if (winningTeamAbbr && teamPicked === winningTeamAbbr) {
+        newStatus = 'eliminated'
+      } else if (winningTeamAbbr) {
+        newStatus = 'safe'
+      }
+
+      if (!newStatus || newStatus === pick.status) {
+        picksProcessed++
+        continue
+      }
+
+      const { error: updError } = await supabase
+        .from('picks')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', pick.id as string)
+
+      picksProcessed++
+      if (!updError) {
+        picksUpdated++
+        if (pick.user_id) userIdsToRefresh.add(pick.user_id as string)
+      } else {
+        console.error(`Failed to update pick ${pick.id}:`, updError)
+      }
+    }
+
+    // Update user types for affected users
+    for (const userId of userIdsToRefresh) {
+      try {
+        await updateUserTypeBasedOnPicks(userId)
+      } catch (e) {
+        console.error('User type update failed for user', userId, e)
+      }
+    }
+
+    return { picksProcessed, picksUpdated }
+  } catch (error) {
+    console.error('Error reconciling current week picks:', error)
+    return { picksProcessed: 0, picksUpdated: 0 }
   }
 }
 

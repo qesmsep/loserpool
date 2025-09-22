@@ -93,8 +93,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const requestedWeek = searchParams.get('week')
     
-    // Determine which week to load
-    const targetWeek = requestedWeek ? parseInt(requestedWeek) : currentWeek
+    // If a specific week is requested, return only that week
+    // Otherwise, return all weeks that have picks
+    const targetWeek = requestedWeek ? parseInt(requestedWeek) : null
 
     // Define week columns and their names (excluding preseason)
     const weekColumns = [
@@ -122,68 +123,78 @@ export async function GET(request: Request) {
       { column: 'post4_team_matchup_id', week: 22, name: 'Post Season Week 4' }
     ]
 
-    // Find the target week column
-    const targetWeekInfo = weekColumns.find(w => w.week === targetWeek)
-    if (!targetWeekInfo) {
-      return NextResponse.json({ error: 'Invalid week requested' }, { status: 400 })
-    }
-
-    // Get team pick breakdown for the specific week with pagination (deterministic order + dedupe)
-    const allTeamPicksData: Array<{ id: string; [key: string]: string | number | null }> = []
-    const pageSize = 1000
-    const seenIds = new Set<string>()
-    let lastId: string | null = null
-
-    while (true) {
-      let query = supabaseAdmin
-        .from('picks')
-        .select(`id, ${targetWeekInfo.column}, picks_count`)
-        .not(targetWeekInfo.column, 'is', null)
-        .not(targetWeekInfo.column, 'eq', '')
-        .order('id', { ascending: true })
-        .limit(pageSize)
-
-      if (lastId) {
-        query = query.gt('id', lastId)
+    // Determine which weeks to process
+    let weeksToProcess: Array<{ column: string; week: number; name: string }>
+    
+    if (targetWeek !== null) {
+      // Single week requested
+      const targetWeekInfo = weekColumns.find(w => w.week === targetWeek)
+      if (!targetWeekInfo) {
+        return NextResponse.json({ error: 'Invalid week requested' }, { status: 400 })
       }
-
-      const { data: teamPicksData, error: teamPicksError } = await query
-
-      if (teamPicksError) {
-        console.error(`Error fetching picks for ${targetWeekInfo.column}:`, teamPicksError)
-        return NextResponse.json({ error: 'Failed to fetch team picks' }, { status: 500 })
-      }
-
-      if (!teamPicksData || teamPicksData.length === 0) {
-        break
-      }
-
-      for (const row of teamPicksData as unknown as Array<{ id: string; [key: string]: string | number | null }>) {
-        if (!seenIds.has(row.id)) {
-          seenIds.add(row.id)
-          allTeamPicksData.push(row)
+      weeksToProcess = [targetWeekInfo]
+    } else {
+      // All weeks - find weeks that have picks
+      weeksToProcess = []
+      
+      // Check each week to see if it has picks
+      for (const weekInfo of weekColumns) {
+        const { data: weekPicks } = await supabaseAdmin
+          .from('picks')
+          .select('id')
+          .not(weekInfo.column, 'is', null)
+          .not(weekInfo.column, 'eq', '')
+          .limit(1)
+        
+        if (weekPicks && weekPicks.length > 0) {
+          weeksToProcess.push(weekInfo)
         }
-        lastId = row.id
-      }
-
-      if (teamPicksData.length < pageSize) {
-        break
       }
     }
 
-    console.log(`🔍 API: Fetched ${allTeamPicksData.length} total picks for ${targetWeekInfo.column} (paginated)`)
+    // Get all matchups for all weeks we're processing
+    const allMatchupsData: Array<{ id: string; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string; week: number; season: string }> = []
+    
+    for (const weekInfo of weeksToProcess) {
+      const { data: matchupsData, error: matchupsError } = await supabaseAdmin
+        .from('matchups')
+        .select('id, away_team, home_team, away_score, home_score, status, week, season')
+        .eq('season', seasonFilter)
+        .eq('week', weekInfo.week)
 
-    // Get matchup results for this season/week to determine game outcomes (match dashboard behavior)
-    console.log(`🔍 API: Looking for matchups with season = ${seasonFilter} and week = ${targetWeek}`)
-    const { data: matchupsData, error: matchupsError } = await supabaseAdmin
-      .from('matchups')
-      .select('id, away_team, home_team, away_score, home_score, status, week, season')
-      .eq('season', seasonFilter)
-      .eq('week', targetWeek)
+      if (matchupsError) {
+        console.error(`Error fetching matchups for week ${weekInfo.week}:`, matchupsError)
+        continue
+      }
 
-    if (matchupsError) {
-      console.error('Error fetching matchups data:', matchupsError)
-      return NextResponse.json({ error: 'Failed to fetch matchups data' }, { status: 500 })
+      if (matchupsData) {
+        allMatchupsData.push(...matchupsData)
+      }
+    }
+
+    console.log(`🔍 API: Found ${allMatchupsData.length} total matchups across ${weeksToProcess.length} weeks`)
+
+    // Create a map of matchup IDs to game results for all weeks
+    const matchupResults = new Map<string, { status: string; winner: string | null; away_team: string; home_team: string; week: number }>()
+    for (const matchup of allMatchupsData) {
+      let winner: string | null = null
+      
+      if (matchup.status === 'final' && matchup.away_score !== null && matchup.home_score !== null) {
+        if (matchup.away_score > matchup.home_score) {
+          winner = matchup.away_team
+        } else if (matchup.home_score > matchup.away_score) {
+          winner = matchup.home_team
+        }
+        // Ties result in winner = null
+      }
+      
+      matchupResults.set(matchup.id, {
+        status: matchup.status,
+        winner,
+        away_team: matchup.away_team,
+        home_team: matchup.home_team,
+        week: matchup.week
+      })
     }
 
     // Get teams data for colors and proper names
@@ -214,32 +225,56 @@ export async function GET(request: Request) {
       }
     }
 
-    // Create a map of matchup IDs to game results
-    const matchupResults = new Map<string, { status: string; winner: string | null; away_team: string; home_team: string }>()
-    if (matchupsData) {
-      console.log(`🔍 API: Found ${matchupsData.length} matchups for week ${targetWeek}`)
-      for (const matchup of matchupsData) {
-        let winner: string | null = null
-        
-        if (matchup.status === 'final' && matchup.away_score !== null && matchup.home_score !== null) {
-          if (matchup.away_score > matchup.home_score) {
-            winner = matchup.away_team
-          } else if (matchup.home_score > matchup.away_score) {
-            winner = matchup.home_team
-          }
-          // Ties result in winner = null
+    // Process each week separately
+    const teamPickBreakdown: TeamPickBreakdown[] = []
+    
+    for (const weekInfo of weeksToProcess) {
+      console.log(`🔍 API: Processing week ${weekInfo.week} (${weekInfo.name})`)
+      
+      // Get team pick breakdown for this specific week with pagination
+      const allTeamPicksData: Array<{ id: string; [key: string]: string | number | null }> = []
+      const pageSize = 1000
+      const seenIds = new Set<string>()
+      let lastId: string | null = null
+
+      while (true) {
+        let query = supabaseAdmin
+          .from('picks')
+          .select(`id, ${weekInfo.column}, picks_count`)
+          .not(weekInfo.column, 'is', null)
+          .not(weekInfo.column, 'eq', '')
+          .order('id', { ascending: true })
+          .limit(pageSize)
+
+        if (lastId) {
+          query = query.gt('id', lastId)
         }
-        
-        console.log(`🔍 API: Matchup ${matchup.id}: ${matchup.away_team} @ ${matchup.home_team}, Status: ${matchup.status}, Winner: ${winner}`)
-        
-        matchupResults.set(matchup.id, {
-          status: matchup.status,
-          winner,
-          away_team: matchup.away_team,
-          home_team: matchup.home_team
-        })
+
+        const { data: teamPicksData, error: teamPicksError } = await query
+
+        if (teamPicksError) {
+          console.error(`Error fetching picks for ${weekInfo.column}:`, teamPicksError)
+          break
+        }
+
+        if (!teamPicksData || teamPicksData.length === 0) {
+          break
+        }
+
+        for (const row of teamPicksData as unknown as Array<{ id: string; [key: string]: string | number | null }>) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id)
+            allTeamPicksData.push(row)
+          }
+          lastId = row.id
+        }
+
+        if (teamPicksData.length < pageSize) {
+          break
+        }
       }
-    }
+
+      console.log(`🔍 API: Fetched ${allTeamPicksData.length} total picks for ${weekInfo.column}`)
 
     // Only count picks whose parsed matchup_id belongs to current season/week
     const validMatchupIds = new Set<string>((matchupsData || []).map(m => m.id))
