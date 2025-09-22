@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { getTeamColors } from '@/lib/team-logos'
 import StyledTeamName from '@/components/styled-team-name'
@@ -43,7 +43,9 @@ interface Pick {
 interface TeamPicksBreakdownModalProps {
   isOpen: boolean
   onClose: () => void
-  picks: Pick[]
+  // If aggregatedTeamPicks is provided, the modal will render from it and ignore raw picks
+  aggregatedTeamPicks?: Array<{ team: string; pickCount: number }>
+  picks?: Pick[]
   currentWeekColumn?: string
 }
 
@@ -58,7 +60,8 @@ interface TeamBreakdown {
 export default function TeamPicksBreakdownModal({
   isOpen,
   onClose,
-  picks,
+  aggregatedTeamPicks,
+  picks = [],
   currentWeekColumn = 'reg1_team_matchup_id'
 }: TeamPicksBreakdownModalProps) {
 
@@ -91,15 +94,43 @@ export default function TeamPicksBreakdownModal({
     return 'Unknown team'
   }
 
+  // Debug open state and inputs (log only when counts/column change)
+  // Avoid logging on every render caused by parent re-renders (e.g., countdown)
+  useEffect(() => {
+    if (!isOpen) return
+    console.log('🟢 [Modal] TeamPicksBreakdownModal open. Inputs:', {
+      aggregatedCount: aggregatedTeamPicks?.length || 0,
+      picksLength: picks?.length || 0,
+      currentWeekColumn
+    })
+  }, [isOpen, aggregatedTeamPicks?.length, picks?.length, currentWeekColumn])
+
   const teamBreakdown = useMemo(() => {
     if (!isOpen) return []
-    
+
+    // Prefer aggregated data if provided
+    if (aggregatedTeamPicks && aggregatedTeamPicks.length > 0) {
+      const rows = aggregatedTeamPicks
+        .filter(t => t.team && t.team !== 'No team selected')
+        .map(({ team, pickCount }) => ({
+          team,
+          totalPicks: pickCount,
+          activePicks: 0,
+          eliminatedPicks: 0,
+          uniqueUsers: 0
+        }))
+        .sort((a, b) => b.totalPicks - a.totalPicks)
+
+      // Single log when aggregated data (count change triggers this effect above)
+      return rows
+    }
+
     const currentWeekColumn = getCurrentWeekColumn()
     const breakdown: { [team: string]: TeamBreakdown } = {}
 
     picks.forEach(pick => {
       const team = getTeamFromMatchupId((pick as unknown as Record<string, unknown>)[currentWeekColumn] as string | null | undefined)
-      
+
       if (!breakdown[team]) {
         breakdown[team] = {
           team,
@@ -135,10 +166,13 @@ export default function TeamPicksBreakdownModal({
       breakdown[team].uniqueUsers = teamUsers[team]?.size || 0
     })
 
-    return Object.values(breakdown)
+    const rows = Object.values(breakdown)
       .filter(team => team.team !== 'No team selected')
       .sort((a, b) => b.totalPicks - a.totalPicks)
-  }, [picks, isOpen, currentWeekColumn])
+
+    // Single log would be emitted by the open-state effect above
+    return rows
+  }, [aggregatedTeamPicks, picks, isOpen, currentWeekColumn])
 
   if (!isOpen) return null
 
@@ -173,6 +207,9 @@ export default function TeamPicksBreakdownModal({
 
             {/* Team Breakdown Cards */}
             <div className="space-y-3">
+              {teamBreakdown.length === 0 && (
+                <div className="text-blue-200 text-center">No data available yet. Please wait a moment and try again.</div>
+              )}
               {teamBreakdown.map((team, index) => (
                 <div key={team.team} className="relative rounded-lg border border-gray-300 overflow-hidden">
                   <div 

@@ -416,6 +416,7 @@ export default function DashboardPage() {
     [key: string]: unknown
   }[]>([])
   const [currentWeekColumn, setCurrentWeekColumn] = useState<string>('reg1_team_matchup_id')
+  const [aggregatedTeamPicks, setAggregatedTeamPicks] = useState<Array<{ team: string; pickCount: number }>>([])
   const [apiSeasonFilter, setApiSeasonFilter] = useState<string>('REG1')
   const [apiCurrentWeek, setApiCurrentWeek] = useState<number>(1)
 
@@ -457,6 +458,7 @@ export default function DashboardPage() {
 
   // Load all picks for team breakdown
   const loadAllPicksForBreakdown = useCallback(async () => {
+    console.log('🔍 loadAllPicksForBreakdown called at:', new Date().toISOString())
     try {
       if (!user) return
 
@@ -538,6 +540,8 @@ export default function DashboardPage() {
       }
 
       console.log('🔍 Team breakdown - picks loaded and filtered for current week:', allPicks?.length || 0)
+      console.log('🔍 Team breakdown - sample picks:', allPicks?.slice(0, 3))
+      console.log('🔍 Team breakdown - total picks_count sum:', allPicks?.reduce((sum, pick) => sum + (pick.picks_count || 0), 0) || 0)
       setAllPicksForBreakdown(allPicks || [])
     } catch (error) {
       console.error('Error loading picks for breakdown:', error)
@@ -562,12 +566,45 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [deadline])
 
-  // Load picks for breakdown when button should be shown
+  // Load picks for breakdown when button should be shown (use server aggregate API to avoid client paging)
   useEffect(() => {
     if (shouldShowTeamBreakdownButton()) {
-      loadAllPicksForBreakdown()
+      // Use season detection already fetched to compute expected column
+      const detectColumn = async () => {
+        try {
+          console.log('🟢 [Dashboard] Team breakdown effect triggered. Fetching aggregated data...')
+          // Fetch server aggregate
+          const res = await fetch('/api/team-pick-breakdown', { credentials: 'include' })
+          console.log('🟢 [Dashboard] /api/team-pick-breakdown status:', res.status)
+          const data = await res.json()
+          console.log('🟢 [Dashboard] Aggregation API payload keys:', Object.keys(data || {}))
+          if (data && data.success) {
+            console.log('🟢 [Dashboard] Aggregation success. teams:', (data.teamPicks || []).length, 'weekColumn:', data.weekColumn)
+            setAggregatedTeamPicks(data.teamPicks || [])
+            setCurrentWeekColumn(data.weekColumn || currentWeekColumn)
+          } else {
+            // Fallback to legacy client method if API fails
+            console.warn('🟡 [Dashboard] Aggregation API returned non-success. Falling back to client aggregation.')
+            loadAllPicksForBreakdown()
+          }
+        } catch (e) {
+          console.error('🔴 [Dashboard] Aggregation API error. Falling back to client aggregation:', e)
+          loadAllPicksForBreakdown()
+        }
+      }
+      detectColumn()
     }
   }, [shouldShowTeamBreakdownButton, loadAllPicksForBreakdown])
+
+  // Log when the modal opens and what data we have
+  useEffect(() => {
+    if (!showTeamBreakdownModal) return
+    console.log('🟢 [Dashboard] Opening Team Breakdown Modal. aggregatedTeamPicks:', aggregatedTeamPicks.length, 'currentWeekColumn:', currentWeekColumn, 'fallback picks length:', allPicksForBreakdown.length)
+    if (aggregatedTeamPicks.length === 0 && allPicksForBreakdown.length === 0) {
+      console.warn('🟡 [Dashboard] Modal opened with no data yet. Waiting for fetch or fallback to complete...')
+    }
+  // Only re-log when counts/column change to avoid spam from countdown re-renders
+  }, [showTeamBreakdownModal, aggregatedTeamPicks.length, currentWeekColumn, allPicksForBreakdown.length])
 
   const loadData = useCallback(async () => {
     try {
@@ -1694,6 +1731,7 @@ export default function DashboardPage() {
       <TeamPicksBreakdownModal
         isOpen={showTeamBreakdownModal}
         onClose={() => setShowTeamBreakdownModal(false)}
+        aggregatedTeamPicks={aggregatedTeamPicks}
         picks={allPicksForBreakdown}
         currentWeekColumn={currentWeekColumn}
       />

@@ -916,6 +916,7 @@ export default function AdminPage() {
         isOpen={showTeamBreakdownModal}
         onClose={() => setShowTeamBreakdownModal(false)}
         picks={picks}
+        currentWeekColumn={currentWeekActive?.col || 'reg1_team_matchup_id'}
       />
     </div>
   )

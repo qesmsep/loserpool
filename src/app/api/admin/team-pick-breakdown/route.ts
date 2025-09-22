@@ -83,10 +83,11 @@ export async function GET(request: Request) {
 
     console.log('🔍 API: User is admin, proceeding with team pick breakdown calculation')
 
-    // Get current week using the same logic as Default Pick API
+    // Get current season/week using the same logic as the dashboard
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
     const seasonInfo = await getCurrentSeasonInfo()
     const currentWeek = seasonInfo.currentWeek
+    const seasonFilter = seasonInfo.seasonDisplay // e.g., 'REG3'
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
@@ -127,18 +128,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid week requested' }, { status: 400 })
     }
 
-    // Get team pick breakdown for the specific week with pagination
-        let allTeamPicksData: Array<{ [key: string]: string | number | null }> = []
-    let from = 0
+    // Get team pick breakdown for the specific week with pagination (deterministic order + dedupe)
+    const allTeamPicksData: Array<{ id: string; [key: string]: string | number | null }> = []
     const pageSize = 1000
-    
+    const seenIds = new Set<string>()
+    let lastId: string | null = null
+
     while (true) {
-      const { data: teamPicksData, error: teamPicksError } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('picks')
-        .select(`${targetWeekInfo.column}, picks_count`)
+        .select(`id, ${targetWeekInfo.column}, picks_count`)
         .not(targetWeekInfo.column, 'is', null)
         .not(targetWeekInfo.column, 'eq', '')
-        .range(from, from + pageSize - 1)
+        .order('id', { ascending: true })
+        .limit(pageSize)
+
+      if (lastId) {
+        query = query.gt('id', lastId)
+      }
+
+      const { data: teamPicksData, error: teamPicksError } = await query
 
       if (teamPicksError) {
         console.error(`Error fetching picks for ${targetWeekInfo.column}:`, teamPicksError)
@@ -149,22 +158,27 @@ export async function GET(request: Request) {
         break
       }
 
-      allTeamPicksData = allTeamPicksData.concat(teamPicksData as unknown as Array<{ [key: string]: string | number | null }>)
-      
+      for (const row of teamPicksData as unknown as Array<{ id: string; [key: string]: string | number | null }>) {
+        if (!seenIds.has(row.id)) {
+          seenIds.add(row.id)
+          allTeamPicksData.push(row)
+        }
+        lastId = row.id
+      }
+
       if (teamPicksData.length < pageSize) {
         break
       }
-      
-      from += pageSize
     }
 
     console.log(`🔍 API: Fetched ${allTeamPicksData.length} total picks for ${targetWeekInfo.column} (paginated)`)
 
-    // Get matchup results for this week to determine game outcomes
-    console.log(`🔍 API: Looking for matchups with week = ${targetWeek}`)
+    // Get matchup results for this season/week to determine game outcomes (match dashboard behavior)
+    console.log(`🔍 API: Looking for matchups with season = ${seasonFilter} and week = ${targetWeek}`)
     const { data: matchupsData, error: matchupsError } = await supabaseAdmin
       .from('matchups')
-      .select('id, away_team, home_team, away_score, home_score, status, week')
+      .select('id, away_team, home_team, away_score, home_score, status, week, season')
+      .eq('season', seasonFilter)
       .eq('week', targetWeek)
 
     if (matchupsError) {
@@ -227,7 +241,9 @@ export async function GET(request: Request) {
       }
     }
 
-    // Count picks by team using the same logic as the existing modal
+    // Only count picks whose parsed matchup_id belongs to current season/week
+    const validMatchupIds = new Set<string>((matchupsData || []).map(m => m.id))
+    // Count picks by team
     const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
     
     console.log(`🔍 API: Found ${allTeamPicksData?.length || 0} picks for ${targetWeekInfo.column}`)
@@ -245,6 +261,11 @@ export async function GET(request: Request) {
           const teamKey = parts.slice(1).join('_')
           const actualMatchupId = parts[0] // Remove the team suffix to get the real matchup ID
           const pickCount = pick.picks_count || 0
+          
+          // Filter to current season/week
+          if (!validMatchupIds.has(actualMatchupId)) {
+            continue
+          }
           
           console.log(`🔍 API: Original matchupId: ${matchupId}, Actual matchupId: ${actualMatchupId}, Team: ${teamKey}`)
           
