@@ -276,126 +276,113 @@ export async function GET(request: Request) {
 
       console.log(`🔍 API: Fetched ${allTeamPicksData.length} total picks for ${weekInfo.column}`)
 
-    // Only count picks whose parsed matchup_id belongs to current season/week
-    const validMatchupIds = new Set<string>((matchupsData || []).map(m => m.id))
-    // Count picks by team
-    const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
-    
-    console.log(`🔍 API: Found ${allTeamPicksData?.length || 0} picks for ${targetWeekInfo.column}`)
-    
-    if (allTeamPicksData && allTeamPicksData.length > 0) {
-      for (const pick of allTeamPicksData) {
-        const matchupId = (pick as { [key: string]: string | number | null })[targetWeekInfo.column] as string
-        if (!matchupId) continue
-        
-        console.log(`🔍 API: Pick has matchupId: ${matchupId}`)
-        
-        // Extract team name from matchup ID and get actual matchup ID
-        const parts = matchupId.split('_')
-        if (parts.length >= 2) {
-          const teamKey = parts.slice(1).join('_')
-          const actualMatchupId = parts[0] // Remove the team suffix to get the real matchup ID
-          const pickCount = pick.picks_count || 0
+      // Only count picks whose parsed matchup_id belongs to this week's matchups
+      const weekMatchups = allMatchupsData.filter(m => m.week === weekInfo.week)
+      const validMatchupIds = new Set<string>(weekMatchups.map(m => m.id))
+      
+      // Count picks by team for this week
+      const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
+      
+      console.log(`🔍 API: Found ${allTeamPicksData?.length || 0} picks for ${weekInfo.column}`)
+      
+      if (allTeamPicksData && allTeamPicksData.length > 0) {
+        for (const pick of allTeamPicksData) {
+          const matchupId = (pick as { [key: string]: string | number | null })[weekInfo.column] as string
+          if (!matchupId) continue
           
-          // Filter to current season/week
-          if (!validMatchupIds.has(actualMatchupId)) {
-            continue
-          }
-          
-          console.log(`🔍 API: Original matchupId: ${matchupId}, Actual matchupId: ${actualMatchupId}, Team: ${teamKey}`)
-          
-          // Find team data
-          let teamData = teamsMap.get(teamKey)
-          if (!teamData) {
-            // Try to find by partial match
-            for (const [key, data] of teamsMap.entries()) {
-              if (key.toLowerCase().includes(teamKey.toLowerCase()) || 
-                  teamKey.toLowerCase().includes(key.toLowerCase())) {
-                teamData = data
-                break
+          // Extract team name from matchup ID and get actual matchup ID
+          const parts = matchupId.split('_')
+          if (parts.length >= 2) {
+            const teamKey = parts.slice(1).join('_')
+            const actualMatchupId = parts[0] // Remove the team suffix to get the real matchup ID
+            const pickCount = pick.picks_count || 0
+            
+            // Filter to this week's matchups
+            if (!validMatchupIds.has(actualMatchupId)) {
+              continue
+            }
+            
+            // Find team data
+            let teamData = teamsMap.get(teamKey)
+            if (!teamData) {
+              // Try to find by partial match
+              for (const [key, data] of teamsMap.entries()) {
+                if (key.toLowerCase().includes(teamKey.toLowerCase()) || 
+                    teamKey.toLowerCase().includes(key.toLowerCase())) {
+                  teamData = data
+                  break
+                }
               }
             }
-          }
-          
-          // Determine game result for this team
-          const matchupResult = matchupResults.get(actualMatchupId)
-          let gameResult = 'pending'
-          
-          console.log(`🔍 API: Processing pick for team ${teamKey}, original matchupId: ${matchupId}, actual matchupId: ${actualMatchupId}`)
-          console.log(`🔍 API: Matchup result:`, matchupResult)
-          
-          if (matchupResult) {
-            if (matchupResult.status === 'final') {
-              if (matchupResult.winner === null) {
-                gameResult = 'tie'
-                console.log(`🔍 API: Game was a tie for ${teamKey}`)
-              } else {
-                // Check if the picked team won or lost
-                const pickedTeamName = teamData?.name || teamKey
-                console.log(`🔍 API: Comparing picked team "${pickedTeamName}" with winner "${matchupResult.winner}"`)
-                console.log(`🔍 API: Away team: "${matchupResult.away_team}", Home team: "${matchupResult.home_team}"`)
-                console.log(`🔍 API: Team data:`, teamData)
-                
-                // Try multiple name matching strategies
-                let isWinner = false
-                
-                // Direct match
-                if (matchupResult.winner === pickedTeamName) {
-                  isWinner = true
-                }
-                // Try abbreviation match
-                else if (teamData?.abbreviation && matchupResult.winner === teamData.abbreviation) {
-                  isWinner = true
-                }
-                // Try partial match (in case of slight name differences)
-                else if (matchupResult.winner && pickedTeamName && 
-                         (matchupResult.winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
-                          pickedTeamName.toLowerCase().includes(matchupResult.winner.toLowerCase()))) {
-                  isWinner = true
-                }
-                
-                if (isWinner) {
-                  gameResult = 'won' // Team won - picks are incorrect (RED)
-                  console.log(`🔍 API: ${pickedTeamName} WON - picks are incorrect (RED)`)
+            
+            // Determine game result for this team
+            const matchupResult = matchupResults.get(actualMatchupId)
+            let gameResult = 'pending'
+            
+            if (matchupResult) {
+              if (matchupResult.status === 'final') {
+                if (matchupResult.winner === null) {
+                  gameResult = 'tie'
                 } else {
-                  gameResult = 'lost' // Team lost - picks are correct (GREEN)
-                  console.log(`🔍 API: ${pickedTeamName} LOST - picks are correct (GREEN)`)
+                  // Check if the picked team won or lost
+                  const pickedTeamName = teamData?.name || teamKey
+                  
+                  // Try multiple name matching strategies
+                  let isWinner = false
+                  
+                  // Direct match
+                  if (matchupResult.winner === pickedTeamName) {
+                    isWinner = true
+                  }
+                  // Try abbreviation match
+                  else if (teamData?.abbreviation && matchupResult.winner === teamData.abbreviation) {
+                    isWinner = true
+                  }
+                  // Try partial match (in case of slight name differences)
+                  else if (matchupResult.winner && pickedTeamName && 
+                           (matchupResult.winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
+                            pickedTeamName.toLowerCase().includes(matchupResult.winner.toLowerCase()))) {
+                    isWinner = true
+                  }
+                  
+                  if (isWinner) {
+                    gameResult = 'won' // Team won - picks are incorrect (RED)
+                  } else {
+                    gameResult = 'lost' // Team lost - picks are correct (GREEN)
+                  }
                 }
+              } else {
+                gameResult = 'pending' // Game not final yet
               }
-            } else {
-              gameResult = 'pending' // Game not final yet
-              console.log(`🔍 API: Game not final for ${teamKey}, status: ${matchupResult.status}`)
             }
-          } else {
-            console.log(`🔍 API: No matchup result found for ${teamKey}, actualMatchupId: ${actualMatchupId}`)
+            
+            const current = teamCounts.get(teamKey) || { pickCount: 0, teamData: undefined, gameResult: 'pending' }
+            teamCounts.set(teamKey, {
+              pickCount: current.pickCount + (pickCount as number),
+              teamData: teamData || current.teamData || undefined,
+              gameResult: gameResult
+            })
           }
-          
-          const current = teamCounts.get(teamKey) || { pickCount: 0, teamData: undefined, gameResult: 'pending' }
-          teamCounts.set(teamKey, {
-            pickCount: current.pickCount + (pickCount as number),
-            teamData: teamData || current.teamData || undefined,
-            gameResult: gameResult
-          })
         }
       }
+
+      // Convert to array and sort by pick count (descending)
+      const teamPicks = Array.from(teamCounts.entries())
+        .map(([team, data]) => ({ 
+          team, 
+          pickCount: data.pickCount,
+          teamData: data.teamData,
+          gameResult: data.gameResult as 'pending' | 'won' | 'lost' | 'tie'
+        }))
+        .sort((a, b) => b.pickCount - a.pickCount)
+
+      // Add this week's breakdown
+      teamPickBreakdown.push({
+        week: weekInfo.week,
+        weekName: weekInfo.name,
+        teamPicks
+      })
     }
-
-    // Convert to array and sort by pick count (descending)
-    const teamPicks = Array.from(teamCounts.entries())
-      .map(([team, data]) => ({ 
-        team, 
-        pickCount: data.pickCount,
-        teamData: data.teamData,
-        gameResult: data.gameResult as 'pending' | 'won' | 'lost' | 'tie'
-      }))
-      .sort((a, b) => b.pickCount - a.pickCount)
-
-    // Create single week breakdown
-    const teamPickBreakdown: TeamPickBreakdown[] = [{
-      week: targetWeek,
-      weekName: targetWeekInfo.name,
-      teamPicks
-    }]
 
     // Sort by week number
     teamPickBreakdown.sort((a, b) => a.week - b.week)

@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if we need to update this matchup
+        const existingWinner: string | null = (matchup as { winner?: string | null }).winner ?? null
         const needsUpdate =
           newStatus !== matchup.status ||
           awayScore !== matchup.away_score ||
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
           quarterInfo !== matchup.quarter_info ||
           broadcastInfo !== matchup.broadcast_info ||
           // Ensure we persist winner changes even if nothing else changed
-          winner !== (matchup as any).winner
+          winner !== existingWinner
 
                if (needsUpdate) {
                  const updateData: {
@@ -533,8 +534,11 @@ async function reconcileCurrentWeekPicks(
     const userIdsToRefresh = new Set<string>()
 
     for (const pick of picks || []) {
-      const teamMatchupValue = (pick as Record<string, unknown>)[weekColumn]
-      if (!teamMatchupValue || typeof teamMatchupValue !== 'string') continue
+      // Safely index dynamic week column name
+      const pickRecord = pick as unknown as { [key: string]: unknown }
+      const teamMatchupValueUnknown = pickRecord[weekColumn as string]
+      if (!teamMatchupValueUnknown || typeof teamMatchupValueUnknown !== 'string') continue
+      const teamMatchupValue = teamMatchupValueUnknown as string
 
       const underscoreIndex = teamMatchupValue.indexOf('_')
       if (underscoreIndex <= 0) continue
