@@ -79,31 +79,68 @@ export async function GET(request: Request) {
 
     console.log('🔍 API: User is admin, proceeding with weekly stats calculation')
 
-    // Get all picks using pagination to ensure we get every record
-    let allPicks: Array<{ [key: string]: string | number | null }> = []
-    let hasMore = true
-    let from = 0
-    const pageSize = 1000
+    // Get all picks using keyset pagination (future-proof against duplicates and drift)
+    // Select only the fields needed for calculations to reduce payload
+    const weekCols = [
+      'pre1_team_matchup_id','pre2_team_matchup_id','pre3_team_matchup_id',
+      'reg1_team_matchup_id','reg2_team_matchup_id','reg3_team_matchup_id','reg4_team_matchup_id','reg5_team_matchup_id','reg6_team_matchup_id','reg7_team_matchup_id','reg8_team_matchup_id','reg9_team_matchup_id','reg10_team_matchup_id','reg11_team_matchup_id','reg12_team_matchup_id','reg13_team_matchup_id','reg14_team_matchup_id','reg15_team_matchup_id','reg16_team_matchup_id','reg17_team_matchup_id','reg18_team_matchup_id',
+      'post1_team_matchup_id','post2_team_matchup_id','post3_team_matchup_id','post4_team_matchup_id'
+    ]
 
-    while (hasMore) {
-      const { data: picks, error: picksError } = await supabaseAdmin
+    const baseSelect = `id,user_id,status,picks_count,${weekCols.join(',')}`
+
+    let allPicks: Array<{ [key: string]: string | number | null }> = []
+    const seenIds = new Set<string>()
+    const pageSize = 1000
+    let lastId: string | null = null
+    let fetchedRows = 0
+
+    while (true) {
+      let query = supabaseAdmin
         .from('picks')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(from, from + pageSize - 1)
+        .select(baseSelect)
+        .order('id', { ascending: true })
+        .limit(pageSize)
+
+      if (lastId) {
+        query = query.gt('id', lastId)
+      }
+
+      const { data: picks, error: picksError } = await query
 
       if (picksError) {
-        console.error('Error fetching picks:', picksError)
+        console.error('Error fetching picks (keyset):', picksError)
         return NextResponse.json({ error: 'Failed to fetch picks' }, { status: 500 })
       }
 
-      if (picks && picks.length > 0) {
-        allPicks = allPicks.concat(picks)
-        from += pageSize
-        hasMore = picks.length === pageSize
-      } else {
-        hasMore = false
+      if (!picks || picks.length === 0) {
+        break
       }
+
+      fetchedRows += picks.length
+
+      for (const row of picks as unknown as Array<{ [key: string]: string | number | null }>) {
+        const rowId = row.id as unknown as string
+        if (!seenIds.has(rowId)) {
+          seenIds.add(rowId)
+          allPicks.push(row)
+        }
+        lastId = rowId
+      }
+
+      if (picks.length < pageSize) {
+        break
+      }
+    }
+
+    if (fetchedRows !== allPicks.length) {
+      console.log('🔍 Weekly Stats: Deduped picks during pagination', {
+        fetchedRows,
+        uniqueRows: allPicks.length,
+        deduped: fetchedRows - allPicks.length
+      })
+    } else {
+      console.log('🔍 Weekly Stats: Pagination complete with no duplicates', { fetchedRows })
     }
 
     // Get all matchups to determine week information and results
@@ -179,127 +216,90 @@ export async function GET(request: Request) {
     const seasonInfo = await getCurrentSeasonInfo()
     const currentWeek = seasonInfo.currentWeek
 
-    // Calculate statistics for each week using column mapping
+    // Build stats using the same logic as Team Picks Breakdown
     const weeklyStats: WeeklyStats[] = []
-
-    // First pass: Calculate active picks for each week (sum of pick counts, not just count of picks)
-    const weekActivePicks = new Map<number, number>()
-    
-    for (const weekInfo of weekColumns) {
-      const { column, week, name } = weekInfo
-      
-      let activePicks = 0
-      
-      if (week === currentWeek) {
-        // Current week: Active picks = Sum of picks_count for all picks with status NOT ELIMINATED
-        const currentWeekPicks = allPicks.filter(pick => pick.status !== 'eliminated')
-        activePicks = currentWeekPicks.reduce((sum, pick) => sum + ((pick.picks_count as number) || 0), 0)
-        console.log(`🔍 Weekly Stats: Current Week ${week} has ${currentWeekPicks.length} active picks with total count ${activePicks}`)
-      } else {
-        // Past/future weeks: Active picks = Sum of picks_count for picks that have a non-null value in this week's column
-        const weekPicks = allPicks.filter(pick => (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined)
-        activePicks = weekPicks.reduce((sum, pick) => sum + ((pick.picks_count as number) || 0), 0)
-        
-        if (week <= 3) { // Debug first few weeks
-          console.log(`🔍 Weekly Stats: Week ${week} has ${weekPicks.length} picks with total count ${activePicks}`)
-        }
-      }
-      
-      weekActivePicks.set(week, activePicks)
+    const validMatchupsByWeek = new Map<number, Set<string>>()
+    for (const m of matchups || []) {
+      const set = validMatchupsByWeek.get(m.week) || new Set<string>()
+      set.add(m.id as unknown as string)
+      validMatchupsByWeek.set(m.week, set)
     }
 
-    // Second pass: Calculate eliminated picks using game results (same logic as Team Picks Breakdown)
     for (const weekInfo of weekColumns) {
       const { column, week, name } = weekInfo
       
-      const activePicks = weekActivePicks.get(week) || 0
+      // Only process up to the current week
+      if (week > currentWeek) {
+        break
+      }
+      const validIds = validMatchupsByWeek.get(week) || new Set<string>()
+
+      // Active picks for historic weeks = sum of picks_count where week column exists and maps to this week's matchups
+      let activePicks = 0
+      const weekPicks: Array<{ [key: string]: string | number | null }> = []
+      for (const pick of allPicks) {
+        const raw = (pick as { [key: string]: string | number | null })[column] as string
+        if (!raw) continue
+        const parts = raw.split('_')
+        if (parts.length < 2) continue
+        const actualMatchupId = parts[0]
+        if (!validIds.has(actualMatchupId)) continue
+        activePicks += ((pick.picks_count as number) || 0)
+        weekPicks.push(pick)
+      }
+
+      // Eliminated picks = picks in this week whose picked team won or tied (final only), same as team breakdown
       let eliminatedPicks = 0
-      
-      // Calculate eliminated picks based on actual game results (for both current and past weeks)
-      // Get all picks for this week
-      const weekPicks = allPicks.filter(pick => 
-        (pick as { [key: string]: string | number | null })[column] !== null && (pick as { [key: string]: string | number | null })[column] !== undefined
-      )
-      
-      // Count picks that were incorrect (teams that won or tied) based on finalized games
       for (const pick of weekPicks) {
-        const matchupId = (pick as { [key: string]: string | number | null })[column] as string
-        if (!matchupId) continue
-        
-        // Extract actual matchup ID (remove team suffix)
-        const parts = matchupId.split('_')
-        if (parts.length >= 2) {
-          const actualMatchupId = parts[0]
-          const teamKey = parts.slice(1).join('_')
-          
-          // Get matchup result
-          const matchup = matchupMap.get(actualMatchupId)
-          if (matchup && matchup.status === 'final') {
-            // Determine if the picked team won or lost
-            let isIncorrect = false
-            
-            if (matchup.away_score !== null && matchup.home_score !== null) {
-              let winner: string | null = null
-              if (matchup.away_score > matchup.home_score) {
-                winner = matchup.away_team
-              } else if (matchup.home_score > matchup.away_score) {
-                winner = matchup.home_team
-              }
-              // Ties result in winner = null
-              
-              if (winner === null) {
-                // Tie - all picks are incorrect
-                isIncorrect = true
-              } else {
-                // Find team data for proper name matching
-                let teamData = teamsMap.get(teamKey)
-                if (!teamData) {
-                  for (const [key, data] of teamsMap.entries()) {
-                    if (key.toLowerCase().includes(teamKey.toLowerCase()) || 
-                        teamKey.toLowerCase().includes(key.toLowerCase())) {
-                      teamData = data
-                      break
-                    }
-                  }
-                }
-                
-                const pickedTeamName = teamData?.name || teamKey
-                
-                // Check if picked team won (incorrect in loser pool)
-                if (winner === pickedTeamName || 
-                    (teamData?.abbreviation && winner === teamData.abbreviation) ||
-                    (winner && pickedTeamName && 
-                     (winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
-                      pickedTeamName.toLowerCase().includes(winner.toLowerCase())))) {
-                  isIncorrect = true
+        const raw = (pick as { [key: string]: string | number | null })[column] as string
+        if (!raw) continue
+        const parts = raw.split('_')
+        if (parts.length < 2) continue
+        const actualMatchupId = parts[0]
+        const teamKey = parts.slice(1).join('_')
+        if (!validIds.has(actualMatchupId)) continue
+
+        const matchup = matchupMap.get(actualMatchupId)
+        if (!matchup || matchup.status !== 'final') continue
+
+        let isIncorrect = false
+        if (matchup.away_score !== null && matchup.home_score !== null) {
+          let winner: string | null = null
+          if (matchup.away_score > matchup.home_score) winner = matchup.away_team
+          else if (matchup.home_score > matchup.away_score) winner = matchup.home_team
+          if (winner === null) {
+            isIncorrect = true
+          } else {
+            let teamData = teamsMap.get(teamKey)
+            if (!teamData) {
+              for (const [key, data] of teamsMap.entries()) {
+                if (key.toLowerCase().includes(teamKey.toLowerCase()) || teamKey.toLowerCase().includes(key.toLowerCase())) {
+                  teamData = data
+                  break
                 }
               }
             }
-            
-            if (isIncorrect) {
-              eliminatedPicks += (pick.picks_count as number) || 0
+            const pickedTeamName = teamData?.name || teamKey
+            if (winner === pickedTeamName || (teamData?.abbreviation && winner === teamData.abbreviation) || (winner && pickedTeamName && (winner.toLowerCase().includes(pickedTeamName.toLowerCase()) || pickedTeamName.toLowerCase().includes(winner.toLowerCase())))) {
+              isIncorrect = true
             }
           }
         }
+        if (isIncorrect) {
+          eliminatedPicks += ((pick.picks_count as number) || 0)
+        }
       }
 
-      // Remaining picks are active picks minus eliminated picks
       const remainingPicks = Math.max(0, activePicks - eliminatedPicks)
+      weeklyStats.push({ week, weekName: name, activePicks, eliminatedPicks, remainingPicks })
+    }
 
-      // Only include weeks that have some activity
-      if (activePicks > 0 || eliminatedPicks > 0) {
-        const weekType = week === currentWeek ? ' (CURRENT WEEK)' : ''
-        console.log(`🔍 Weekly Stats: Week ${week} (${name})${weekType}`)
-        console.log(`🔍 Weekly Stats: Active Picks: ${activePicks}, Eliminated: ${eliminatedPicks}, Remaining: ${remainingPicks}`)
-        
-        weeklyStats.push({
-          week,
-          weekName: name,
-          activePicks,
-          eliminatedPicks,
-          remainingPicks
-        })
-      }
+    // Ensure current week Active = prior week's Remaining, per request
+    weeklyStats.sort((a, b) => a.week - b.week)
+    const currentIdx = weeklyStats.findIndex(s => s.week === currentWeek)
+    if (currentIdx > 0) {
+      weeklyStats[currentIdx].activePicks = weeklyStats[currentIdx - 1].remainingPicks
+      weeklyStats[currentIdx].remainingPicks = Math.max(0, weeklyStats[currentIdx].activePicks - weeklyStats[currentIdx].eliminatedPicks)
     }
 
     // Sort by week number
@@ -453,3 +453,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { Calendar, Save, ShoppingCart, Edit, X, BarChart3 } from 'lucide-react'
+import { Calendar, Save, ShoppingCart, Edit, X, BarChart3, History } from 'lucide-react'
 import Header from '@/components/header'
 import { formatDeadlineForUser, formatGameTime, calculatePicksDeadline, getDetailedTimeRemaining, groupMatchupsByDay, sortMatchupsChronologically, getWeekDateRange } from '@/lib/timezone'
 import { DateTime } from 'luxon'
@@ -17,6 +17,7 @@ import MatchupBox from '@/components/matchup-box'
 import PickSelectionPopup from '@/components/pick-selection-popup'
 import OnboardingPopup from '@/components/onboarding-popup'
 import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
+import PickAllocationsModal from '@/components/pick-allocations-modal'
 import { getTeamColors } from '@/lib/team-logos'
 
 // Team abbreviation to full name mapping
@@ -405,6 +406,7 @@ export default function DashboardPage() {
   const [editingPickId, setEditingPickId] = useState<string | null>(null)
   const [editingPickName, setEditingPickName] = useState('')
   const [showTeamBreakdownModal, setShowTeamBreakdownModal] = useState(false)
+  const [showAllocationsModal, setShowAllocationsModal] = useState(false)
   const [allPicksForBreakdown, setAllPicksForBreakdown] = useState<{
     id: string
     user_id: string
@@ -419,6 +421,7 @@ export default function DashboardPage() {
   const [aggregatedTeamPicks, setAggregatedTeamPicks] = useState<Array<{ team: string; pickCount: number }>>([])
   const [apiSeasonFilter, setApiSeasonFilter] = useState<string>('REG1')
   const [apiCurrentWeek, setApiCurrentWeek] = useState<number>(1)
+  const [rawUserPicks, setRawUserPicks] = useState<any[]>([])
 
   const router = useRouter()
 
@@ -848,6 +851,7 @@ export default function DashboardPage() {
       console.log('Debug: Final transformed picks for current week:', userPicksData)
       
       setUserPicks(userPicksData || [])
+      setRawUserPicks(allUserPicksForWeek || [])
       setDbPicksRemaining(dbPicksRemaining)
       setPicksSaved((userPicksData || []).length > 0) // Set saved state based on existing picks
       setIsEditing(false) // Reset edit state when data is loaded
@@ -1252,6 +1256,28 @@ export default function DashboardPage() {
             {error}
           </div>
         )}
+
+        {/* See Historic Picks - Banner Button */}
+        <div className="bg-cyan-500/20 border border-cyan-500/30 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div className="flex items-center">
+              <History className="w-4 h-4 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-cyan-200" />
+              <div>
+                <h3 className="text-sm sm:text-lg font-semibold text-white">See Historic Picks</h3>
+                <p className="text-xs sm:text-base text-cyan-200">
+                  View your allocations across the full season, including postseason
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAllocationsModal(true)}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center space-x-2"
+            >
+              <History className="w-4 h-4" />
+              <span>Open Historic Picks</span>
+            </button>
+          </div>
+        </div>
 
         {/* Current Week's Picks Table */}
         {userPicks.length > 0 && (
@@ -1734,6 +1760,15 @@ export default function DashboardPage() {
         aggregatedTeamPicks={aggregatedTeamPicks}
         picks={allPicksForBreakdown}
         currentWeekColumn={currentWeekColumn}
+      />
+
+      {/* Pick Allocations Modal */}
+      <PickAllocationsModal
+        isOpen={showAllocationsModal}
+        onClose={() => setShowAllocationsModal(false)}
+        picks={rawUserPicks}
+        currentWeek={currentWeek}
+        seasonFilter={apiSeasonFilter}
       />
     </div>
   )
