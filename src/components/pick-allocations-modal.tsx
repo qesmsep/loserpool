@@ -33,7 +33,7 @@ export default function PickAllocationsModal({ isOpen, onClose, picks, currentWe
   const [matchupsById, setMatchupsById] = useState<Record<string, Matchup>>({})
   const [loading, setLoading] = useState(false)
 
-  const weekKeys = useMemo(() => {
+  const _weekKeys = useMemo(() => {
     const keys: string[] = []
     for (let w = 1; w <= 18; w++) {
       keys.push(`reg${w}_team_matchup_id`)
