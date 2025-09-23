@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
     const baseSelect = `id,user_id,status,picks_count,${weekCols.join(',')}`
 
-    let allPicks: Array<{ [key: string]: string | number | null }> = []
+    const allPicks: Array<{ [key: string]: string | number | null }> = []
     const seenIds = new Set<string>()
     const pageSize = 1000
     let lastId: string | null = null

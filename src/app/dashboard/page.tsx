@@ -20,6 +20,17 @@ import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
 import PickAllocationsModal from '@/components/pick-allocations-modal'
 import { getTeamColors } from '@/lib/team-logos'
 
+type RawPickRow = {
+  id: string
+  user_id: string
+  pick_name?: string | null
+  status?: string
+  picks_count?: number
+  created_at?: string
+  updated_at?: string
+  [key: string]: unknown
+}
+
 // Team abbreviation to full name mapping
 const TEAM_ABBREVIATIONS: Record<string, string> = {
   'GB': 'Green Bay Packers',
@@ -421,7 +432,7 @@ export default function DashboardPage() {
   const [aggregatedTeamPicks, setAggregatedTeamPicks] = useState<Array<{ team: string; pickCount: number }>>([])
   const [apiSeasonFilter, setApiSeasonFilter] = useState<string>('REG1')
   const [apiCurrentWeek, setApiCurrentWeek] = useState<number>(1)
-  const [rawUserPicks, setRawUserPicks] = useState<any[]>([])
+  const [rawUserPicks, setRawUserPicks] = useState<RawPickRow[]>([])
 
   const router = useRouter()
 
@@ -851,7 +862,7 @@ export default function DashboardPage() {
       console.log('Debug: Final transformed picks for current week:', userPicksData)
       
       setUserPicks(userPicksData || [])
-      setRawUserPicks(allUserPicksForWeek || [])
+      setRawUserPicks((allUserPicksForWeek || []) as unknown as RawPickRow[])
       setDbPicksRemaining(dbPicksRemaining)
       setPicksSaved((userPicksData || []).length > 0) // Set saved state based on existing picks
       setIsEditing(false) // Reset edit state when data is loaded

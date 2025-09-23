@@ -244,8 +244,8 @@ export default function PickAllocationsModal({ isOpen, onClose, picks, currentWe
       <div className="bg-gray-900 border border-white/20 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-white/20">
           <div>
-            <h2 className="text-xl font-semibold text-white">Allocations by Pick</h2>
-            <p className="text-sm text-blue-200 mt-1">Through {seasonFilter}</p>
+            <h2 className="text-xl font-semibold text-white">Your Week over Week Pick Breakdown</h2>
+            <p className="text-sm text-blue-200 mt-1">Through Regular Season - Week {currentWeek}</p>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
             <X className="w-6 h-6" />
