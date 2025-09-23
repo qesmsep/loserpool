@@ -91,6 +91,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Server-side guard: prevent allocating eliminated picks
+    const eliminatedPickNames = (existingPicks || [])
+      .filter(p => p.status === 'eliminated')
+      .map(p => p.pick_name)
+
+    if (eliminatedPickNames.length > 0) {
+      console.log('❌ Attempt to allocate eliminated picks blocked:', { eliminatedPickNames })
+      return NextResponse.json(
+        { error: `Cannot allocate eliminated picks: ${eliminatedPickNames.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     // Create the team_matchup_id value in the format: "matchupId_teamName"
     const teamMatchupId = `${matchupId}_${teamName}`
 
@@ -118,6 +131,7 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString()
         })
         .eq('id', existingPick.id)
+        .neq('status', 'eliminated')
         .select()
         .single()
 
