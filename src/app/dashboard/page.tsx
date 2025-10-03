@@ -18,6 +18,7 @@ import PickSelectionPopup from '@/components/pick-selection-popup'
 import OnboardingPopup from '@/components/onboarding-popup'
 import TeamPicksBreakdownModal from '@/components/team-picks-breakdown-modal'
 import PickAllocationsModal from '@/components/pick-allocations-modal'
+import RemainingPicksCard from '@/components/remaining-picks-card'
 import { getTeamColors } from '@/lib/team-logos'
 
 type RawPickRow = {
@@ -1188,7 +1189,8 @@ export default function DashboardPage() {
           )
         )}
 
-
+        {/* Remaining Picks Card */}
+        <RemainingPicksCard />
 
         {/* Mobile-Optimized Grid for Navigation Cards - HIDDEN */}
         {/* 
