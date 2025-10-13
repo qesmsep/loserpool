@@ -270,8 +270,20 @@ export async function GET(request: Request) {
           if (winner === null) {
             isIncorrect = true
           } else {
+            // Resolve team data robustly (prefer exact matches before fallbacks)
             let teamData = teamsMap.get(teamKey)
             if (!teamData) {
+              // Try matching abbreviation directly
+              const maybeAbbr = teamsMap.get(teamKey.toUpperCase())
+              if (maybeAbbr) teamData = maybeAbbr
+            }
+            if (!teamData) {
+              // Try replacing underscores with spaces and exact match
+              const byName = teamsMap.get(teamKey.replace(/_/g, ' '))
+              if (byName) teamData = byName
+            }
+            if (!teamData) {
+              // Final fallback: partial match (least preferred)
               for (const [key, data] of teamsMap.entries()) {
                 if (key.toLowerCase().includes(teamKey.toLowerCase()) || teamKey.toLowerCase().includes(key.toLowerCase())) {
                   teamData = data
@@ -279,8 +291,16 @@ export async function GET(request: Request) {
                 }
               }
             }
+
+            // Determine if the picked team won (eliminated in loser pool) using strict canonical matching
             const pickedTeamName = teamData?.name || teamKey
-            if (winner === pickedTeamName || (teamData?.abbreviation && winner === teamData.abbreviation) || (winner && pickedTeamName && (winner.toLowerCase().includes(pickedTeamName.toLowerCase()) || pickedTeamName.toLowerCase().includes(winner.toLowerCase())))) {
+            const normalizedWinner = winner.replace(/\s+/g, '_').toUpperCase()
+            const candidates: string[] = []
+            if (teamData?.abbreviation) candidates.push(teamData.abbreviation.toUpperCase())
+            candidates.push(pickedTeamName.toUpperCase())
+            candidates.push(pickedTeamName.replace(/\s+/g, '_').toUpperCase())
+            candidates.push(pickedTeamName.replace(/_/g, ' ').toUpperCase())
+            if (candidates.includes(normalizedWinner)) {
               isIncorrect = true
             }
           }
