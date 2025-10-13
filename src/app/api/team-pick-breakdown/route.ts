@@ -206,10 +206,19 @@ export async function GET(request: NextRequest) {
                   isWinner = true
                 }
                 // Try partial match (in case of slight name differences)
-                else if (result.winner && pickedTeamName && 
-                         (result.winner.toLowerCase().includes(pickedTeamName.toLowerCase()) ||
-                          pickedTeamName.toLowerCase().includes(result.winner.toLowerCase()))) {
-                  isWinner = true
+                else if (result.winner && pickedTeamName) {
+                  // Avoid substring matches like 'NE' in 'New Orleans'.
+                  // Only consider exact matches against known canonical forms.
+                  const normalizedWinner = result.winner.replace(/\s+/g, '_').toUpperCase()
+                  const candidates: string[] = []
+                  // Abbreviation
+                  if (teamData?.abbreviation) candidates.push(teamData.abbreviation.toUpperCase())
+                  // Full name with spaces and underscores
+                  candidates.push(pickedTeamName.toUpperCase())
+                  candidates.push(pickedTeamName.replace(/\s+/g, '_').toUpperCase())
+                  candidates.push(pickedTeamName.replace(/_/g, ' ').toUpperCase())
+
+                  isWinner = candidates.includes(normalizedWinner)
                 }
                 
                 if (isWinner) {

@@ -315,44 +315,17 @@ async function updatePickStatuses(matchupId: string, winner: string) {
       console.log(`Winner conversion: ${winner} -> ${winningTeam}`)
     }
     
-    // Get all picks for this matchup (using week-specific columns)
-    const { data: allPicks, error: fetchError } = await supabase
+    // Get all picks for this matchup using the simple matchup_id field
+    const { data: picksForThisMatchup, error: fetchError } = await supabase
       .from('picks')
       .select('*')
+      .eq('matchup_id', matchupId)
       .in('status', ['active', 'safe', 'eliminated']) // Include eliminated picks to fix incorrect eliminations
 
     if (fetchError) {
       console.error(`Error fetching picks for matchup ${matchupId}:`, fetchError)
       return
     }
-
-    if (!allPicks || allPicks.length === 0) {
-      console.log(`No active or safe picks found`)
-      return
-    }
-
-    // Filter picks that are allocated to this specific matchup
-    const picksForThisMatchup = allPicks.filter(pick => {
-      // Check all week columns to see if this pick is allocated to this matchup
-      const weekColumns = [
-        'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
-        'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
-        'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
-        'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
-        'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
-        'reg17_team_matchup_id', 'reg18_team_matchup_id',
-        'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
-      ]
-      
-      return weekColumns.some(column => {
-        const value = pick[column as keyof typeof pick]
-        if (value) {
-          const parts = value.split('_')
-          return parts[0] === matchupId
-        }
-        return false
-      })
-    })
 
     if (picksForThisMatchup.length === 0) {
       console.log(`No picks found for matchup ${matchupId}`)
@@ -365,31 +338,11 @@ async function updatePickStatuses(matchupId: string, winner: string) {
     for (const pick of picksForThisMatchup) {
       let newStatus = pick.status // Preserve current status (active or safe)
       
-      // Find which week column contains this matchup allocation and extract the team name
-      const weekColumns = [
-        'pre1_team_matchup_id', 'pre2_team_matchup_id', 'pre3_team_matchup_id',
-        'reg1_team_matchup_id', 'reg2_team_matchup_id', 'reg3_team_matchup_id', 'reg4_team_matchup_id',
-        'reg5_team_matchup_id', 'reg6_team_matchup_id', 'reg7_team_matchup_id', 'reg8_team_matchup_id',
-        'reg9_team_matchup_id', 'reg10_team_matchup_id', 'reg11_team_matchup_id', 'reg12_team_matchup_id',
-        'reg13_team_matchup_id', 'reg14_team_matchup_id', 'reg15_team_matchup_id', 'reg16_team_matchup_id',
-        'reg17_team_matchup_id', 'reg18_team_matchup_id',
-        'post1_team_matchup_id', 'post2_team_matchup_id', 'post3_team_matchup_id', 'post4_team_matchup_id'
-      ]
-      
-      let teamPicked = null
-      for (const column of weekColumns) {
-        const value = pick[column as keyof typeof pick]
-        if (value) {
-          const parts = value.split('_')
-          if (parts[0] === matchupId) {
-            teamPicked = parts.slice(1).join('_') // In case team name has underscores
-            break
-          }
-        }
-      }
+      // Use the simple team_picked field
+      const teamPicked = pick.team_picked
       
       if (!teamPicked) {
-        console.log(`Could not find team for pick ${pick.id} in matchup ${matchupId}`)
+        console.log(`No team picked for pick ${pick.id} in matchup ${matchupId}`)
         continue
       }
       
@@ -462,11 +415,10 @@ async function processFinalGamePickUpdates(
     // Only process if we have a winner and the game was recently updated
     if (winner) {
       // Check if picks for this matchup have already been processed recently
-      // Use exact match with underscore to avoid substring matches
       const { data: recentPicks } = await supabase
         .from('picks')
         .select('updated_at')
-        .or(`pre1_team_matchup_id.like.${matchup.id}_%,pre2_team_matchup_id.like.${matchup.id}_%,pre3_team_matchup_id.like.${matchup.id}_%,reg1_team_matchup_id.like.${matchup.id}_%,reg2_team_matchup_id.like.${matchup.id}_%,reg3_team_matchup_id.like.${matchup.id}_%,reg4_team_matchup_id.like.${matchup.id}_%,reg5_team_matchup_id.like.${matchup.id}_%,reg6_team_matchup_id.like.${matchup.id}_%,reg7_team_matchup_id.like.${matchup.id}_%,reg8_team_matchup_id.like.${matchup.id}_%,reg9_team_matchup_id.like.${matchup.id}_%,reg10_team_matchup_id.like.${matchup.id}_%,reg11_team_matchup_id.like.${matchup.id}_%,reg12_team_matchup_id.like.${matchup.id}_%,reg13_team_matchup_id.like.${matchup.id}_%,reg14_team_matchup_id.like.${matchup.id}_%,reg15_team_matchup_id.like.${matchup.id}_%,reg16_team_matchup_id.like.${matchup.id}_%,reg17_team_matchup_id.like.${matchup.id}_%,reg18_team_matchup_id.like.${matchup.id}_%,post1_team_matchup_id.like.${matchup.id}_%,post2_team_matchup_id.like.${matchup.id}_%,post3_team_matchup_id.like.${matchup.id}_%,post4_team_matchup_id.like.${matchup.id}_%`)
+        .eq('matchup_id', matchup.id)
         .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
         .limit(1);
       
@@ -488,11 +440,6 @@ async function reconcileCurrentWeekPicks(
   seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string }
 ): Promise<{ picksProcessed: number; picksUpdated: number }> {
   try {
-    // Determine the week column to inspect
-    const weekColumn = seasonInfo.isPreseason
-      ? `pre${seasonInfo.currentWeek}_team_matchup_id`
-      : `reg${seasonInfo.currentWeek}_team_matchup_id`
-
     // Load current week matchups with outcome info
     const { data: matchups, error: matchupsError } = await supabase
       .from('matchups')
@@ -517,54 +464,25 @@ async function reconcileCurrentWeekPicks(
       })
     }
 
-    // Page through all picks for this week that are not already eliminated (stable order)
-    const PAGE_SIZE = 1000
-    let offset = 0
-    type ReconcilePickRow = { id: string; user_id: string | null; status: string } & Record<string, unknown>
-    const allPickRows: ReconcilePickRow[] = []
+    // Get all picks that have matchup_id and team_picked fields
+    const { data: allPicks, error: picksError } = await supabase
+      .from('picks')
+      .select('id, user_id, status, matchup_id, team_picked')
+      .not('matchup_id', 'is', null)
+      .not('team_picked', 'is', null)
+      .neq('status', 'eliminated')
 
-    for (;;) {
-      const { data: pageRows, error: pageError } = await supabase
-        .from('picks')
-        .select(`id, user_id, status, ${weekColumn}`)
-        .not(weekColumn, 'is', null)
-        .neq('status', 'eliminated')
-        .order('id', { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1)
-
-      if (pageError) {
-        console.error('Error loading picks page for reconcile:', pageError)
-        break
-      }
-
-      const normalized: ReconcilePickRow[] = (pageRows as unknown as Array<Record<string, unknown>> || []).map(r => r as ReconcilePickRow)
-      allPickRows.push(...normalized)
-
-      if (!pageRows || pageRows.length < PAGE_SIZE) {
-        break
-      }
-
-      offset += PAGE_SIZE
+    if (picksError) {
+      console.error('Error loading picks for reconcile:', picksError)
+      return { picksProcessed: 0, picksUpdated: 0 }
     }
 
     let picksProcessed = 0
     let picksUpdated = 0
     const userIdsToRefresh = new Set<string>()
 
-    for (const pick of allPickRows) {
-      // Safely index dynamic week column name
-      const pickRecord = pick as unknown as { [key: string]: unknown }
-      const teamMatchupValueUnknown = pickRecord[weekColumn as string]
-      if (!teamMatchupValueUnknown || typeof teamMatchupValueUnknown !== 'string') continue
-      const teamMatchupValue = teamMatchupValueUnknown as string
-
-      const underscoreIndex = teamMatchupValue.indexOf('_')
-      if (underscoreIndex <= 0) continue
-
-      const matchupId = teamMatchupValue.slice(0, underscoreIndex)
-      const teamPicked = teamMatchupValue.slice(underscoreIndex + 1)
-
-      const matchup = matchupsById.get(matchupId)
+    for (const pick of allPicks || []) {
+      const matchup = matchupsById.get(pick.matchup_id)
       if (!matchup) continue
 
       // Only reconcile for final games
@@ -591,7 +509,7 @@ async function reconcileCurrentWeekPicks(
       let newStatus: 'safe' | 'eliminated' | null = null
       if (winner === 'tie') {
         newStatus = 'eliminated'
-      } else if (winningTeamAbbr && teamPicked === winningTeamAbbr) {
+      } else if (winningTeamAbbr && pick.team_picked === winningTeamAbbr) {
         newStatus = 'eliminated'
       } else if (winningTeamAbbr) {
         newStatus = 'safe'
