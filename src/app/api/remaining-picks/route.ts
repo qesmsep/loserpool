@@ -91,7 +91,16 @@ export async function GET() {
 
     const matchupMap = new Map<string, { id: string; week: number; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string }>()
     matchups?.forEach(m => {
-      matchupMap.set(m.id as unknown as string, m as any)
+      const key = m.id as unknown as string
+      matchupMap.set(key, {
+        id: key,
+        week: m.week as number,
+        away_team: m.away_team as string,
+        home_team: m.home_team as string,
+        away_score: (m.away_score as number | null) ?? null,
+        home_score: (m.home_score as number | null) ?? null,
+        status: m.status as string
+      })
     })
 
     // 3) Determine current week
