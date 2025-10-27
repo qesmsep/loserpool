@@ -357,11 +357,14 @@ async function processCurrentWeekPicks(
       console.log(`Found ${picks.length} active picks for this matchup`)
 
       // Process each pick
-      for (const pick of picks) {
+      for (const pickData of picks) {
         picksProcessed++
         
+        // Type assertion for dynamic column access
+        const pick = pickData as unknown as { id: string; user_id: string; status: string } & Record<string, string | null>
+        
         // Extract team from the column value (format: uuid_TEAM)
-        const teamMatchupValue = (pick as Record<string, unknown>)[weekColumn] as string
+        const teamMatchupValue = pick[weekColumn]
         if (!teamMatchupValue) continue
 
         const parts = teamMatchupValue.split('_')
