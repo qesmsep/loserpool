@@ -361,7 +361,7 @@ async function processCurrentWeekPicks(
         picksProcessed++
         
         // Extract team from the column value (format: uuid_TEAM)
-        const teamMatchupValue = pick[weekColumn] as string
+        const teamMatchupValue = (pick as Record<string, unknown>)[weekColumn] as string
         if (!teamMatchupValue) continue
 
         const parts = teamMatchupValue.split('_')
