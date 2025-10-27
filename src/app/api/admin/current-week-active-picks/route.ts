@@ -75,11 +75,12 @@ export async function GET() {
       )
     }
 
-    // Count all picks where the current week column is not null
+    // Count all picks where the current week column is not null AND status is active/safe (not eliminated)
     const { count, error } = await supabaseAdmin
       .from('picks')
       .select('id', { count: 'exact', head: true })
       .not(weekColumnName, 'is', null)
+      .neq('status', 'eliminated')
 
     if (error) {
       return NextResponse.json(
