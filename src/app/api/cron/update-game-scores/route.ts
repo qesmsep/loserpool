@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
 async function processCurrentWeekPicks(
   supabase: ReturnType<typeof createServiceRoleClient>,
   seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string },
-  matchups: any[]
+  matchups: Array<{ id: string; status: string; winner: string | null; away_team: string; home_team: string }>
 ): Promise<{ picksProcessed: number; picksEliminated: number }> {
   try {
     // Get week column name (e.g., 'reg8_team_matchup_id')
