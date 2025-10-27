@@ -64,10 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: fetchError.message }, { status: 500 })
     }
 
-    // Process pick status updates for final games in the current week that haven't been processed yet
-    console.log('Starting to process final game pick updates...')
-    await processFinalGamePickUpdates(supabase, matchups)
-    console.log('Finished processing final game pick updates.')
+    // We'll process picks after updating matchup scores
 
     console.log(`Database matchups for ${seasonInfo.seasonDisplay}: ${matchups?.length || 0}`)
 
@@ -228,15 +225,6 @@ export async function POST(request: NextRequest) {
                    if (weather || temperature || windSpeed) {
                      console.log(`  Weather: ${weather}, Temp: ${temperature}°F, Wind: ${windSpeed} mph`)
                    }
-            
-            // If game is final, update pick statuses (including ties)
-            // Only process if the game status just changed to final (wasn't final before)
-            if (newStatus === 'final' && winner && matchup.status !== 'final') {
-              console.log(`Game ${matchup.away_team} @ ${matchup.home_team} just became final - processing picks`)
-              await updatePickStatuses(matchup.id, winner)
-            } else if (newStatus === 'final' && winner && matchup.status === 'final') {
-              console.log(`Game ${matchup.away_team} @ ${matchup.home_team} was already final - skipping pick processing`)
-            }
           }
         } else {
           console.log(`No updates needed for: ${matchup.away_team} @ ${matchup.home_team}`)
@@ -251,10 +239,12 @@ export async function POST(request: NextRequest) {
 
     const executionTime = Date.now() - startTime
     
-    // Reconcile current week picks regardless of pick update recency
-    const reconcileResult = await reconcileCurrentWeekPicks(supabase, seasonInfo)
+    // Process all picks for current week's final games
+    console.log('Processing picks for current week final games...')
+    const pickResult = await processCurrentWeekPicks(supabase, seasonInfo, matchups)
+    console.log(`Picks processed: ${pickResult.picksProcessed}, picks eliminated: ${pickResult.picksEliminated}`)
 
-    console.log(`Game score update completed in ${executionTime}ms: ${gamesUpdated} games updated; ${reconcileResult.picksProcessed} picks reconciled, ${reconcileResult.picksUpdated} picks updated`)
+    console.log(`Game score update completed in ${executionTime}ms: ${gamesUpdated} games updated, ${pickResult.picksProcessed} picks processed, ${pickResult.picksEliminated} picks eliminated`)
 
     return NextResponse.json({
       success: true,
@@ -262,6 +252,8 @@ export async function POST(request: NextRequest) {
       total_matchups_checked: matchups.length,
       execution_time_ms: executionTime,
       errors: errors.length > 0 ? errors : null,
+      picks_processed: pickResult.picksProcessed,
+      picks_eliminated: pickResult.picksEliminated,
       debug: {
         currentWeek,
         seasonDisplay: seasonInfo.seasonDisplay,
@@ -269,9 +261,7 @@ export async function POST(request: NextRequest) {
         databaseMatchupsCount: matchups.length,
         databaseSeasons: [...new Set(matchups?.map(m => m.season) || [])],
         espnGameKeys: Array.from(espnGameMap.keys()),
-        databaseGameKeys: matchups.map(m => `${m.away_team}-${m.home_team}`).slice(0, 5),
-        picksReconciled: reconcileResult.picksProcessed,
-        picksUpdated: reconcileResult.picksUpdated
+        databaseGameKeys: matchups.map(m => `${m.away_team}-${m.home_team}`).slice(0, 5)
       }
     })
 
@@ -289,264 +279,150 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Function to update pick statuses when a game is finalized
-async function updatePickStatuses(matchupId: string, winner: string) {
-  try {
-    const supabase = createServiceRoleClient()
-    
-    // Get the matchup details to convert winner from 'away'/'home' to team abbreviation
-    const { data: matchup, error: matchupError } = await supabase
-      .from('matchups')
-      .select('away_team, home_team')
-      .eq('id', matchupId)
-      .single()
-
-    if (matchupError || !matchup) {
-      console.error(`Error fetching matchup ${matchupId}:`, matchupError)
-      return
-    }
-
-    // Convert winner from 'away'/'home' to actual team abbreviation, or handle ties
-    let winningTeam = null
-    if (winner === 'tie') {
-      console.log(`Game ended in a tie - all picks will be eliminated`)
-    } else {
-      winningTeam = winner === 'away' ? matchup.away_team : matchup.home_team
-      console.log(`Winner conversion: ${winner} -> ${winningTeam}`)
-    }
-    
-    // Get all picks for this matchup using the simple matchup_id field
-    const { data: picksForThisMatchup, error: fetchError } = await supabase
-      .from('picks')
-      .select('*')
-      .eq('matchup_id', matchupId)
-      .in('status', ['active', 'safe', 'eliminated']) // Include eliminated picks to fix incorrect eliminations
-
-    if (fetchError) {
-      console.error(`Error fetching picks for matchup ${matchupId}:`, fetchError)
-      return
-    }
-
-    if (picksForThisMatchup.length === 0) {
-      console.log(`No picks found for matchup ${matchupId}`)
-      return
-    }
-
-    console.log(`Updating ${picksForThisMatchup.length} picks for matchup ${matchupId}, winning team: ${winningTeam}`)
-
-    // Update picks based on winner (LOSER POOL LOGIC)
-    for (const pick of picksForThisMatchup) {
-      let newStatus = pick.status // Preserve current status (active or safe)
-      
-      // Use the simple team_picked field
-      const teamPicked = pick.team_picked
-      
-      if (!teamPicked) {
-        console.log(`No team picked for pick ${pick.id} in matchup ${matchupId}`)
-        continue
-      }
-      
-      if (winner === 'tie') {
-        // Ties eliminate everyone in a loser pool
-        newStatus = 'eliminated'
-        console.log(`User pick ELIMINATED due to tie: ${teamPicked}`)
-      } else if (teamPicked === winningTeam) {
-        // User picked the winning team - they're ELIMINATED (this is a loser pool!)
-        newStatus = 'eliminated'
-        console.log(`User pick ELIMINATED: ${teamPicked} won, user picked ${teamPicked}`)
-      } else {
-        // User picked the losing team - they SURVIVE (this is a loser pool!)
-        newStatus = 'safe'
-        console.log(`User pick SURVIVES: ${teamPicked} lost, user picked ${teamPicked}`)
-      }
-      
-      // Debug logging
-      console.log(`Pick ${pick.id}: teamPicked=${teamPicked}, winningTeam=${winningTeam}, currentStatus=${pick.status}, newStatus=${newStatus}`)
-
-      const { error: updateError } = await supabase
-        .from('picks')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', pick.id)
-
-      if (updateError) {
-        console.error(`Error updating pick ${pick.id}:`, updateError)
-      }
-    }
-
-    console.log(`Successfully updated ${picksForThisMatchup.length} picks for matchup ${matchupId}`)
-    
-    // Update user types for all users who had picks in this matchup
-    const userIds = [...new Set(picksForThisMatchup.map(pick => pick.user_id))]
-    for (const userId of userIds) {
-      try {
-        await updateUserTypeBasedOnPicks(userId)
-      } catch (error) {
-        console.error(`Error updating user type for user ${userId}:`, error)
-        // Don't fail the entire process if one user type update fails
-      }
-    }
-  } catch (error) {
-    console.error(`Error updating pick statuses for matchup ${matchupId}:`, error)
-  }
-}
-
-// Function to process pick status updates for all final games that haven't been processed yet
-async function processFinalGamePickUpdates(
+// Simplified function to process ALL current week picks for final games
+async function processCurrentWeekPicks(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  matchups: { id: string; status: string; winner: string | null; away_team: string; home_team: string; away_score?: number | null; home_score?: number | null; last_api_update?: string }[]
-) {
-  const finalGames = matchups.filter(m => m.status === 'final');
-  console.log(`Found ${finalGames.length} final games to process pick updates for.`);
-
-  for (const matchup of finalGames) {
-    let winner = matchup.winner as string | null;
-    // Derive winner from scores if missing
-    if (!winner && (matchup.away_score !== undefined && matchup.home_score !== undefined) && (matchup.away_score !== null && matchup.home_score !== null)) {
-      if (matchup.away_score > matchup.home_score) winner = 'away';
-      else if (matchup.home_score > matchup.away_score) winner = 'home';
-      else winner = 'tie';
-      console.log(`Derived missing winner for ${matchup.away_team} @ ${matchup.home_team}: ${winner}`);
-    }
-    console.log(`Processing final game: ${matchup.away_team} @ ${matchup.home_team}, winner: ${winner}`);
-    
-    // Only process if we have a winner and the game was recently updated
-    if (winner) {
-      // Check if picks for this matchup have already been processed recently
-      const { data: recentPicks } = await supabase
-        .from('picks')
-        .select('updated_at')
-        .eq('matchup_id', matchup.id)
-        .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
-        .limit(1);
-      
-      if (!recentPicks || recentPicks.length === 0) {
-        console.log(`Processing picks for ${matchup.away_team} @ ${matchup.home_team} - no recent updates found`);
-        await updatePickStatuses(matchup.id, winner);
-      } else {
-        console.log(`Skipping ${matchup.away_team} @ ${matchup.home_team} - picks already processed recently`);
-      }
-    } else {
-      console.warn(`Game ${matchup.away_team} @ ${matchup.home_team} is final but no winner found.`);
-    }
-  }
-}
-
-// Function to reconcile current week picks across all users
-async function reconcileCurrentWeekPicks(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-  seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string }
-): Promise<{ picksProcessed: number; picksUpdated: number }> {
+  seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string },
+  matchups: any[]
+): Promise<{ picksProcessed: number; picksEliminated: number }> {
   try {
-    // Load current week matchups with outcome info
-    const { data: matchups, error: matchupsError } = await supabase
-      .from('matchups')
-      .select('id, status, winner, away_team, home_team, away_score, home_score')
-      .eq('season', seasonInfo.seasonDisplay)
-
-    if (matchupsError) {
-      console.error('Error loading current week matchups for reconcile:', matchupsError)
-      return { picksProcessed: 0, picksUpdated: 0 }
+    // Get week column name (e.g., 'reg8_team_matchup_id')
+    const getWeekColumn = (week: number, isPreseason: boolean): string | null => {
+      if (isPreseason && week <= 3) {
+        return `pre${week}_team_matchup_id`
+      } else if (!isPreseason && week <= 18) {
+        return `reg${week}_team_matchup_id`
+      } else if (week > 18) {
+        const postWeek = week - 18
+        return postWeek <= 4 ? `post${postWeek}_team_matchup_id` : null
+      }
+      return null
     }
 
-    const matchupsById = new Map<string, { id: string; status: string; winner: string | null; away_team: string; home_team: string; away_score: number | null; home_score: number | null }>()
-    for (const m of matchups || []) {
-      matchupsById.set(m.id, {
-        id: m.id,
-        status: m.status,
-        winner: m.winner,
-        away_team: m.away_team,
-        home_team: m.home_team,
-        away_score: m.away_score ?? null,
-        home_score: m.home_score ?? null
-      })
+    const weekColumn = getWeekColumn(seasonInfo.currentWeek, seasonInfo.isPreseason)
+    if (!weekColumn) {
+      console.error(`Invalid week for pick processing: ${seasonInfo.seasonDisplay}`)
+      return { picksProcessed: 0, picksEliminated: 0 }
     }
 
-    // Get all picks that have matchup_id and team_picked fields
-    const { data: allPicks, error: picksError } = await supabase
-      .from('picks')
-      .select('id, user_id, status, matchup_id, team_picked')
-      .not('matchup_id', 'is', null)
-      .not('team_picked', 'is', null)
-      .neq('status', 'eliminated')
+    console.log(`Processing picks for column: ${weekColumn}`)
 
-    if (picksError) {
-      console.error('Error loading picks for reconcile:', picksError)
-      return { picksProcessed: 0, picksUpdated: 0 }
+    // Get all final games for current week
+    const finalGames = matchups.filter(m => m.status === 'final')
+    console.log(`Found ${finalGames.length} final games in current week`)
+
+    if (finalGames.length === 0) {
+      return { picksProcessed: 0, picksEliminated: 0 }
     }
 
     let picksProcessed = 0
-    let picksUpdated = 0
-    const userIdsToRefresh = new Set<string>()
+    let picksEliminated = 0
+    const userIdsToUpdate = new Set<string>()
 
-    for (const pick of allPicks || []) {
-      const matchup = matchupsById.get(pick.matchup_id)
-      if (!matchup) continue
-
-      // Only reconcile for final games
-      if (matchup.status !== 'final') continue
-
-      let winner = matchup.winner
-      if (!winner && matchup.away_score !== null && matchup.home_score !== null) {
-        if (matchup.away_score > matchup.home_score) winner = 'away'
-        else if (matchup.home_score > matchup.away_score) winner = 'home'
-        else winner = 'tie'
-      }
-      if (!winner) continue
-
-      // Determine the winning team abbreviation for comparison
-      let winningTeamAbbr: string | null = null
-      if (winner === 'tie') {
-        winningTeamAbbr = null
-      } else if (winner === 'away') {
-        winningTeamAbbr = matchup.away_team
-      } else if (winner === 'home') {
-        winningTeamAbbr = matchup.home_team
-      }
-
-      let newStatus: 'safe' | 'eliminated' | null = null
-      if (winner === 'tie') {
-        newStatus = 'eliminated'
-      } else if (winningTeamAbbr && pick.team_picked === winningTeamAbbr) {
-        newStatus = 'eliminated'
-      } else if (winningTeamAbbr) {
-        newStatus = 'safe'
-      }
-
-      if (!newStatus || newStatus === pick.status) {
-        picksProcessed++
+    // Process each final game
+    for (const matchup of finalGames) {
+      // Determine winner team abbreviation
+      let winningTeam: string | null = null
+      if (matchup.winner === 'tie') {
+        winningTeam = null // Ties eliminate everyone
+      } else if (matchup.winner === 'away') {
+        winningTeam = matchup.away_team
+      } else if (matchup.winner === 'home') {
+        winningTeam = matchup.home_team
+      } else {
+        console.warn(`No winner for final game: ${matchup.away_team} @ ${matchup.home_team}`)
         continue
       }
 
-      const { error: updError } = await supabase
-        .from('picks')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', pick.id)
+      console.log(`Processing picks for ${matchup.away_team} @ ${matchup.home_team}, winner: ${winningTeam || 'TIE'}`)
 
-      picksProcessed++
-      if (!updError) {
-        picksUpdated++
-        if (pick.user_id) userIdsToRefresh.add(pick.user_id)
-      } else {
-        console.error(`Failed to update pick ${pick.id}:`, updError)
+      // Get all picks that reference this matchup in the current week column
+      // Format: matchup_uuid_TEAM (e.g., "abc123_CIN")
+      const { data: picks, error: picksError } = await supabase
+        .from('picks')
+        .select('id, user_id, status, ' + weekColumn)
+        .like(weekColumn, `${matchup.id}_%`)
+        .neq('status', 'eliminated')
+
+      if (picksError) {
+        console.error(`Error fetching picks for matchup ${matchup.id}:`, picksError)
+        continue
+      }
+
+      if (!picks || picks.length === 0) {
+        console.log(`No active picks found for matchup ${matchup.id}`)
+        continue
+      }
+
+      console.log(`Found ${picks.length} active picks for this matchup`)
+
+      // Process each pick
+      for (const pick of picks) {
+        picksProcessed++
+        
+        // Extract team from the column value (format: uuid_TEAM)
+        const teamMatchupValue = pick[weekColumn] as string
+        if (!teamMatchupValue) continue
+
+        const parts = teamMatchupValue.split('_')
+        if (parts.length < 2) {
+          console.warn(`Invalid team_matchup_id format: ${teamMatchupValue}`)
+          continue
+        }
+
+        // Team abbreviation is everything after the first underscore
+        const pickedTeam = parts.slice(1).join('_')
+        console.log(`Pick ${pick.id}: picked team = ${pickedTeam}, winning team = ${winningTeam}`)
+
+        // LOSER POOL LOGIC:
+        // - If tie: everyone eliminated
+        // - If picked team WON: eliminated (picked wrong in loser pool)
+        // - If picked team LOST: leave status unchanged (they survive)
+        
+        let shouldEliminate = false
+        if (matchup.winner === 'tie') {
+          shouldEliminate = true
+          console.log(`  → ELIMINATED (tie game)`)
+        } else if (pickedTeam === winningTeam) {
+          shouldEliminate = true
+          console.log(`  → ELIMINATED (picked winning team in loser pool)`)
+        } else {
+          console.log(`  → SURVIVES (picked losing team - leaving status unchanged)`)
+        }
+
+        if (shouldEliminate) {
+          const { error: updateError } = await supabase
+            .from('picks')
+            .update({ 
+              status: 'eliminated',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', pick.id)
+
+          if (updateError) {
+            console.error(`Error eliminating pick ${pick.id}:`, updateError)
+          } else {
+            picksEliminated++
+            userIdsToUpdate.add(pick.user_id)
+          }
+        }
       }
     }
 
     // Update user types for affected users
-    for (const userId of userIdsToRefresh) {
+    console.log(`Updating user types for ${userIdsToUpdate.size} affected users`)
+    for (const userId of userIdsToUpdate) {
       try {
         await updateUserTypeBasedOnPicks(userId)
-      } catch (e) {
-        console.error('User type update failed for user', userId, e)
+      } catch (error) {
+        console.error(`Error updating user type for ${userId}:`, error)
       }
     }
 
-    return { picksProcessed, picksUpdated }
+    return { picksProcessed, picksEliminated }
   } catch (error) {
-    console.error('Error reconciling current week picks:', error)
-    return { picksProcessed: 0, picksUpdated: 0 }
+    console.error('Error processing current week picks:', error)
+    return { picksProcessed: 0, picksEliminated: 0 }
   }
 }
 
