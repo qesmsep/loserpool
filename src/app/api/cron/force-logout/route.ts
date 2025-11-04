@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceRoleClient()
 
     // Get all users from auth with pagination
-    let allUsers = []
+    let allUsers: Array<{ id: string; email?: string }> = []
     let page = 1
     const perPage = 1000
     let hasMore = true
