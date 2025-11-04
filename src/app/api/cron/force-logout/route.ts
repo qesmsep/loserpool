@@ -31,24 +31,51 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceRoleClient()
 
-    // Get all users from auth
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
+    // Get all users from auth with pagination
+    let allUsers = []
+    let page = 1
+    const perPage = 1000
+    let hasMore = true
+
+    console.log('Fetching all users with pagination...')
     
-    if (listError) {
-      console.error('Error listing users for force logout:', listError)
-      return NextResponse.json({ error: 'Failed to list users' }, { status: 500 })
+    while (hasMore) {
+      const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
+        page,
+        perPage
+      })
+      
+      if (listError) {
+        console.error('Error listing users for force logout:', listError)
+        return NextResponse.json({ error: 'Failed to list users' }, { status: 500 })
+      }
+
+      if (!users || users.length === 0) {
+        hasMore = false
+        break
+      }
+
+      allUsers = allUsers.concat(users)
+      console.log(`Fetched page ${page}: ${users.length} users (total so far: ${allUsers.length})`)
+      
+      // If we got fewer users than perPage, we're done
+      if (users.length < perPage) {
+        hasMore = false
+      } else {
+        page++
+      }
     }
 
-    if (!users || users.length === 0) {
+    if (allUsers.length === 0) {
       console.log('No users to log out')
       return NextResponse.json({ message: 'No users found' })
     }
 
-    console.log(`Attempting to force logout ${users.length} users...`)
+    console.log(`Attempting to force logout ${allUsers.length} users...`)
 
     // Sign out all users by invalidating their sessions
     const signOutResults = await Promise.allSettled(
-      users.map(user => 
+      allUsers.map(user => 
         supabase.auth.admin.signOut(user.id)
       )
     )
@@ -58,10 +85,10 @@ export async function POST(request: NextRequest) {
     const failed = signOutResults.filter(r => r.status === 'rejected').length
 
     if (failed > 0) {
-      console.warn(`Force logout completed with ${failed} failures out of ${users.length} users`)
+      console.warn(`Force logout completed with ${failed} failures out of ${allUsers.length} users`)
       signOutResults.forEach((result, index) => {
         if (result.status === 'rejected') {
-          console.error(`Failed to logout user ${users[index].email}:`, result.reason)
+          console.error(`Failed to logout user ${allUsers[index].email}:`, result.reason)
         }
       })
     }
@@ -84,7 +111,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       message: logMessage,
       timestamp: now.toISOString(),
-      total: users.length,
+      total: allUsers.length,
       successful,
       failed
     })
