@@ -32,6 +32,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (session) {
+          // Check for forced logout timestamp
+          try {
+            const response = await fetch('/api/auth/check-forced-logout')
+            if (response.ok) {
+              const { lastLogout } = await response.json()
+              
+              if (lastLogout) {
+                const logoutTime = new Date(lastLogout)
+                const lastCheck = localStorage.getItem('last_logout_check')
+                
+                // If we haven't checked since the forced logout, sign out
+                if (!lastCheck || new Date(lastCheck) < logoutTime) {
+                  console.log('Forced logout detected, signing out')
+                  await supabase.auth.signOut()
+                  localStorage.setItem('last_logout_check', new Date().toISOString())
+                  setUser(null)
+                  setLoading(false)
+                  return
+                }
+              }
+            }
+          } catch (logoutCheckError) {
+            console.error('Error checking forced logout:', logoutCheckError)
+            // Continue with normal session check if forced logout check fails
+          }
+          
           // Check if session is expired
           if (session.expires_at) {
             const expiresAt = new Date(session.expires_at * 1000)
