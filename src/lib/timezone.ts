@@ -98,20 +98,33 @@ export function debugGameTime(gameTime: string): void {
 
 /**
  * Formats a game time for display in user's local timezone
- * @param gameTime - The game time (stored in EST in database)
+ * @param gameTime - The game time (stored as UTC in database from ESPN API)
  * @returns Formatted game time in user's local timezone
  */
 export function formatGameTime(gameTime: string): string {
   try {
-    // Remove the timezone offset and parse as EST
-    // The database stores times like '2025-09-14T16:25:00+00:00' but they're actually EST
-    const timeWithoutOffset = gameTime.replace(/[+-]\d{2}:\d{2}$/, '')
-    const estDateTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
+    // ESPN API returns dates in UTC format (e.g., "2026-01-03T21:30Z")
+    // Parse as UTC first, then convert to user's local timezone
+    let utcDateTime: DateTime
+    
+    if (gameTime.endsWith('Z')) {
+      // UTC format with Z
+      utcDateTime = DateTime.fromISO(gameTime, { zone: 'utc' })
+    } else if (gameTime.includes('+') || gameTime.includes('-')) {
+      // Has timezone offset, parse with it
+      utcDateTime = DateTime.fromISO(gameTime, { zone: 'utc' })
+    } else {
+      // No timezone info, assume UTC
+      utcDateTime = DateTime.fromISO(gameTime + 'Z', { zone: 'utc' })
+    }
+    
+    if (!utcDateTime.isValid) {
+      console.error('Invalid game time:', gameTime, utcDateTime.invalidReason)
+      return 'Invalid time'
+    }
     
     // Convert to user's local timezone
-    const localDateTime = estDateTime.toLocal()
-    
-    // Debug logging removed to prevent console spam
+    const localDateTime = utcDateTime.toLocal()
     
     return localDateTime.toFormat('EEE, MMM d, h:mm a')
   } catch (error) {
@@ -135,18 +148,38 @@ export function calculatePicksDeadline(matchups: Array<{ game_time: string }>): 
 
     // Find the earliest game time for the week
     const earliestGame = matchups.reduce((earliest, matchup) => {
-      // Parse game time as EST (same as formatGameTime function)
-      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
-      const gameTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
+      // Parse game time as UTC (ESPN API format)
+      let utcDateTime: DateTime
+      if (matchup.game_time.endsWith('Z')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else if (matchup.game_time.includes('+') || matchup.game_time.includes('-')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else {
+        utcDateTime = DateTime.fromISO(matchup.game_time + 'Z', { zone: 'utc' })
+      }
+      
+      if (!utcDateTime.isValid) {
+        return earliest || matchup
+      }
       
       if (!earliest) {
         return matchup
       }
       
-      const timeWithoutOffsetEarliest = earliest.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
-      const earliestTime = DateTime.fromISO(timeWithoutOffsetEarliest, { zone: 'America/New_York' })
+      let earliestUtcDateTime: DateTime
+      if (earliest.game_time.endsWith('Z')) {
+        earliestUtcDateTime = DateTime.fromISO(earliest.game_time, { zone: 'utc' })
+      } else if (earliest.game_time.includes('+') || earliest.game_time.includes('-')) {
+        earliestUtcDateTime = DateTime.fromISO(earliest.game_time, { zone: 'utc' })
+      } else {
+        earliestUtcDateTime = DateTime.fromISO(earliest.game_time + 'Z', { zone: 'utc' })
+      }
       
-      if (gameTime < earliestTime) {
+      if (!earliestUtcDateTime.isValid) {
+        return matchup
+      }
+      
+      if (utcDateTime < earliestUtcDateTime) {
         return matchup
       }
       return earliest
@@ -154,10 +187,20 @@ export function calculatePicksDeadline(matchups: Array<{ game_time: string }>): 
 
     if (earliestGame) {
       // Set deadline to the start of the first game (same time as game start)
-      const timeWithoutOffset = earliestGame.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
-      const gameTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
-      const deadline = gameTime.setZone('America/Chicago')
-      return deadline.toISO() || ''
+      let utcDateTime: DateTime
+      if (earliestGame.game_time.endsWith('Z')) {
+        utcDateTime = DateTime.fromISO(earliestGame.game_time, { zone: 'utc' })
+      } else if (earliestGame.game_time.includes('+') || earliestGame.game_time.includes('-')) {
+        utcDateTime = DateTime.fromISO(earliestGame.game_time, { zone: 'utc' })
+      } else {
+        utcDateTime = DateTime.fromISO(earliestGame.game_time + 'Z', { zone: 'utc' })
+      }
+      
+      if (utcDateTime.isValid) {
+        // Convert UTC to CST for deadline
+        const deadline = utcDateTime.setZone('America/Chicago')
+        return deadline.toISO() || ''
+      }
     }
 
     // Fallback: tomorrow morning at 9 AM CST
@@ -236,12 +279,23 @@ export function groupMatchupsByDay<T extends { game_time: string }>(matchups: T[
   
   matchups.forEach(matchup => {
     try {
-      // Parse the game time to get the day
-      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
-      const estDateTime = DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
-      const localDateTime = estDateTime.toLocal()
+      // Parse the game time as UTC (ESPN API format)
+      let utcDateTime: DateTime
+      if (matchup.game_time.endsWith('Z')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else if (matchup.game_time.includes('+') || matchup.game_time.includes('-')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else {
+        utcDateTime = DateTime.fromISO(matchup.game_time + 'Z', { zone: 'utc' })
+      }
       
-      // Get day of week (0 = Sunday, 1 = Monday, etc.)
+      if (!utcDateTime.isValid) {
+        throw new Error('Invalid date')
+      }
+      
+      const localDateTime = utcDateTime.toLocal()
+      
+      // Get day of week (1 = Monday, 2 = Tuesday, etc.)
       const dayOfWeek = localDateTime.weekday
       
       // Create day labels
@@ -276,8 +330,28 @@ export function groupMatchupsByDay<T extends { game_time: string }>(matchups: T[
   Object.keys(grouped).forEach(day => {
     grouped[day].sort((a, b) => {
       try {
-        const timeA = DateTime.fromISO(a.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
-        const timeB = DateTime.fromISO(b.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+        let timeA: DateTime
+        if (a.game_time.endsWith('Z')) {
+          timeA = DateTime.fromISO(a.game_time, { zone: 'utc' })
+        } else if (a.game_time.includes('+') || a.game_time.includes('-')) {
+          timeA = DateTime.fromISO(a.game_time, { zone: 'utc' })
+        } else {
+          timeA = DateTime.fromISO(a.game_time + 'Z', { zone: 'utc' })
+        }
+        
+        let timeB: DateTime
+        if (b.game_time.endsWith('Z')) {
+          timeB = DateTime.fromISO(b.game_time, { zone: 'utc' })
+        } else if (b.game_time.includes('+') || b.game_time.includes('-')) {
+          timeB = DateTime.fromISO(b.game_time, { zone: 'utc' })
+        } else {
+          timeB = DateTime.fromISO(b.game_time + 'Z', { zone: 'utc' })
+        }
+        
+        if (!timeA.isValid || !timeB.isValid) {
+          return 0
+        }
+        
         return timeA.toMillis() - timeB.toMillis()
       } catch (error) {
         return 0
@@ -313,8 +387,28 @@ export function getDayDisplayOrder(): string[] {
 export function sortMatchupsChronologically<T extends { game_time: string }>(matchups: T[]): T[] {
   return [...matchups].sort((a, b) => {
     try {
-      const timeA = DateTime.fromISO(a.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
-      const timeB = DateTime.fromISO(b.game_time.replace(/[+-]\d{2}:\d{2}$/, ''), { zone: 'America/New_York' })
+      let timeA: DateTime
+      if (a.game_time.endsWith('Z')) {
+        timeA = DateTime.fromISO(a.game_time, { zone: 'utc' })
+      } else if (a.game_time.includes('+') || a.game_time.includes('-')) {
+        timeA = DateTime.fromISO(a.game_time, { zone: 'utc' })
+      } else {
+        timeA = DateTime.fromISO(a.game_time + 'Z', { zone: 'utc' })
+      }
+      
+      let timeB: DateTime
+      if (b.game_time.endsWith('Z')) {
+        timeB = DateTime.fromISO(b.game_time, { zone: 'utc' })
+      } else if (b.game_time.includes('+') || b.game_time.includes('-')) {
+        timeB = DateTime.fromISO(b.game_time, { zone: 'utc' })
+      } else {
+        timeB = DateTime.fromISO(b.game_time + 'Z', { zone: 'utc' })
+      }
+      
+      if (!timeA.isValid || !timeB.isValid) {
+        return 0
+      }
+      
       return timeA.toMillis() - timeB.toMillis()
     } catch (error) {
       return 0
@@ -343,11 +437,18 @@ export function getWeekDateRange<T extends { game_time: string }>(matchups: T[])
   }
 
   try {
-    // Parse all game times and find the earliest and latest
+    // Parse all game times as UTC and find the earliest and latest
     const gameTimes = matchups.map(matchup => {
-      const timeWithoutOffset = matchup.game_time.replace(/[+-]\d{2}:\d{2}$/, '')
-      return DateTime.fromISO(timeWithoutOffset, { zone: 'America/New_York' })
-    })
+      let utcDateTime: DateTime
+      if (matchup.game_time.endsWith('Z')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else if (matchup.game_time.includes('+') || matchup.game_time.includes('-')) {
+        utcDateTime = DateTime.fromISO(matchup.game_time, { zone: 'utc' })
+      } else {
+        utcDateTime = DateTime.fromISO(matchup.game_time + 'Z', { zone: 'utc' })
+      }
+      return utcDateTime
+    }).filter(dt => dt.isValid)
 
     const earliest = DateTime.min(...gameTimes)
     const latest = DateTime.max(...gameTimes)

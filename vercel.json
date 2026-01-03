@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/force-logout",
       "schedule": "0 8 * * 2"
+    },
+    {
+      "path": "/api/cron/update-game-times",
+      "schedule": "0 */6 * * *"
     }
   ]
 } 
