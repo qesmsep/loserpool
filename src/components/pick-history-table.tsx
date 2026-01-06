@@ -137,7 +137,24 @@ export default function PickHistoryTable({ pickId }: PickHistoryTableProps) {
           </div>
           <div className="flex items-center space-x-1">
             <MapPin className="w-3 h-3" />
-            <span>Week {matchup.week}</span>
+            <span>
+              {matchup.season && matchup.season.startsWith('POST') ? (
+                (() => {
+                  const postWeek = matchup.week - 18
+                  const postWeekNames: Record<number, string> = {
+                    1: 'Wild Card',
+                    2: 'Divisional',
+                    3: 'Conference',
+                    4: 'Super Bowl'
+                  }
+                  return postWeekNames[postWeek] || `Post Season Week ${postWeek}`
+                })()
+              ) : matchup.season && matchup.season.startsWith('PRE') ? (
+                `Preseason Week ${matchup.season.replace('PRE', '')}`
+              ) : (
+                `Week ${matchup.week}`
+              )}
+            </span>
           </div>
           <div>
             {matchup.away_team} @ {matchup.home_team}

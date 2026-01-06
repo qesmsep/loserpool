@@ -4,9 +4,10 @@ import { espnService, ESPNGame } from '@/lib/espn-service'
 import { getCurrentSeasonInfo } from '@/lib/season-detection'
 
 /**
- * Cron job to update game times from ESPN API
- * This job specifically updates only the game_time field for matchups
- * to ensure times stay in sync with ESPN's schedule
+ * Cron job to update game times from ESPN API and create missing matchups
+ * This job:
+ * 1. Creates matchups from ESPN API if they don't exist in the database
+ * 2. Updates the game_time field for existing matchups to stay in sync with ESPN's schedule
  * 
  * DOUBLE VERIFICATION SYSTEM:
  * To prevent updating the wrong matchup when teams play twice in a season,
@@ -38,26 +39,47 @@ export async function POST(request: NextRequest) {
     // Determine current season/week using season detection (authoritative)
     const seasonInfo = await getCurrentSeasonInfo()
     const currentWeek = seasonInfo.currentWeek
-    const seasonType = seasonInfo.isPreseason ? 'PRE' : 'REG'
     const currentYear = String(seasonInfo.seasonYear)
-    console.log(`Season detection → ${seasonType}${currentWeek}, year=${currentYear}`)
+    
+    // Determine season type - check all types to handle playoffs
+    let seasonType = 'REG'
+    if (seasonInfo.isPreseason) {
+      seasonType = 'PRE'
+    } else if (seasonInfo.isPostseason) {
+      seasonType = 'POST'
+    }
+    
+    console.log(`Season detection → ${seasonType}${currentWeek}, year=${currentYear}, seasonDisplay=${seasonInfo.seasonDisplay}`)
 
-    // Get ESPN games for current week
+    // Get ESPN games for current week - try all season types to catch any games
+    // For playoffs, also check weeks 1-4 since ESPN uses week 1-4 for playoffs
     const allEspnGames: ESPNGame[] = []
-    try {
-      const games = await espnService.getNFLSchedule(parseInt(currentYear), currentWeek, seasonType)
-      if (games.length > 0) {
-        allEspnGames.push(...games)
-        console.log(`Found ${games.length} ${seasonType} games for current week ${currentWeek}`)
-      } else {
-        console.log(`No ${seasonType} games found for current week ${currentWeek}`)
+    const seasonTypes = ['PRE', 'REG', 'POST']
+    
+    for (const st of seasonTypes) {
+      // For POST season, check weeks 1-4 (playoff weeks)
+      // For other seasons, use the detected current week
+      const weeksToCheck = st === 'POST' ? [1, 2, 3, 4] : [currentWeek]
+      
+      for (const weekToCheck of weeksToCheck) {
+        try {
+          const games = await espnService.getNFLSchedule(parseInt(currentYear), weekToCheck, st)
+          if (games.length > 0) {
+            allEspnGames.push(...games)
+            console.log(`Found ${games.length} ${st} games for week ${weekToCheck}`)
+          }
+        } catch (error) {
+          console.log(`No ${st} games found for week ${weekToCheck}:`, error instanceof Error ? error.message : 'Unknown error')
+        }
       }
-    } catch (error) {
-      console.error(`Failed to fetch ESPN games for ${seasonType}${currentWeek}:`, error instanceof Error ? error.message : 'Unknown error')
+    }
+    
+    if (allEspnGames.length === 0) {
+      console.log(`No games found from ESPN API for any season type`)
       return NextResponse.json({
         success: false,
         error: 'Failed to fetch ESPN games',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: 'No games found for any season type'
       }, { status: 500 })
     }
     
@@ -72,7 +94,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`Found ${allEspnGames.length} total games from ESPN API`)
 
-    // Get matchups for current week from our database
+    // Get matchups for current week from our database (for game time updates)
     const { data: matchups, error: fetchError } = await supabase
       .from('matchups')
       .select('id, away_team, home_team, game_time, season, week')
@@ -86,23 +108,128 @@ export async function POST(request: NextRequest) {
 
     console.log(`Database matchups for ${seasonInfo.seasonDisplay}: ${matchups?.length || 0}`)
 
-    if (!matchups || matchups.length === 0) {
-      console.log('No matchups found in database for current week')
-      return NextResponse.json({ 
-        success: true, 
-        message: 'No matchups found in database for current week',
-        game_times_updated: 0,
-        debug: {
-          currentWeek,
-          seasonDisplay: seasonInfo.seasonDisplay
-        }
+    let matchupsCreated = 0
+    const errors: string[] = []
+
+    // Create a set of existing matchup keys for quick lookup
+    // Check ALL matchups (not just current season) to avoid duplicates
+    const { data: allExistingMatchups } = await supabase
+      .from('matchups')
+      .select('away_team, home_team, season')
+    
+    const existingMatchupKeys = new Set<string>()
+    if (allExistingMatchups && allExistingMatchups.length > 0) {
+      allExistingMatchups.forEach((m: { away_team: string; home_team: string; season: string }) => {
+        const key = `${m.away_team}-${m.home_team}-${m.season}`
+        existingMatchupKeys.add(key)
       })
+      console.log(`Found ${allExistingMatchups.length} total existing matchups in database`)
     }
 
-    console.log(`Found ${matchups.length} matchups in DB and ${allEspnGames.length} ESPN games for ${seasonInfo.seasonDisplay}`)
+    // Only create NEW matchups that don't already exist
+    if (allEspnGames.length > 0) {
+      console.log(`Checking ${allEspnGames.length} ESPN games for new matchups to create...`)
+      
+      for (const espnGame of allEspnGames) {
+        try {
+          const convertedGame = espnService.convertToMatchupFormat(espnGame)
+          
+          if (!convertedGame) {
+            console.log(`Could not convert ESPN game: ${espnGame.id}`)
+            continue
+          }
+
+          // Determine season and week from ESPN game first
+          const espnWeek = espnGame.week?.number || currentWeek
+          const espnSeasonType = espnGame.season?.type
+          let dbWeek = currentWeek
+          let seasonDisplay = seasonInfo.seasonDisplay
+          
+          // ESPN season types: 1 = Preseason, 2 = Regular Season, 3 = Postseason
+          if (espnSeasonType === 3) {
+            // This is a playoff game - ESPN uses weeks 1-4 for playoffs
+            seasonDisplay = `POST${espnWeek}`
+            dbWeek = 18 + espnWeek // POST1 → 19, POST2 → 20, POST3 → 21, POST4 → 22
+            console.log(`Detected playoff game: ${convertedGame.away_team} @ ${convertedGame.home_team} - ESPN week ${espnWeek} → DB week ${dbWeek}, season ${seasonDisplay}`)
+          } else if (espnSeasonType === 1) {
+            // Preseason
+            seasonDisplay = `PRE${espnWeek}`
+            dbWeek = espnWeek
+          } else {
+            // Regular season (type 2 or default)
+            seasonDisplay = `REG${espnWeek}`
+            dbWeek = espnWeek
+          }
+
+          // Check if this matchup already exists (with season to avoid false matches)
+          const matchupKey = `${convertedGame.away_team}-${convertedGame.home_team}-${seasonDisplay}`
+          if (existingMatchupKeys.has(matchupKey)) {
+            console.log(`⏭️  Matchup already exists: ${convertedGame.away_team} @ ${convertedGame.home_team} (${seasonDisplay}) - skipping`)
+            continue
+          }
+
+          // This is a new matchup - create it (seasonDisplay and dbWeek already determined above)
+          const insertData = {
+            week: dbWeek,
+            season: seasonDisplay,
+            away_team: convertedGame.away_team as string,
+            home_team: convertedGame.home_team as string,
+            game_time: convertedGame.game_time as string,
+            status: (convertedGame.status as string) || 'scheduled',
+            away_score: convertedGame.away_score as number | null,
+            home_score: convertedGame.home_score as number | null,
+            venue: convertedGame.venue as string | null,
+            away_spread: convertedGame.away_spread as number | null,
+            home_spread: convertedGame.home_spread as number | null
+          }
+
+          const { error: insertError } = await supabase
+            .from('matchups')
+            .insert(insertData)
+
+          if (insertError) {
+            const errorMsg = `Error creating matchup ${convertedGame.away_team} @ ${convertedGame.home_team}: ${insertError.message}`
+            console.error(`❌ ${errorMsg}`)
+            errors.push(errorMsg)
+          } else {
+            matchupsCreated++
+            console.log(`✅ Created new matchup: ${convertedGame.away_team} @ ${convertedGame.home_team} (${seasonInfo.seasonDisplay})`)
+            // Add to existing set to avoid duplicates in same run
+            existingMatchupKeys.add(matchupKey)
+          }
+        } catch (error) {
+          const errorMsg = `Error processing ESPN game ${espnGame.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          console.error(`❌ ${errorMsg}`)
+          errors.push(errorMsg)
+        }
+      }
+
+      if (matchupsCreated > 0) {
+        console.log(`✅ Created ${matchupsCreated} new matchups for ${seasonInfo.seasonDisplay}`)
+      } else {
+        console.log(`ℹ️  No new matchups to create - all ESPN games already exist in database`)
+      }
+    } else {
+      console.log('No ESPN games available to create matchups')
+    }
+
+    // Re-fetch matchups after creating new ones (for game time updates below)
+    if (matchupsCreated > 0) {
+      const { data: newMatchups, error: refetchError } = await supabase
+        .from('matchups')
+        .select('id, away_team, home_team, game_time, season, week')
+        .eq('season', seasonInfo.seasonDisplay)
+        .order('game_time', { ascending: true })
+
+      if (!refetchError && newMatchups) {
+        matchups = newMatchups
+      }
+    }
+
+    console.log(`Found ${matchups?.length || 0} matchups in DB and ${allEspnGames.length} ESPN games for ${seasonInfo.seasonDisplay}`)
 
     let gameTimesUpdated = 0
-    const errors: string[] = []
+    // errors array already declared above
     const updatedMatchups: string[] = []
 
     // Create a map of ESPN games by team matchup for easy lookup
@@ -147,12 +274,18 @@ export async function POST(request: NextRequest) {
         // DOUBLE VERIFICATION: Check week number (required) and game date (warning if mismatch)
         // Week match is required to prevent updating wrong matchup when teams play twice
         // Date mismatch is logged but we still update (ESPN is source of truth for dates)
-        const weekMatch = espnGame.week === matchup.week
+        // For playoffs: ESPN week 1-4 maps to DB week 19-22
+        let expectedDbWeek = espnGame.week
+        if (matchup.season && matchup.season.startsWith('POST')) {
+          // This is a playoff matchup, ESPN week 1-4 should match DB week 19-22
+          expectedDbWeek = 18 + espnGame.week // POST1 (ESPN week 1) → DB week 19
+        }
+        const weekMatch = expectedDbWeek === matchup.week
         const currentGameDate = matchup.game_time.split('T')[0] // Extract YYYY-MM-DD
         const dateMatch = currentGameDate === espnGame.game_date
         
         if (!weekMatch) {
-          console.log(`⚠️ Week mismatch for ${espnGame.name}: DB week=${matchup.week}, ESPN week=${espnGame.week} - SKIPPING`)
+          console.log(`⚠️ Week mismatch for ${espnGame.name}: DB week=${matchup.week}, ESPN week=${espnGame.week} (expected DB week=${expectedDbWeek}) - SKIPPING`)
           errors.push(`Week mismatch for ${espnGame.name}: DB week ${matchup.week} vs ESPN week ${espnGame.week}`)
           continue
         }
@@ -213,6 +346,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       game_times_updated: gameTimesUpdated,
+      matchups_created: matchupsCreated,
       total_matchups_checked: matchups.length,
       execution_time_ms: executionTime,
       errors: errors.length > 0 ? errors : null,

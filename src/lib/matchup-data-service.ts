@@ -292,6 +292,138 @@ export class MatchupDataService {
     }
   }
 
+  // Fetch and create matchups for current week if they don't exist
+  async fetchAndCreateCurrentWeekMatchups(): Promise<{ gamesFound: number, gamesCreated: number, gamesUpdated: number }> {
+    await this.initSupabase()
+    
+    const startTime = Date.now()
+    let gamesFound = 0
+    let gamesCreated = 0
+    let gamesUpdated = 0
+
+    try {
+      // Use season detection to get current week/season/year
+      const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+      const seasonInfo = await getCurrentSeasonInfo()
+      const currentWeek = seasonInfo.currentWeek
+      const seasonType = seasonInfo.isPreseason ? 'PRE' : 'REG'
+      const seasonYear = seasonInfo.seasonYear
+      const seasonDisplay = seasonInfo.seasonDisplay // e.g., 'REG2'
+      
+      console.log(`Fetching and creating matchups for ${seasonDisplay} (week ${currentWeek}, year ${seasonYear})...`)
+      
+      // Get ESPN API data
+      const { espnService } = await import('@/lib/espn-service')
+      const espnGames = await espnService.getNFLSchedule(seasonYear, currentWeek, seasonType)
+      gamesFound = espnGames.length
+      
+      if (gamesFound === 0) {
+        console.log(`No games found from ESPN API for ${seasonDisplay}`)
+        return { gamesFound: 0, gamesCreated: 0, gamesUpdated: 0 }
+      }
+      
+      // Get existing matchups from database for current season
+      const { data: existingMatchups, error: fetchError } = await this.supabase
+        .from('matchups')
+        .select('*')
+        .eq('season', seasonDisplay)
+
+      if (fetchError) {
+        throw new Error(`Database fetch error: ${fetchError.message}`)
+      }
+
+      // Process each ESPN game
+      for (const espnGame of espnGames) {
+        try {
+          // Convert ESPN game to our format
+          const gameData = espnService.convertToMatchupFormat(espnGame)
+          
+          if (!gameData) {
+            console.log(`Could not convert ESPN game: ${espnGame.id}`)
+            continue
+          }
+
+          // Find matching matchup in database
+          const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
+            m.away_team === gameData.away_team && m.home_team === gameData.home_team
+          )
+
+          if (!existingMatchup) {
+            // Create new matchup
+            const insertData = {
+              week: currentWeek,
+              season: seasonDisplay,
+              away_team: gameData.away_team as string,
+              home_team: gameData.home_team as string,
+              game_time: gameData.game_time as string,
+              status: (gameData.status as string) || 'scheduled',
+              away_score: gameData.away_score as number | null,
+              home_score: gameData.home_score as number | null,
+              venue: gameData.venue as string | null,
+              away_spread: gameData.away_spread as number | null,
+              home_spread: gameData.home_spread as number | null
+            }
+
+            const { error: insertError } = await this.supabase
+              .from('matchups')
+              .insert(insertData)
+
+            if (insertError) {
+              console.error(`Error creating matchup ${gameData.away_team} @ ${gameData.home_team}: ${insertError.message}`)
+            } else {
+              gamesCreated++
+              console.log(`Created new matchup: ${gameData.away_team} @ ${gameData.home_team}`)
+            }
+          } else {
+            // Update existing matchup
+            const hasChanges = this.hasDataChanged(existingMatchup, gameData)
+            
+            if (!hasChanges) {
+              console.log(`No changes detected for ${gameData.away_team} @ ${gameData.home_team}`)
+              continue
+            }
+
+            // Prepare update data
+            const updateData: Record<string, unknown> = {
+              game_time: gameData.game_time,
+              status: gameData.status as string,
+              venue: gameData.venue as string,
+              away_score: gameData.away_score,
+              home_score: gameData.home_score,
+              away_spread: gameData.away_spread,
+              home_spread: gameData.home_spread
+            }
+
+            // Update the matchup in database
+            const { error: updateError } = await this.supabase
+              .from('matchups')
+              .update(updateData)
+              .eq('id', existingMatchup.id)
+
+            if (updateError) {
+              console.error(`Update error for ${existingMatchup.id}: ${updateError.message}`)
+            } else {
+              gamesUpdated++
+              console.log(`Updated matchup: ${gameData.away_team} @ ${gameData.home_team}`)
+            }
+          }
+
+        } catch (error) {
+          console.error(`Error processing ESPN game ${espnGame.id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      const executionTime = Date.now() - startTime
+      console.log(`Fetch and create completed in ${executionTime}ms: ${gamesFound} games found, ${gamesCreated} created, ${gamesUpdated} updated`)
+
+      return { gamesFound, gamesCreated, gamesUpdated }
+
+    } catch (error) {
+      console.error('Error fetching and creating current week matchups:', error)
+      throw error
+    }
+  }
+
   // Helper method to check if data has changed
   private hasDataChanged(existingMatchup: Record<string, unknown>, newData: Record<string, unknown>): boolean {
     // Compare key fields that might change

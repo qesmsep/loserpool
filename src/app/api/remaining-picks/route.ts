@@ -105,7 +105,14 @@ export async function GET() {
 
     // 3) Determine current week
     const seasonInfo = await getCurrentSeasonInfo()
-    const currentWeek = seasonInfo.currentWeek
+    // Map season display to database week number
+    // POST1 → week 19, POST2 → week 20, etc.
+    let currentWeek: number
+    if (seasonInfo.isPostseason) {
+      currentWeek = 18 + seasonInfo.currentWeek // POST1 → 19, POST2 → 20, etc.
+    } else {
+      currentWeek = seasonInfo.currentWeek
+    }
 
     // Define week columns we will iterate (regular + post season)
     const weekColumns = [

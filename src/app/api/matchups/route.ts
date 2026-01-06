@@ -61,8 +61,15 @@ export async function GET(request: NextRequest) {
       const week = seasonFilter.replace('REG', '')
       weekDisplay = `Regular Season : Week ${week}`
     } else if (seasonFilter.startsWith('POST')) {
-      const week = seasonFilter.replace('POST', '')
-      weekDisplay = `Post Season : Week ${week}`
+      const week = parseInt(seasonFilter.replace('POST', ''))
+      // Map POST weeks to their round names
+      const postWeekNames: Record<number, string> = {
+        1: 'Wild Card Round',
+        2: 'Divisional Round',
+        3: 'Conference Championship',
+        4: 'Super Bowl'
+      }
+      weekDisplay = postWeekNames[week] || `Post Season : Week ${week}`
     } else {
       weekDisplay = `Regular Season : Week 1` // fallback
     }

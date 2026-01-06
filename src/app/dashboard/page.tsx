@@ -123,6 +123,16 @@ function getEliminationWeek(pick: Pick, matchups: Matchup[]): string | null {
     if (matchup) {
       if (matchup.week <= 0) {
         return `Preseason Week ${Math.abs(matchup.week) + 1}`
+      } else if (matchup.season && matchup.season.startsWith('POST')) {
+        // Postseason: week 19-22 maps to POST1-4
+        const postWeek = matchup.week - 18
+        const postWeekNames: Record<number, string> = {
+          1: 'Wild Card',
+          2: 'Divisional',
+          3: 'Conference',
+          4: 'Super Bowl'
+        }
+        return postWeekNames[postWeek] || `Post Season Week ${postWeek}`
       } else {
         return `Week ${matchup.week}`
       }
@@ -195,8 +205,26 @@ function getEliminationDetails(pick: Pick, matchups: Matchup[]): {
     score = `${matchup.away_score} - ${matchup.home_score}`
   }
   
-  // Format week
-  const week = matchup.week <= 0 ? `Preseason Week ${Math.abs(matchup.week) + 1}` : `Week ${matchup.week}`
+  // Format week - use season field to determine correct display
+  let week: string
+  if (matchup.week <= 0) {
+    week = `Preseason Week ${Math.abs(matchup.week) + 1}`
+  } else if (matchup.season && matchup.season.startsWith('POST')) {
+    // Postseason: week 19-22 maps to POST1-4
+    const postWeek = matchup.week - 18
+    const postWeekNames: Record<number, string> = {
+      1: 'Wild Card',
+      2: 'Divisional',
+      3: 'Conference',
+      4: 'Super Bowl'
+    }
+    week = postWeekNames[postWeek] || `Post Season Week ${postWeek}`
+  } else if (matchup.season && matchup.season.startsWith('PRE')) {
+    const preWeek = matchup.season.replace('PRE', '')
+    week = `Preseason Week ${preWeek}`
+  } else {
+    week = `Week ${matchup.week}`
+  }
   
   // Format game time
   const gameTime = new Date(matchup.game_time).toLocaleDateString('en-US', {
@@ -487,6 +515,9 @@ export default function DashboardPage() {
         currentWeekColumn = isTester
           ? `pre${apiCurrentWeek}_team_matchup_id`
           : 'reg1_team_matchup_id'
+      } else if (apiSeasonFilter && apiSeasonFilter.startsWith('POST')) {
+        // POST1 → post1_team_matchup_id, POST2 → post2_team_matchup_id, etc.
+        currentWeekColumn = `post${apiCurrentWeek}_team_matchup_id`
       } else {
         currentWeekColumn = `reg${apiCurrentWeek}_team_matchup_id`
       }
