@@ -95,11 +95,13 @@ export async function POST(request: NextRequest) {
     console.log(`Found ${allEspnGames.length} total games from ESPN API`)
 
     // Get matchups for current week from our database (for game time updates)
-    const { data: matchups, error: fetchError } = await supabase
+    const { data: matchupsData, error: fetchError } = await supabase
       .from('matchups')
       .select('id, away_team, home_team, game_time, season, week')
       .eq('season', seasonInfo.seasonDisplay)
       .order('game_time', { ascending: true })
+    
+    let matchups = matchupsData
 
     if (fetchError) {
       console.error('Error fetching matchups:', fetchError)
