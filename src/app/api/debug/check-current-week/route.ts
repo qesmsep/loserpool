@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getCurrentSeasonInfo } from '@/lib/season-detection'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = createServiceRoleClient()
     
@@ -23,13 +23,17 @@ export async function GET(request: NextRequest) {
       .order('season', { ascending: true })
       .order('week', { ascending: true })
     
-    const grouped = allMatchups?.reduce((acc: Record<string, { count: number; weeks: Set<number> }>, m: any) => {
+    type MatchupSummary = { season: string | null; week: number | null }
+    
+    const grouped = allMatchups?.reduce((acc: Record<string, { count: number; weeks: Set<number> }>, m: MatchupSummary) => {
       const key = m.season || 'UNKNOWN'
       if (!acc[key]) {
         acc[key] = { count: 0, weeks: new Set() }
       }
       acc[key].count++
-      acc[key].weeks.add(m.week)
+      if (m.week !== null) {
+        acc[key].weeks.add(m.week)
+      }
       return acc
     }, {}) || {}
     
@@ -39,7 +43,7 @@ export async function GET(request: NextRequest) {
       .select('season, week')
       .neq('status', 'final')
     
-    const nonFinalGrouped = nonFinal?.reduce((acc: Record<string, number>, m: any) => {
+    const nonFinalGrouped = nonFinal?.reduce((acc: Record<string, number>, m: MatchupSummary) => {
       const key = `${m.season}-W${m.week}`
       acc[key] = (acc[key] || 0) + 1
       return acc
