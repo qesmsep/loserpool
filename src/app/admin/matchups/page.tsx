@@ -98,14 +98,16 @@ export default function AdminMatchupsPage() {
     }
   }) || []
 
-  // Group by week
+  // Group by season and week (e.g., "REG18", "POST1") to avoid confusion
   const matchupsByWeek = matchupsWithStats.reduce((acc, matchup) => {
-    if (!acc[matchup.week]) {
-      acc[matchup.week] = []
+    // Use season-week as key to separate REG18 from POST1 (both could be week 19 in some views)
+    const key = matchup.season ? `${matchup.season}-W${matchup.week}` : `W${matchup.week}`
+    if (!acc[key]) {
+      acc[key] = []
     }
-    acc[matchup.week].push(matchup)
+    acc[key].push(matchup)
     return acc
-  }, {} as Record<number, typeof matchupsWithStats>)
+  }, {} as Record<string, typeof matchupsWithStats>)
 
   if (loading) {
     return (
@@ -214,13 +216,25 @@ export default function AdminMatchupsPage() {
 
         {/* Matchups by Week */}
         <div className="space-y-8">
-          {Object.entries(matchupsByWeek).map(([week, weekMatchups]) => {
+          {Object.entries(matchupsByWeek).map(([weekKey, weekMatchups]) => {
             const weekMatchupsArr = weekMatchups as Matchup[];
+            // Parse season and week from key (e.g., "POST1-W19" or "REG18-W18")
+            const [season, weekPart] = weekKey.split('-W')
+            const week = weekPart || weekKey
+            const weekDisplay = season?.startsWith('POST') 
+              ? (() => {
+                  const postWeek = parseInt(season.replace('POST', ''))
+                  const postNames: Record<number, string> = { 1: 'Wild Card', 2: 'Divisional', 3: 'Conference', 4: 'Super Bowl' }
+                  return postNames[postWeek] || `Post Season Week ${postWeek}`
+                })()
+              : season?.startsWith('PRE')
+              ? `Preseason Week ${season.replace('PRE', '')}`
+              : `Week ${week}`
             return (
-              <div key={week} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+              <div key={weekKey} className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
                 <div className="px-6 py-4 border-b border-white/20">
-                  <h2 className="text-xl font-semibold text-white">Week {week}</h2>
-                  <p className="text-blue-100">{weekMatchupsArr.length} games</p>
+                  <h2 className="text-xl font-semibold text-white">{weekDisplay} ({season || 'Unknown'})</h2>
+                  <p className="text-blue-100">{weekMatchupsArr.length} games • Database Week: {week}</p>
                 </div>
                 <div className="p-6">
                   <div className="space-y-4">
