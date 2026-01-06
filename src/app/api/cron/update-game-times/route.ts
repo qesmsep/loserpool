@@ -263,6 +263,16 @@ export async function POST(request: NextRequest) {
     console.log(`ESPN game keys: ${Array.from(espnGameMap.keys()).join(', ')}`)
 
     // For each matchup in our database, find corresponding ESPN game and update game_time
+    if (!matchups || matchups.length === 0) {
+      console.log('No matchups found in database to update')
+      return NextResponse.json({
+        success: true,
+        message: 'No matchups found to update',
+        game_times_updated: 0,
+        matchups_created: matchupsCreated
+      })
+    }
+
     for (const matchup of matchups) {
       try {
         const gameKey = `${matchup.away_team}-${matchup.home_team}`
