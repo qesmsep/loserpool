@@ -150,10 +150,10 @@ export async function GET(request: Request) {
       let matchupWeek: number
       
       if (weekInfo.column.startsWith('post')) {
-        // Post-season: post1 → POST1 (ESPN week 1), post2 → POST2 (ESPN week 2), etc.
+        // Post-season: post1 → POST1 season, but matchups stored with database week (19-22)
         const postWeek = parseInt(weekInfo.column.replace('post', '').replace('_team_matchup_id', ''))
         weekSeasonFilter = `POST${postWeek}`
-        matchupWeek = postWeek // ESPN uses weeks 1-4 for post-season
+        matchupWeek = weekInfo.week // Use database week (19-22) not ESPN week (1-4)
       } else if (weekInfo.column.startsWith('pre')) {
         // Preseason: pre1 → PRE1, pre2 → PRE2, etc.
         const preWeek = parseInt(weekInfo.column.replace('pre', '').replace('_team_matchup_id', ''))
