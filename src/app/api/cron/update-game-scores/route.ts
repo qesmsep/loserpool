@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Determine current season/week using season detection (authoritative)
     const seasonInfo = await getCurrentSeasonInfo()
     const currentWeek = seasonInfo.currentWeek
-    const seasonType = seasonInfo.isPreseason ? 'PRE' : 'REG'
+    const seasonType = seasonInfo.isPreseason ? 'PRE' : (seasonInfo.isPostseason ? 'POST' : 'REG')
     const currentYear = String(seasonInfo.seasonYear)
     console.log(`Season detection → ${seasonType}${currentWeek}, year=${currentYear}`)
 
@@ -282,24 +282,24 @@ export async function POST(request: NextRequest) {
 // Simplified function to process ALL current week picks for final games
 async function processCurrentWeekPicks(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  seasonInfo: { currentWeek: number; isPreseason: boolean; seasonDisplay: string },
+  seasonInfo: { currentWeek: number; isPreseason: boolean; isPostseason?: boolean; seasonDisplay: string },
   matchups: Array<{ id: string; status: string; winner: string | null; away_team: string; home_team: string }>
 ): Promise<{ picksProcessed: number; picksEliminated: number }> {
   try {
-    // Get week column name (e.g., 'reg8_team_matchup_id')
-    const getWeekColumn = (week: number, isPreseason: boolean): string | null => {
+    // Get week column name (e.g., 'reg8_team_matchup_id', 'post1_team_matchup_id')
+    const getWeekColumn = (week: number, isPreseason: boolean, isPostseason?: boolean): string | null => {
       if (isPreseason && week <= 3) {
         return `pre${week}_team_matchup_id`
-      } else if (!isPreseason && week <= 18) {
+      } else if (isPostseason && week >= 1 && week <= 4) {
+        // Post-season: POST1-4 map to post1-post4 columns (week 1-4 from seasonInfo)
+        return `post${week}_team_matchup_id`
+      } else if (!isPreseason && !isPostseason && week <= 18) {
         return `reg${week}_team_matchup_id`
-      } else if (week > 18) {
-        const postWeek = week - 18
-        return postWeek <= 4 ? `post${postWeek}_team_matchup_id` : null
       }
       return null
     }
 
-    const weekColumn = getWeekColumn(seasonInfo.currentWeek, seasonInfo.isPreseason)
+    const weekColumn = getWeekColumn(seasonInfo.currentWeek, seasonInfo.isPreseason, seasonInfo.isPostseason)
     if (!weekColumn) {
       console.error(`Invalid week for pick processing: ${seasonInfo.seasonDisplay}`)
       return { picksProcessed: 0, picksEliminated: 0 }

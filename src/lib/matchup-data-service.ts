@@ -306,9 +306,9 @@ export class MatchupDataService {
       const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
       const seasonInfo = await getCurrentSeasonInfo()
       const currentWeek = seasonInfo.currentWeek
-      const seasonType = seasonInfo.isPreseason ? 'PRE' : 'REG'
+      const seasonType = seasonInfo.isPreseason ? 'PRE' : (seasonInfo.isPostseason ? 'POST' : 'REG')
       const seasonYear = seasonInfo.seasonYear
-      const seasonDisplay = seasonInfo.seasonDisplay // e.g., 'REG2'
+      const seasonDisplay = seasonInfo.seasonDisplay // e.g., 'REG2', 'POST1'
       
       console.log(`Fetching and creating matchups for ${seasonDisplay} (week ${currentWeek}, year ${seasonYear})...`)
       

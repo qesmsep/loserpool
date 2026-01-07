@@ -50,14 +50,17 @@ export async function GET() {
     // Determine current week and correct week column name
     // Use the same season detection as the rest of the app
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
+    const { getWeekColumnNameFromSeasonInfo } = await import('@/lib/week-utils')
+    const { isUserTester } = await import('@/lib/user-types')
     const seasonInfo = await getCurrentSeasonInfo()
     // Use the same number the default-pick API returns
     const currentWeek: number | undefined = (seasonInfo as unknown as { currentWeek?: number })?.currentWeek
     if (!currentWeek || typeof currentWeek !== 'number') {
       return NextResponse.json({ error: 'no_current_week' }, { status: 500 })
     }
-    // Map REG weeks 1..18 directly to reg{N}_team_matchup_id
-    const weekColumnName = `reg${currentWeek}_team_matchup_id`
+    // Use the same function as pick allocation to ensure consistency
+    const isTester = userId ? await isUserTester(userId) : false
+    const weekColumnName = getWeekColumnNameFromSeasonInfo(seasonInfo, isTester)
 
     const allowedCols = [
       'pre1_team_matchup_id','pre2_team_matchup_id','pre3_team_matchup_id',
