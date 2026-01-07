@@ -236,6 +236,22 @@ export async function GET(request: Request) {
     const teamPickBreakdown: TeamPickBreakdown[] = []
     
     for (const weekInfo of weeksToProcess) {
+      // Determine season and matchup week for this weekInfo (same logic as above)
+      let weekSeasonFilter: string
+      let matchupWeek: number
+      
+      if (weekInfo.column.startsWith('post')) {
+        const postWeek = parseInt(weekInfo.column.replace('post', '').replace('_team_matchup_id', ''))
+        weekSeasonFilter = `POST${postWeek}`
+        matchupWeek = postWeek
+      } else if (weekInfo.column.startsWith('pre')) {
+        const preWeek = parseInt(weekInfo.column.replace('pre', '').replace('_team_matchup_id', ''))
+        weekSeasonFilter = `PRE${preWeek}`
+        matchupWeek = preWeek
+      } else {
+        weekSeasonFilter = `REG${weekInfo.week}`
+        matchupWeek = weekInfo.week
+      }
       
       // Get team pick breakdown for this specific week with pagination
       const allTeamPicksData: Array<{ id: string; [key: string]: string | number | null }> = []
@@ -281,7 +297,10 @@ export async function GET(request: Request) {
       }
 
       // Only count picks whose parsed matchup_id belongs to this week's matchups
-      const weekMatchups = allMatchupsData.filter(m => m.week === weekInfo.week)
+      // Filter by season AND week (ESPN week, not database week)
+      const weekMatchups = allMatchupsData.filter(m => 
+        m.season === weekSeasonFilter && m.week === matchupWeek
+      )
       const validMatchupIds = new Set<string>(weekMatchups.map(m => m.id))
       
       // Count picks by team for this week
