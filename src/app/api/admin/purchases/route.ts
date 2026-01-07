@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      console.log('🔍 Admin purchases API: Using bearer token authentication');
       
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,14 +32,11 @@ export async function GET(request: NextRequest) {
         console.error('Bearer token auth error:', error.message);
       } else if (user) {
         authenticatedUser = user;
-        console.log('✅ Bearer token authentication successful for user:', user.email);
       }
     }
     
     // Fall back to cookie-based authentication
     if (!authenticatedUser) {
-      console.log('🔍 Admin purchases API: Falling back to cookie authentication');
-      
       try {
         const supabase = createServerClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,7 +58,6 @@ export async function GET(request: NextRequest) {
           console.error('Cookie session error:', error.message);
         } else if (session?.user) {
           authenticatedUser = session.user;
-          console.log('✅ Cookie authentication successful for user:', session.user.email);
         }
       } catch (error) {
         console.error('Cookie authentication error:', error);
@@ -71,7 +66,6 @@ export async function GET(request: NextRequest) {
     
     // If no authenticated user, return 401
     if (!authenticatedUser) {
-      console.log('❌ No authenticated user found for admin purchases API');
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     
@@ -83,23 +77,14 @@ export async function GET(request: NextRequest) {
       .eq('id', authenticatedUser.id)
       .single();
     
-    console.log('🔍 Admin check result:', {
-      hasProfile: !!userProfile,
-      isAdmin: userProfile?.is_admin,
-      error: adminError?.message
-    });
-    
     if (adminError) {
       console.error('Admin check error:', adminError.message);
       return NextResponse.json({ error: 'Admin verification failed' }, { status: 403 });
     }
     
     if (!userProfile?.is_admin) {
-      console.log('❌ User is not admin:', authenticatedUser.email);
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
-    
-    console.log('✅ User is admin, proceeding with data fetch');
     
     // Get all purchases with user data using service role client
     const { data: purchases, error: purchasesError } = await supabaseAdmin
@@ -120,7 +105,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch purchases' }, { status: 500 });
     }
     
-    console.log('✅ Admin purchases API: Success for user:', authenticatedUser.email);
     return NextResponse.json({
       purchases: purchases || [],
       success: true

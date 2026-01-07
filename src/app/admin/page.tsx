@@ -189,12 +189,6 @@ export default function AdminPage() {
         const { data: { session } } = await supabase.auth.getSession()
         const accessToken = session?.access_token
         
-        console.log('🔍 Admin page: Session check:', {
-          hasSession: !!session,
-          hasAccessToken: !!accessToken,
-          userEmail: session?.user?.email
-        })
-        
         // Prepare headers with authorization
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -202,9 +196,6 @@ export default function AdminPage() {
         
         if (accessToken) {
           headers['Authorization'] = `Bearer ${accessToken}`
-          console.log('🔍 Admin page: Setting Authorization header with bearer token')
-        } else {
-          console.log('🔍 Admin page: No access token available')
         }
 
         // Fetch all the data we need
@@ -235,13 +226,6 @@ export default function AdminPage() {
           })
         ])
 
-        console.log('🔍 Admin page: API responses:', {
-          users: usersResponse.status,
-          purchases: purchasesResponse.status,
-          picks: picksResponse.status,
-          weeklyStats: weeklyStatsResponse.status,
-          teamPickBreakdown: teamPickBreakdownResponse.status
-        })
 
         if (usersResponse.ok) {
           const usersData = await usersResponse.json()

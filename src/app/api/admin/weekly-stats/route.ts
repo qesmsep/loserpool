@@ -13,8 +13,6 @@ interface WeeklyStats {
 }
 
 export async function GET(request: Request) {
-  console.log('🔍 API: /api/admin/weekly-stats called')
-  
   // Check if this is a debug request
   const { searchParams } = new URL(request.url)
   const debugWeek1 = searchParams.get('debug-week1')
@@ -28,7 +26,6 @@ export async function GET(request: Request) {
     let user = null
     
     if (bearer) {
-      console.log('🔍 API: Using bearer token authentication')
       // Create a client with the bearer token
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,23 +39,18 @@ export async function GET(request: Request) {
       const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
       
       if (error) {
-        console.error('🔍 API: Bearer token auth error:', error)
+        console.error('Bearer token auth error:', error)
       } else if (bearerUser) {
         user = bearerUser
-        console.log('🔍 API: Bearer token auth successful:', user.email)
       }
     }
     
     // Fall back to cookie-based authentication if bearer token failed
     if (!user) {
-      console.log('🔍 API: Falling back to cookie-based authentication')
       user = await getCurrentUser()
     }
     
-    console.log('🔍 API: Final authentication result:', { hasUser: !!user, userEmail: user?.email })
-    
     if (!user) {
-      console.log('🔍 API: No user found, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
@@ -70,14 +62,9 @@ export async function GET(request: Request) {
       .eq('id', user.id)
       .single()
     
-    console.log('🔍 API: Admin check result:', { hasProfile: !!userProfile, isAdmin: userProfile?.is_admin, error: error?.message })
-    
     if (error || !userProfile?.is_admin) {
-      console.log('🔍 API: User is not admin, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-
-    console.log('🔍 API: User is admin, proceeding with weekly stats calculation')
 
     // Get all picks using keyset pagination (future-proof against duplicates and drift)
     // Select only the fields needed for calculations to reduce payload
@@ -146,7 +133,7 @@ export async function GET(request: Request) {
     // Get all matchups to determine week information and results
     const { data: matchups, error: matchupsError } = await supabaseAdmin
       .from('matchups')
-      .select('id, week, status, away_score, home_score, away_team, home_team')
+      .select('id, week, season, status, away_score, home_score, away_team, home_team')
 
     if (matchupsError) {
       console.error('Error fetching matchups:', matchupsError)
@@ -179,9 +166,21 @@ export async function GET(request: Request) {
     }
 
     // Create a map of matchup_id to matchup data
-    const matchupMap = new Map<string, { id: string; week: number; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string }>()
+    const matchupMap = new Map<string, { id: string; week: number; season: string | null; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string }>()
     matchups?.forEach(matchup => {
-      matchupMap.set(matchup.id, matchup)
+      // Ensure we have all required fields
+      if (matchup.id) {
+        matchupMap.set(matchup.id as string, {
+          id: matchup.id as string,
+          week: typeof matchup.week === 'number' ? matchup.week : parseInt(String(matchup.week)) || 0,
+          season: (matchup.season as string | null) || null,
+          away_team: matchup.away_team as string,
+          home_team: matchup.home_team as string,
+          away_score: matchup.away_score as number | null,
+          home_score: matchup.home_score as number | null,
+          status: matchup.status as string
+        })
+      }
     })
 
     // Define week columns and their names (excluding preseason)
@@ -214,25 +213,62 @@ export async function GET(request: Request) {
     // Get current week using the same logic as Default Pick logic
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
     const seasonInfo = await getCurrentSeasonInfo()
-    const currentWeek = seasonInfo.currentWeek
+    // For post-season, seasonInfo.currentWeek is 1-4, but our database weeks are 19-22
+    // Convert to database week for comparison
+    const currentDbWeek = seasonInfo.isPostseason ? 18 + seasonInfo.currentWeek : seasonInfo.currentWeek
 
     // Build stats using the same logic as Team Picks Breakdown
     const weeklyStats: WeeklyStats[] = []
-    const validMatchupsByWeek = new Map<number, Set<string>>()
+    // Map matchups by season+week combination, not just week number
+    // Post-season matchups have week=1-4 (ESPN weeks) but database weeks are 19-22
+    const validMatchupsBySeasonWeek = new Map<string, Set<string>>()
     for (const m of matchups || []) {
-      const set = validMatchupsByWeek.get(m.week) || new Set<string>()
-      set.add(m.id as unknown as string)
-      validMatchupsByWeek.set(m.week, set)
+      try {
+        // Ensure season is a string (handle null/undefined)
+        const seasonStr = (m.season as string | null | undefined) || 'REG'
+        const weekNum = typeof m.week === 'number' ? m.week : parseInt(String(m.week)) || 0
+        const key = `${seasonStr}-${weekNum}` // e.g., "POST1-1", "REG1-1"
+        const setId = m.id as unknown as string
+        if (!setId) continue // Skip if no ID
+        const set = validMatchupsBySeasonWeek.get(key) || new Set<string>()
+        set.add(setId)
+        validMatchupsBySeasonWeek.set(key, set)
+      } catch (error) {
+        console.error('Error processing matchup for weekly stats:', error, m)
+        continue // Skip problematic matchups
+      }
     }
 
     for (const weekInfo of weekColumns) {
       const { column, week, name } = weekInfo
       
-      // Only process up to the current week
-      if (week > currentWeek) {
+      // Only process up to the current week (using database week numbers)
+      if (week > currentDbWeek) {
         break
       }
-      const validIds = validMatchupsByWeek.get(week) || new Set<string>()
+      
+      // Determine season and matchup week based on column
+      let seasonKey: string
+      let matchupWeek: number
+      
+      if (column.startsWith('post')) {
+        // Post-season: post1 → POST1, matchup week = 1 (ESPN week)
+        const postWeek = parseInt(column.replace('post', '').replace('_team_matchup_id', ''))
+        seasonKey = `POST${postWeek}`
+        matchupWeek = postWeek
+      } else if (column.startsWith('pre')) {
+        // Preseason: pre1 → PRE1, matchup week = 1
+        const preWeek = parseInt(column.replace('pre', '').replace('_team_matchup_id', ''))
+        seasonKey = `PRE${preWeek}`
+        matchupWeek = preWeek
+      } else {
+        // Regular season: reg1 → REG1, matchup week = 1
+        seasonKey = `REG${week}`
+        matchupWeek = week
+      }
+      
+      const matchupKey = `${seasonKey}-${matchupWeek}`
+      const validIds = validMatchupsBySeasonWeek.get(matchupKey) || new Set<string>()
 
       // Active picks for historic weeks = sum of picks_count where week column exists and maps to this week's matchups
       let activePicks = 0
@@ -327,7 +363,6 @@ export async function GET(request: Request) {
 
     // If this is a debug request for Week 1, add detailed elimination analysis
     if (debugWeek1 === 'true') {
-      console.log('🔍 API: Adding Week 1 elimination debug data')
       
       // Get Week 1 matchups
       const { data: week1Matchups, error: matchupsError } = await supabaseAdmin
@@ -454,23 +489,32 @@ export async function GET(request: Request) {
           }
         }
         
-        console.log('🔍 API: Week 1 elimination analysis complete')
-        console.log(`🔍 API: Total eliminated: ${debugResults.summary.totalEliminated} (${debugResults.summary.totalEliminatedPickCount} picks)`)
-        console.log(`🔍 API: Total correct: ${debugResults.summary.totalCorrect} (${debugResults.summary.totalCorrectPickCount} picks)`)
+        // Debug logging only when debugWeek1 is requested
+        if (debugWeek1) {
+          console.log('Week 1 elimination analysis complete')
+          console.log(`Total eliminated: ${debugResults.summary.totalEliminated} (${debugResults.summary.totalEliminatedPickCount} picks)`)
+          console.log(`Total correct: ${debugResults.summary.totalCorrect} (${debugResults.summary.totalCorrectPickCount} picks)`)
+        }
         
         return NextResponse.json({ weeklyStats, debugResults })
       }
     }
 
-    console.log('🔍 API: Successfully returning weekly stats data')
     return NextResponse.json({
       weeklyStats,
       count: weeklyStats.length
     })
 
   } catch (error) {
-    console.error('🔍 API: Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected error in admin weekly stats API:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error('❌ Error details:', { errorMessage, errorStack })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+    }, { status: 500 })
   }
 }
 

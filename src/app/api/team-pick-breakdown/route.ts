@@ -27,18 +27,21 @@ export async function GET(request: NextRequest) {
 
     // Map current week to the correct column name
     const isPre = seasonFilter.startsWith('PRE')
+    const isPost = seasonFilter.startsWith('POST')
     const weekNum = parseInt(seasonFilter.replace('PRE', '').replace('REG', '').replace('POST', '')) || 1
-    const currentWeekColumn = isPre ? `pre${weekNum}_team_matchup_id` : `reg${weekNum}_team_matchup_id`
+    const currentWeekColumn = isPre ? `pre${weekNum}_team_matchup_id` : (isPost ? `post${weekNum}_team_matchup_id` : `reg${weekNum}_team_matchup_id`)
     console.log('🟢 [/api/team-pick-breakdown] Season info:', { seasonFilter, currentWeek, currentWeekColumn })
 
-    // Use the same logic as admin API to fetch matchups
-    const weekSeasonFilter = `REG${currentWeek}`
+    // Use the same logic as admin API to fetch matchups - use seasonFilter directly
+    const weekSeasonFilter = seasonFilter // e.g., POST1, REG7, etc.
+    // For post-season, weekNum is the ESPN week (1-4), which matches the matchup week
+    // For regular season, weekNum also matches the matchup week
     
     const { data: currentWeekMatchups, error: matchupsError } = await supabase
       .from('matchups')
       .select('id, away_team, home_team, away_score, home_score, status, week, season')
       .eq('season', weekSeasonFilter)
-      .eq('week', currentWeek)
+      .eq('week', weekNum) // Use weekNum from seasonFilter, which is the correct matchup week
 
     if (matchupsError) {
       return NextResponse.json({ error: 'Failed to fetch matchups' }, { status: 500 })

@@ -32,20 +32,6 @@ export async function GET() {
 
     console.log(`Total users in database: ${allUsers?.length || 0}`)
     console.log(`Admin users in database: ${adminUsers?.length || 0}`)
-    
-    if (allUsers) {
-      console.log('All users:')
-      allUsers.forEach(user => {
-        console.log(`- ${user.email} (${user.first_name || ''} ${user.last_name || ''}) - Admin: ${user.is_admin}`)
-      })
-    }
-
-    if (adminUsers) {
-      console.log('Admin users:')
-      adminUsers.forEach(admin => {
-        console.log(`- ${admin.email} (${admin.first_name || ''} ${admin.last_name || ''})`)
-      })
-    }
 
     return NextResponse.json({
       message: 'Admin users check completed',

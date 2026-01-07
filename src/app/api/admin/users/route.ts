@@ -5,8 +5,6 @@ import { headers } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
-  console.log('🔍 API: /api/admin/users called')
-  
   try {
     // Check for bearer token first
     const headersList = await headers()
@@ -16,7 +14,6 @@ export async function GET() {
     let user = null
     
     if (bearer) {
-      console.log('🔍 API: Using bearer token authentication')
       // Create a client with the bearer token
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,23 +27,18 @@ export async function GET() {
       const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
       
       if (error) {
-        console.error('🔍 API: Bearer token auth error:', error)
+        console.error('Bearer token auth error:', error)
       } else if (bearerUser) {
         user = bearerUser
-        console.log('🔍 API: Bearer token auth successful:', user.email)
       }
     }
     
     // Fall back to cookie-based authentication if bearer token failed
     if (!user) {
-      console.log('🔍 API: Falling back to cookie-based authentication')
       user = await getCurrentUser()
     }
     
-    console.log('🔍 API: Final authentication result:', { hasUser: !!user, userEmail: user?.email })
-    
     if (!user) {
-      console.log('🔍 API: No user found, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
@@ -58,14 +50,9 @@ export async function GET() {
       .eq('id', user.id)
       .single()
     
-    console.log('🔍 API: Admin check result:', { hasProfile: !!userProfile, isAdmin: userProfile?.is_admin, error: error?.message })
-    
     if (error || !userProfile?.is_admin) {
-      console.log('🔍 API: User is not admin, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-
-    console.log('🔍 API: User is admin, proceeding with data fetch')
 
     // Fetch all users with their stats using service role client
     const { data: usersData, error: usersError } = await supabaseAdmin
@@ -91,10 +78,6 @@ export async function GET() {
       return NextResponse.json({ error: 'no_current_week' }, { status: 500 })
     }
     const weekColumn = `reg${currentWeek}_team_matchup_id`
-    console.log(`🔍 Week mapping (aligned): current_week=${currentWeek} → column=${weekColumn}`)
-
-    // Fetch picks data with current week information - FIXED APPROACH
-    console.log(`🔍 Fetching picks with column: ${weekColumn}`)
     
     // Instead of trying to get all picks at once (which hits limits),
     // we'll query picks for each user individually in the loop below
@@ -119,21 +102,7 @@ export async function GET() {
       }>
       
       if (userPicksError) {
-        console.error(`Error fetching picks for user ${user.email}:`, userPicksError)
-      }
-      
-      // Debug: Check picks for specific users
-      if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
-        console.log(`🔍 User picks for ${user.email}:`, {
-          userId: user.id,
-          totalPicks: typedUserPicks.length,
-          pickDetails: typedUserPicks.map(p => ({ 
-            status: p.status, 
-            picks_count: p.picks_count,
-            pick_name: p.pick_name,
-            team_matchup_id: p[weekColumn]
-          }))
-        })
+        console.error(`Error fetching picks for user ${user.id}:`, userPicksError)
       }
       
       const totalPurchased = userPurchases
@@ -156,25 +125,6 @@ export async function GET() {
 
       // Calculate total picks as active + eliminated (actual picks in system)
       const totalPicks = activePicks + eliminatedPicks
-
-      // Debug logging for pick counting
-      if (user.email?.includes('greg@pmiquality.com') || user.email?.includes('247eagle') || user.email?.includes('gregory')) {
-        console.log(`🔍 Debug for user ${user.email}:`, {
-          totalPicks: typedUserPicks.length,
-          pickStatuses: typedUserPicks.map(p => ({ 
-            status: p.status, 
-            picks_count: p.picks_count,
-            pick_name: p.pick_name,
-            team_matchup_id: p[weekColumn]
-          })),
-          activePicks,
-          eliminatedPicks,
-          totalPurchased,
-          totalPicksCalculated: totalPicks,
-          weekColumn,
-          hasCurrentWeekPicks: typedUserPicks.some(p => p[weekColumn] !== null)
-        })
-      }
 
       // Get current week picks (picks that have a team_matchup_id for current week)
       const currentWeekPicks = typedUserPicks.filter(pick => {
@@ -211,15 +161,9 @@ export async function GET() {
       return aName.localeCompare(bName)
     })
 
-    // Log summary of pick counting results
-    const totalActivePicks = sortedUsers.reduce((sum, user) => sum + (user.activePicks || 0), 0)
-    const totalEliminatedPicks = sortedUsers.reduce((sum, user) => sum + (user.eliminatedPicks || 0), 0)
-    console.log(`🔍 Pick counting summary: ${totalActivePicks} total active picks, ${totalEliminatedPicks} total eliminated picks across ${sortedUsers.length} users`)
-    
-    console.log('🔍 API: Successfully returning users data')
     return NextResponse.json({ users: sortedUsers })
   } catch (error) {
-    console.error('🔍 API: Unexpected error:', error)
+    console.error('Unexpected error in admin users API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

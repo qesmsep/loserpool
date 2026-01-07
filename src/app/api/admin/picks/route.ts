@@ -40,8 +40,6 @@ interface Pick {
 }
 
 export async function GET() {
-  console.log('🔍 API: /api/admin/picks called')
-  
   try {
     // Check for bearer token first
     const headersList = await headers()
@@ -51,7 +49,6 @@ export async function GET() {
     let user = null
     
     if (bearer) {
-      console.log('🔍 API: Using bearer token authentication')
       // Create a client with the bearer token
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,23 +62,18 @@ export async function GET() {
       const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
       
       if (error) {
-        console.error('🔍 API: Bearer token auth error:', error)
+        console.error('Bearer token auth error:', error)
       } else if (bearerUser) {
         user = bearerUser
-        console.log('🔍 API: Bearer token auth successful:', user.email)
       }
     }
     
     // Fall back to cookie-based authentication if bearer token failed
     if (!user) {
-      console.log('🔍 API: Falling back to cookie-based authentication')
       user = await getCurrentUser()
     }
     
-    console.log('🔍 API: Final authentication result:', { hasUser: !!user, userEmail: user?.email })
-    
     if (!user) {
-      console.log('🔍 API: No user found, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
@@ -93,14 +85,9 @@ export async function GET() {
       .eq('id', user.id)
       .single()
     
-    console.log('🔍 API: Admin check result:', { hasProfile: !!userProfile, isAdmin: userProfile?.is_admin, error: error?.message })
-    
     if (error || !userProfile?.is_admin) {
-      console.log('🔍 API: User is not admin, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-
-    console.log('🔍 API: User is admin, proceeding with data fetch')
 
     // Get all picks using pagination to ensure we get every record
     let allPicks: Pick[] = []
@@ -129,14 +116,13 @@ export async function GET() {
       }
     }
 
-    console.log('🔍 API: Successfully returning picks data')
     return NextResponse.json({
       picks: allPicks,
       count: allPicks.length
     })
 
   } catch (error) {
-    console.error('🔍 API: Unexpected error:', error)
+    console.error('Unexpected error in admin picks API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

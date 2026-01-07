@@ -21,8 +21,6 @@ interface TeamPickBreakdown {
 }
 
 export async function GET(request: Request) {
-  console.log('🔍 API: /api/admin/team-pick-breakdown called')
-  
   try {
     // Check for bearer token first
     const headersList = await headers()
@@ -32,7 +30,6 @@ export async function GET(request: Request) {
     let user = null
     
     if (bearer) {
-      console.log('🔍 API: Using bearer token authentication')
       // Create a client with the bearer token
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,23 +43,18 @@ export async function GET(request: Request) {
       const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
       
       if (error) {
-        console.error('🔍 API: Bearer token auth error:', error)
+        console.error('Bearer token auth error:', error)
       } else if (bearerUser) {
         user = bearerUser
-        console.log('🔍 API: Bearer token auth successful:', user.email)
       }
     }
     
     // Fall back to cookie-based authentication if bearer token failed
     if (!user) {
-      console.log('🔍 API: Falling back to cookie-based authentication')
       user = await getCurrentUser()
     }
     
-    console.log('🔍 API: Final authentication result:', { hasUser: !!user, userEmail: user?.email })
-    
     if (!user) {
-      console.log('🔍 API: No user found, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
@@ -74,14 +66,9 @@ export async function GET(request: Request) {
       .eq('id', user.id)
       .single()
     
-    console.log('🔍 API: Admin check result:', { hasProfile: !!userProfile, isAdmin: userProfile?.is_admin, error: error?.message })
-    
     if (error || !userProfile?.is_admin) {
-      console.log('🔍 API: User is not admin, returning 401')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-
-    console.log('🔍 API: User is admin, proceeding with team pick breakdown calculation')
 
     // Get current season/week using the same logic as the dashboard
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
@@ -156,28 +143,43 @@ export async function GET(request: Request) {
     const allMatchupsData: Array<{ id: string; away_team: string; home_team: string; away_score: number | null; home_score: number | null; status: string; week: number; season: string }> = []
     
     for (const weekInfo of weeksToProcess) {
-      // For each week, we need to find the correct season value
-      // Week 1-3 might be REG1, REG2, REG3, etc.
-      const weekSeasonFilter = `REG${weekInfo.week}`
+      // For each week, determine the correct season value
+      // Post-season columns: post1_team_matchup_id (week 19) → POST1, etc.
+      // Regular season columns: reg1_team_matchup_id (week 1) → REG1, etc.
+      let weekSeasonFilter: string
+      let matchupWeek: number
+      
+      if (weekInfo.column.startsWith('post')) {
+        // Post-season: post1 → POST1 (ESPN week 1), post2 → POST2 (ESPN week 2), etc.
+        const postWeek = parseInt(weekInfo.column.replace('post', '').replace('_team_matchup_id', ''))
+        weekSeasonFilter = `POST${postWeek}`
+        matchupWeek = postWeek // ESPN uses weeks 1-4 for post-season
+      } else if (weekInfo.column.startsWith('pre')) {
+        // Preseason: pre1 → PRE1, pre2 → PRE2, etc.
+        const preWeek = parseInt(weekInfo.column.replace('pre', '').replace('_team_matchup_id', ''))
+        weekSeasonFilter = `PRE${preWeek}`
+        matchupWeek = preWeek
+      } else {
+        // Regular season: reg1 → REG1, reg2 → REG2, etc.
+        weekSeasonFilter = `REG${weekInfo.week}`
+        matchupWeek = weekInfo.week
+      }
       
       const { data: matchupsData, error: matchupsError } = await supabaseAdmin
         .from('matchups')
         .select('id, away_team, home_team, away_score, home_score, status, week, season')
         .eq('season', weekSeasonFilter)
-        .eq('week', weekInfo.week)
+        .eq('week', matchupWeek)
 
       if (matchupsError) {
         console.error(`Error fetching matchups for week ${weekInfo.week}:`, matchupsError)
         continue
       }
 
-      console.log(`🔍 API: Week ${weekInfo.week} (${weekSeasonFilter}): Found ${matchupsData?.length || 0} matchups`)
       if (matchupsData) {
         allMatchupsData.push(...matchupsData)
       }
     }
-
-    console.log(`🔍 API: Found ${allMatchupsData.length} total matchups across ${weeksToProcess.length} weeks`)
 
     // Create a map of matchup IDs to game results for all weeks
     const matchupResults = new Map<string, { status: string; winner: string | null; away_team: string; home_team: string; week: number }>()
@@ -234,7 +236,6 @@ export async function GET(request: Request) {
     const teamPickBreakdown: TeamPickBreakdown[] = []
     
     for (const weekInfo of weeksToProcess) {
-      console.log(`🔍 API: Processing week ${weekInfo.week} (${weekInfo.name})`)
       
       // Get team pick breakdown for this specific week with pagination
       const allTeamPicksData: Array<{ id: string; [key: string]: string | number | null }> = []
@@ -279,16 +280,12 @@ export async function GET(request: Request) {
         }
       }
 
-      console.log(`🔍 API: Fetched ${allTeamPicksData.length} total picks for ${weekInfo.column}`)
-
       // Only count picks whose parsed matchup_id belongs to this week's matchups
       const weekMatchups = allMatchupsData.filter(m => m.week === weekInfo.week)
       const validMatchupIds = new Set<string>(weekMatchups.map(m => m.id))
       
       // Count picks by team for this week
       const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
-      
-      console.log(`🔍 API: Found ${allTeamPicksData?.length || 0} picks for ${weekInfo.column}`)
       
       if (allTeamPicksData && allTeamPicksData.length > 0) {
         for (const pick of allTeamPicksData) {
@@ -397,14 +394,13 @@ export async function GET(request: Request) {
     // Sort by week number
     teamPickBreakdown.sort((a, b) => a.week - b.week)
 
-    console.log('🔍 API: Successfully returning team pick breakdown data')
     return NextResponse.json({
       teamPickBreakdown,
       count: teamPickBreakdown.length
     })
 
   } catch (error) {
-    console.error('🔍 API: Unexpected error:', error)
+    console.error('Unexpected error in admin team pick breakdown API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
