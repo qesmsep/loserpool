@@ -305,9 +305,19 @@ export async function GET(request: Request) {
       
       console.log(`🔍 Team Breakdown: Week ${weekInfo.week} (${weekInfo.column}), Season: ${weekSeasonFilter}, Matchup Week: ${matchupWeek}`)
       console.log(`🔍 Team Breakdown: Found ${weekMatchups.length} matchups, ${allTeamPicksData.length} picks with values in ${weekInfo.column}`)
-      console.log(`🔍 Team Breakdown: Valid matchup IDs:`, Array.from(validMatchupIds).slice(0, 5))
+      console.log(`🔍 Team Breakdown: Valid matchup IDs (first 5):`, Array.from(validMatchupIds).slice(0, 5))
       if (weekMatchups.length > 0) {
         console.log(`🔍 Team Breakdown: Sample matchup:`, { id: weekMatchups[0].id, season: weekMatchups[0].season, week: weekMatchups[0].week })
+      }
+      if (allTeamPicksData.length > 0) {
+        const samplePick = allTeamPicksData[0]
+        const sampleMatchupId = (samplePick as { [key: string]: string | number | null })[weekInfo.column] as string
+        console.log(`🔍 Team Breakdown: Sample pick value:`, sampleMatchupId)
+        if (sampleMatchupId) {
+          const parts = sampleMatchupId.split('_')
+          console.log(`🔍 Team Breakdown: Sample pick parsed - matchupId: ${parts[0]}, team: ${parts.slice(1).join('_')}`)
+          console.log(`🔍 Team Breakdown: Sample pick matchupId in valid set?`, validMatchupIds.has(parts[0]))
+        }
       }
       
       // Count picks by team for this week
