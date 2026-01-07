@@ -509,16 +509,17 @@ export default function DashboardPage() {
       const { isUserTester } = await import('@/lib/user-types-client')
       const isTester = await isUserTester(user.id)
       
-      // Determine column from apiSeasonFilter/apiCurrentWeek
+      // Determine column from apiSeasonFilter/apiCurrentWeek (matches pick allocation logic)
       let currentWeekColumn = 'reg1_team_matchup_id'
       if (apiSeasonFilter && apiSeasonFilter.startsWith('PRE')) {
         currentWeekColumn = isTester
           ? `pre${apiCurrentWeek}_team_matchup_id`
           : 'reg1_team_matchup_id'
       } else if (apiSeasonFilter && apiSeasonFilter.startsWith('POST')) {
-        // POST1 → post1_team_matchup_id, POST2 → post2_team_matchup_id, etc.
+        // Post-season: POST1 → post1_team_matchup_id, POST2 → post2_team_matchup_id, etc.
         currentWeekColumn = `post${apiCurrentWeek}_team_matchup_id`
       } else {
+        // Regular season
         currentWeekColumn = `reg${apiCurrentWeek}_team_matchup_id`
       }
       
@@ -804,13 +805,17 @@ export default function DashboardPage() {
       const { isUserTester } = await import('@/lib/user-types-client')
       const isTester = await isUserTester(user.id)
       
-      // Determine column from apiSeasonFilter/apiCurrentWeek (use local variables)
+      // Determine column from apiSeasonFilter/apiCurrentWeek (matches pick allocation logic)
       let userDefaultWeekColumn = 'reg1_team_matchup_id'
       if (apiSeasonFilter && apiSeasonFilter.startsWith('PRE')) {
         userDefaultWeekColumn = isTester
           ? `pre${apiCurrentWeek}_team_matchup_id`
           : 'reg1_team_matchup_id'
+      } else if (apiSeasonFilter && apiSeasonFilter.startsWith('POST')) {
+        // Post-season: POST1 → post1_team_matchup_id, POST2 → post2_team_matchup_id, etc.
+        userDefaultWeekColumn = `post${apiCurrentWeek}_team_matchup_id`
       } else {
+        // Regular season
         userDefaultWeekColumn = `reg${apiCurrentWeek}_team_matchup_id`
       }
       
