@@ -303,13 +303,25 @@ export async function GET(request: Request) {
       )
       const validMatchupIds = new Set<string>(weekMatchups.map(m => m.id))
       
+      console.log(`🔍 Team Breakdown: Week ${weekInfo.week} (${weekInfo.column}), Season: ${weekSeasonFilter}, Matchup Week: ${matchupWeek}`)
+      console.log(`🔍 Team Breakdown: Found ${weekMatchups.length} matchups, ${allTeamPicksData.length} picks with values in ${weekInfo.column}`)
+      console.log(`🔍 Team Breakdown: Valid matchup IDs:`, Array.from(validMatchupIds).slice(0, 5))
+      if (weekMatchups.length > 0) {
+        console.log(`🔍 Team Breakdown: Sample matchup:`, { id: weekMatchups[0].id, season: weekMatchups[0].season, week: weekMatchups[0].week })
+      }
+      
       // Count picks by team for this week
       const teamCounts = new Map<string, { pickCount: number; teamData: { name: string; abbreviation: string; primary_color: string; secondary_color: string } | undefined; gameResult: string }>()
+      
+      let picksProcessed = 0
+      let picksFiltered = 0
       
       if (allTeamPicksData && allTeamPicksData.length > 0) {
         for (const pick of allTeamPicksData) {
           const matchupId = (pick as { [key: string]: string | number | null })[weekInfo.column] as string
           if (!matchupId) continue
+          
+          picksProcessed++
           
           // Extract team name from matchup ID and get actual matchup ID
           const parts = matchupId.split('_')
@@ -320,6 +332,10 @@ export async function GET(request: Request) {
             
             // Filter to this week's matchups
             if (!validMatchupIds.has(actualMatchupId)) {
+              picksFiltered++
+              if (picksFiltered <= 3) {
+                console.log(`🔍 Team Breakdown: Pick filtered out - matchupId: ${actualMatchupId}, not in valid set`)
+              }
               continue
             }
             
@@ -392,6 +408,8 @@ export async function GET(request: Request) {
         }
       }
 
+      console.log(`🔍 Team Breakdown: Processed ${picksProcessed} picks, filtered ${picksFiltered}, teamCounts size: ${teamCounts.size}`)
+      
       // Convert to array and sort by pick count (descending)
       const teamPicks = Array.from(teamCounts.entries())
         .map(([team, data]) => ({ 
@@ -402,6 +420,8 @@ export async function GET(request: Request) {
         }))
         .sort((a, b) => b.pickCount - a.pickCount)
 
+      console.log(`🔍 Team Breakdown: Final team picks count: ${teamPicks.length} for ${weekInfo.name}`)
+
       // Add this week's breakdown
       teamPickBreakdown.push({
         week: weekInfo.week,
@@ -410,8 +430,8 @@ export async function GET(request: Request) {
       })
     }
 
-    // Sort by week number
-    teamPickBreakdown.sort((a, b) => a.week - b.week)
+    // Sort by week number (newest first - descending)
+    teamPickBreakdown.sort((a, b) => b.week - a.week)
 
     return NextResponse.json({
       teamPickBreakdown,
