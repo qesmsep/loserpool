@@ -263,7 +263,9 @@ export async function GET(request: Request) {
       if (weekInfo.column.startsWith('post')) {
         const postWeek = parseInt(weekInfo.column.replace('post', '').replace('_team_matchup_id', ''))
         weekSeasonFilter = `POST${postWeek}`
-        matchupWeek = postWeek
+        // For post-season, matchups are stored with database week (19-22), not ESPN week (1-4)
+        // post1_team_matchup_id (week 19) → POST1 season, but week=19 in database
+        matchupWeek = weekInfo.week // Use database week (19) instead of ESPN week (1)
       } else if (weekInfo.column.startsWith('pre')) {
         const preWeek = parseInt(weekInfo.column.replace('pre', '').replace('_team_matchup_id', ''))
         weekSeasonFilter = `PRE${preWeek}`
