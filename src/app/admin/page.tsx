@@ -260,7 +260,9 @@ export default function AdminPage() {
         if (teamPickBreakdownResponse.ok) {
           const teamPickBreakdownData = await teamPickBreakdownResponse.json()
           console.log('🔍 Admin page: Team pick breakdown data:', teamPickBreakdownData)
+          console.log('🔍 Admin page: First week details:', teamPickBreakdownData.teamPickBreakdown?.[0])
           console.log('🔍 Admin page: First team pick details:', teamPickBreakdownData.teamPickBreakdown?.[0]?.teamPicks?.[0])
+          console.log('🔍 Admin page: Team picks array length:', teamPickBreakdownData.teamPickBreakdown?.[0]?.teamPicks?.length)
           setTeamPickBreakdown(teamPickBreakdownData.teamPickBreakdown || [])
           // Set the current week for team breakdown
           if (teamPickBreakdownData.teamPickBreakdown && teamPickBreakdownData.teamPickBreakdown.length > 0) {

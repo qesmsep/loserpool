@@ -120,15 +120,6 @@ export async function GET(request: Request) {
       }
     }
 
-    if (fetchedRows !== allPicks.length) {
-      console.log('🔍 Weekly Stats: Deduped picks during pagination', {
-        fetchedRows,
-        uniqueRows: allPicks.length,
-        deduped: fetchedRows - allPicks.length
-      })
-    } else {
-      console.log('🔍 Weekly Stats: Pagination complete with no duplicates', { fetchedRows })
-    }
 
     // Get all matchups to determine week information and results
     const { data: matchups, error: matchupsError } = await supabaseAdmin
@@ -352,7 +343,7 @@ export async function GET(request: Request) {
 
     // Ensure current week Active = prior week's Remaining, per request
     weeklyStats.sort((a, b) => a.week - b.week)
-    const currentIdx = weeklyStats.findIndex(s => s.week === currentWeek)
+    const currentIdx = weeklyStats.findIndex(s => s.week === currentDbWeek)
     if (currentIdx > 0) {
       weeklyStats[currentIdx].activePicks = weeklyStats[currentIdx - 1].remainingPicks
       weeklyStats[currentIdx].remainingPicks = Math.max(0, weeklyStats[currentIdx].activePicks - weeklyStats[currentIdx].eliminatedPicks)

@@ -79,31 +79,68 @@ export async function GET() {
     }
     const weekColumn = `reg${currentWeek}_team_matchup_id`
     
-    // Instead of trying to get all picks at once (which hits limits),
-    // we'll query picks for each user individually in the loop below
-
-    // Calculate stats for each user
-    const usersWithStats = await Promise.all(usersData?.map(async (user) => {
-      const userPurchases = user.purchases || []
-      
-      // Query picks individually for each user to avoid limits
-      const { data: userPicks, error: userPicksError } = await supabaseAdmin
+    // Fetch all picks in a single paginated query instead of per-user queries (N+1 problem)
+    const allPicks: Array<{
+      user_id: string
+      status: string
+      picks_count: number
+      pick_name: string
+      [key: string]: string | number | null | undefined
+    }> = []
+    
+    const pageSize = 1000
+    let from = 0
+    let hasMore = true
+    
+    while (hasMore) {
+      const { data: picksBatch, error: picksError } = await supabaseAdmin
         .from('picks')
         .select(`user_id, status, picks_count, pick_name, ${weekColumn}`)
-        .eq('user_id', user.id)
+        .range(from, from + pageSize - 1)
       
-      // Type the userPicks properly - cast through unknown to avoid type conflicts
-      const typedUserPicks = ((userPicks || []) as unknown) as Array<{
-        user_id: string
-        status: string
-        picks_count: number
-        pick_name: string
-        [key: string]: string | number | null | undefined
-      }>
-      
-      if (userPicksError) {
-        console.error(`Error fetching picks for user ${user.id}:`, userPicksError)
+      if (picksError) {
+        console.error('Error fetching picks:', picksError)
+        break
       }
+      
+      if (picksBatch && picksBatch.length > 0) {
+        allPicks.push(...(picksBatch as unknown as Array<{
+          user_id: string
+          status: string
+          picks_count: number
+          pick_name: string
+          [key: string]: string | number | null | undefined
+        }>))
+        from += pageSize
+        hasMore = picksBatch.length === pageSize
+      } else {
+        hasMore = false
+      }
+    }
+    
+    // Group picks by user_id for efficient lookup
+    const picksByUserId = new Map<string, Array<{
+      user_id: string
+      status: string
+      picks_count: number
+      pick_name: string
+      [key: string]: string | number | null | undefined
+    }>>()
+    
+    for (const pick of allPicks) {
+      const userId = pick.user_id as string
+      if (!picksByUserId.has(userId)) {
+        picksByUserId.set(userId, [])
+      }
+      picksByUserId.get(userId)!.push(pick)
+    }
+
+    // Calculate stats for each user
+    const usersWithStats = (usersData || []).map((user) => {
+      const userPurchases = user.purchases || []
+      
+      // Get picks for this user from the pre-fetched map
+      const typedUserPicks = picksByUserId.get(user.id) || []
       
       const totalPurchased = userPurchases
         .filter((p: { status: string }) => p.status === 'completed')
@@ -147,7 +184,7 @@ export async function GET() {
           team_matchup_id: pick[weekColumn]
         }))
       }
-            })) || []
+    })
     
     // Sort users by username (or email if no username), with admins first
     const sortedUsers = usersWithStats.sort((a, b) => {
