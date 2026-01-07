@@ -301,7 +301,8 @@ export async function GET(request: Request) {
       const weekMatchups = allMatchupsData.filter(m => 
         m.season === weekSeasonFilter && m.week === matchupWeek
       )
-      const validMatchupIds = new Set<string>(weekMatchups.map(m => m.id))
+      // Convert matchup IDs to strings to ensure proper comparison (UUIDs might be objects)
+      const validMatchupIds = new Set<string>(weekMatchups.map(m => String(m.id)))
       
       console.log(`🔍 Team Breakdown: Week ${weekInfo.week} (${weekInfo.column}), Season: ${weekSeasonFilter}, Matchup Week: ${matchupWeek}`)
       console.log(`🔍 Team Breakdown: Found ${weekMatchups.length} matchups, ${allTeamPicksData.length} picks with values in ${weekInfo.column}`)
@@ -341,10 +342,12 @@ export async function GET(request: Request) {
             const pickCount = pick.picks_count || 0
             
             // Filter to this week's matchups
-            if (!validMatchupIds.has(actualMatchupId)) {
+            // Ensure both sides are strings for comparison
+            const actualMatchupIdStr = String(actualMatchupId).trim()
+            if (!validMatchupIds.has(actualMatchupIdStr)) {
               picksFiltered++
               if (picksFiltered <= 3) {
-                console.log(`🔍 Team Breakdown: Pick filtered out - matchupId: ${actualMatchupId}, not in valid set`)
+                console.log(`🔍 Team Breakdown: Pick filtered out - matchupId: "${actualMatchupIdStr}", valid IDs (first 3):`, Array.from(validMatchupIds).slice(0, 3))
               }
               continue
             }
