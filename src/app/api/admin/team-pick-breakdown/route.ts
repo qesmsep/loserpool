@@ -176,6 +176,26 @@ export async function GET(request: Request) {
         continue
       }
 
+      // Debug: If no matchups found, check what matchups exist with similar criteria
+      if (!matchupsData || matchupsData.length === 0) {
+        console.log(`⚠️ No matchups found for ${weekSeasonFilter} week ${matchupWeek}. Checking what exists...`)
+        const { data: allPostSeasonMatchups } = await supabaseAdmin
+          .from('matchups')
+          .select('id, away_team, home_team, week, season')
+          .like('season', 'POST%')
+          .limit(10)
+        console.log(`⚠️ Sample POST matchups in DB:`, allPostSeasonMatchups?.slice(0, 5))
+        
+        // Also check by week=1 with any POST season
+        const { data: week1Matchups } = await supabaseAdmin
+          .from('matchups')
+          .select('id, away_team, home_team, week, season')
+          .eq('week', matchupWeek)
+          .like('season', 'POST%')
+          .limit(10)
+        console.log(`⚠️ POST matchups with week=${matchupWeek}:`, week1Matchups)
+      }
+
       if (matchupsData) {
         allMatchupsData.push(...matchupsData)
       }
