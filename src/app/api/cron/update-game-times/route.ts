@@ -352,17 +352,95 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Cleanup: Delete stale matchups that are no longer in ESPN API response
+    // Only delete matchups that:
+    // 1. Are in the current season/week
+    // 2. Don't have any picks referencing them
+    // 3. Are not in the ESPN API response
+    let staleMatchupsDeleted = 0
+    const staleMatchupIds: string[] = []
+
+    if (matchups && matchups.length > 0) {
+      // Create a set of valid ESPN matchup keys (including season for uniqueness)
+      const validEspnMatchupKeys = new Set<string>()
+      allEspnGames.forEach(game => {
+        const convertedGame = espnService.convertToMatchupFormat(game)
+        if (convertedGame) {
+          const espnWeek = game.week?.number || currentWeek
+          const espnSeasonType = game.season?.type
+          let seasonDisplay = seasonInfo.seasonDisplay
+          
+          if (espnSeasonType === 3) {
+            seasonDisplay = `POST${espnWeek}`
+          } else if (espnSeasonType === 1) {
+            seasonDisplay = `PRE${espnWeek}`
+          } else {
+            seasonDisplay = `REG${espnWeek}`
+          }
+          
+          const key = `${convertedGame.away_team}-${convertedGame.home_team}-${seasonDisplay}`
+          validEspnMatchupKeys.add(key)
+        }
+      })
+
+      // Find matchups in DB that aren't in ESPN response
+      for (const matchup of matchups) {
+        const matchupKey = `${matchup.away_team}-${matchup.home_team}-${matchup.season}`
+        
+        if (!validEspnMatchupKeys.has(matchupKey)) {
+          // This matchup is not in ESPN response - check if it's safe to delete
+          // Check if any picks reference this matchup via team_matchup_id columns
+          // team_matchup_id format is: "matchup_id_team_name", so we check if matchup.id is at the start
+          const { data: picksWithMatchup, error: picksError } = await supabase
+            .from('picks')
+            .select('id')
+            .or(`pre1_team_matchup_id.like.${matchup.id}_%,pre2_team_matchup_id.like.${matchup.id}_%,pre3_team_matchup_id.like.${matchup.id}_%,reg1_team_matchup_id.like.${matchup.id}_%,reg2_team_matchup_id.like.${matchup.id}_%,reg3_team_matchup_id.like.${matchup.id}_%,reg4_team_matchup_id.like.${matchup.id}_%,reg5_team_matchup_id.like.${matchup.id}_%,reg6_team_matchup_id.like.${matchup.id}_%,reg7_team_matchup_id.like.${matchup.id}_%,reg8_team_matchup_id.like.${matchup.id}_%,reg9_team_matchup_id.like.${matchup.id}_%,reg10_team_matchup_id.like.${matchup.id}_%,reg11_team_matchup_id.like.${matchup.id}_%,reg12_team_matchup_id.like.${matchup.id}_%,reg13_team_matchup_id.like.${matchup.id}_%,reg14_team_matchup_id.like.${matchup.id}_%,reg15_team_matchup_id.like.${matchup.id}_%,reg16_team_matchup_id.like.${matchup.id}_%,reg17_team_matchup_id.like.${matchup.id}_%,reg18_team_matchup_id.like.${matchup.id}_%,post1_team_matchup_id.like.${matchup.id}_%,post2_team_matchup_id.like.${matchup.id}_%,post3_team_matchup_id.like.${matchup.id}_%,post4_team_matchup_id.like.${matchup.id}_%`)
+            .limit(1)
+
+          if (picksError) {
+            console.error(`Error checking picks for matchup ${matchup.id}:`, picksError)
+            errors.push(`Error checking picks for stale matchup ${matchup.away_team} @ ${matchup.home_team}: ${picksError.message}`)
+            continue
+          }
+
+          if (picksWithMatchup && picksWithMatchup.length > 0) {
+            // This matchup has picks referencing it - don't delete
+            console.log(`⚠️ Skipping deletion of stale matchup ${matchup.away_team} @ ${matchup.home_team} (${matchup.season}) - has ${picksWithMatchup.length} picks referencing it`)
+            continue
+          }
+
+          // Safe to delete - no picks reference this matchup
+          const { error: deleteError } = await supabase
+            .from('matchups')
+            .delete()
+            .eq('id', matchup.id)
+
+          if (deleteError) {
+            const errorMsg = `Failed to delete stale matchup ${matchup.away_team} @ ${matchup.home_team}: ${deleteError.message}`
+            console.error(`❌ ${errorMsg}`)
+            errors.push(errorMsg)
+          } else {
+            staleMatchupsDeleted++
+            staleMatchupIds.push(`${matchup.away_team} @ ${matchup.home_team} (${matchup.season})`)
+            console.log(`🗑️ Deleted stale matchup: ${matchup.away_team} @ ${matchup.home_team} (${matchup.season}) - not in ESPN API response`)
+          }
+        }
+      }
+    }
+
     const executionTime = Date.now() - startTime
-    console.log(`Game time update completed in ${executionTime}ms: ${gameTimesUpdated} game times updated, ${errors.length} errors`)
+    console.log(`Game time update completed in ${executionTime}ms: ${gameTimesUpdated} game times updated, ${matchupsCreated} matchups created, ${staleMatchupsDeleted} stale matchups deleted, ${errors.length} errors`)
 
     return NextResponse.json({
       success: true,
       game_times_updated: gameTimesUpdated,
       matchups_created: matchupsCreated,
+      stale_matchups_deleted: staleMatchupsDeleted,
       total_matchups_checked: matchups.length,
       execution_time_ms: executionTime,
       errors: errors.length > 0 ? errors : null,
       updated_matchups: updatedMatchups,
+      deleted_stale_matchups: staleMatchupIds.length > 0 ? staleMatchupIds : null,
       debug: {
         currentWeek,
         seasonDisplay: seasonInfo.seasonDisplay,

@@ -917,6 +917,13 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, loadData])
 
+  // Redirect to login if not authenticated (must be in useEffect, not during render)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, authLoading, router])
+
   // Set picks remaining directly from database
   useEffect(() => {
     setPicksRemaining(dbPicksRemaining)
@@ -1092,9 +1099,8 @@ export default function DashboardPage() {
     )
   }
 
-  // Redirect to login if not authenticated
+  // Show nothing while redirecting (useEffect handles the redirect)
   if (!user) {
-    router.push('/login')
     return null
   }
 
