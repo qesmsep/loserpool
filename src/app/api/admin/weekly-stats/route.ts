@@ -211,14 +211,15 @@ export async function GET(request: Request) {
     // Build stats using the same logic as Team Picks Breakdown
     const weeklyStats: WeeklyStats[] = []
     // Map matchups by season+week combination, not just week number
-    // Post-season matchups have week=1-4 (ESPN weeks) but database weeks are 19-22
+    // Post-season matchups are stored with database week (19-22) in the week column, not ESPN week (1-4)
+    // e.g., POST1 matchups have season='POST1' and week=19 (database week)
     const validMatchupsBySeasonWeek = new Map<string, Set<string>>()
     for (const m of matchups || []) {
       try {
         // Ensure season is a string (handle null/undefined)
         const seasonStr = (m.season as string | null | undefined) || 'REG'
         const weekNum = typeof m.week === 'number' ? m.week : parseInt(String(m.week)) || 0
-        const key = `${seasonStr}-${weekNum}` // e.g., "POST1-1", "REG1-1"
+        const key = `${seasonStr}-${weekNum}` // e.g., "POST1-19", "REG1-1" (uses database week for postseason)
         const setId = m.id as unknown as string
         if (!setId) continue // Skip if no ID
         const set = validMatchupsBySeasonWeek.get(key) || new Set<string>()
@@ -243,10 +244,10 @@ export async function GET(request: Request) {
       let matchupWeek: number
       
       if (column.startsWith('post')) {
-        // Post-season: post1 → POST1, matchup week = 1 (ESPN week)
+        // Post-season: post1 → POST1, but matchups stored with database week (19-22), not ESPN week (1-4)
         const postWeek = parseInt(column.replace('post', '').replace('_team_matchup_id', ''))
         seasonKey = `POST${postWeek}`
-        matchupWeek = postWeek
+        matchupWeek = week // Use database week (19-22) instead of ESPN week (1-4), same as team-pick-breakdown
       } else if (column.startsWith('pre')) {
         // Preseason: pre1 → PRE1, matchup week = 1
         const preWeek = parseInt(column.replace('pre', '').replace('_team_matchup_id', ''))

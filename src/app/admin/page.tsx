@@ -672,7 +672,7 @@ export default function AdminPage() {
 
                 {/* Mobile Cards */}
                 <div className="md:hidden space-y-3">
-                  {weeklyStats.map((stat) => (
+                  {[...weeklyStats].reverse().map((stat) => (
                     <div key={stat.week} className="bg-white/5 rounded-lg p-4 border border-white/10">
                       <div className="flex items-center justify-between mb-3">
                         <div>
