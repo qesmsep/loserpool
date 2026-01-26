@@ -104,7 +104,7 @@ export class ESPNScheduleScraper {
   /**
    * Parse a game row from the schedule table
    */
-  private parseGameRow($row: cheerio.Cheerio<cheerio.Element>, $: cheerio.CheerioAPI): ScrapedGame | null {
+  private parseGameRow($row: cheerio.Cheerio<cheerio.Element>, $: cheerio.Root): ScrapedGame | null {
     try {
       // Look for team links - ESPN uses links like /nfl/team/_/name/{abbrev}/{team-name}
       const teamLinks = $row.find('a[href*="/nfl/team/_/name/"]')
