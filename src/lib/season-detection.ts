@@ -105,6 +105,41 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
     console.log('🔍 Season Detection - No preseason games, using default cutoff:', preseasonCutoff.toISOString())
   }
   
+  const pickPostseasonWeek = (games: typeof postseasonGames): number | null => {
+    if (!games || games.length === 0) {
+      return null
+    }
+
+    const postWeekNumbers = Array.from(new Set(
+      games
+        .map(m => m.season)
+        .filter((s): s is string => typeof s === 'string' && s.startsWith('POST'))
+        .map(s => parseInt(s.replace('POST', '')))
+    )).sort((a, b) => b - a)
+
+    if (postWeekNumbers.length === 0) {
+      return null
+    }
+
+    for (const weekNum of postWeekNumbers) {
+      const gamesThisWeek = games.filter(m => parseInt((m.season || 'POST0').replace('POST', '')) === weekNum)
+      const hasUpcoming = gamesThisWeek.some(g => new Date(g.game_time) > now)
+      if (hasUpcoming) {
+        return weekNum
+      }
+    }
+
+    for (const weekNum of postWeekNumbers) {
+      const gamesThisWeek = games.filter(m => parseInt((m.season || 'POST0').replace('POST', '')) === weekNum)
+      const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
+      if (anyNonFinal) {
+        return weekNum
+      }
+    }
+
+    return null
+  }
+
   // Determine current week based on today's date
   if (now < preseasonCutoff) {
     // We're in preseason - find the current preseason week
@@ -182,29 +217,19 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
     // We're past preseason - check POST games first (playoffs take priority)
     // If we have POST games with non-final status, show those
     if (postseasonGames.length > 0) {
-      const postWeekNumbers = Array.from(new Set(
-        postseasonGames
-          .map(m => m.season)
-          .filter((s): s is string => typeof s === 'string' && s.startsWith('POST'))
-          .map(s => parseInt(s.replace('POST', '')))
-      )).sort((a, b) => a - b)
-
-      for (const weekNum of postWeekNumbers) {
-        const gamesThisWeek = postseasonGames.filter(m => parseInt((m.season || 'POST0').replace('POST', '')) === weekNum)
-        const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
-        if (anyNonFinal) {
-          const seasonDisplay = `POST${weekNum}`
-          console.log('🔍 Season Detection - Postseason mode (non-final present), current week:', weekNum, 'seasonDisplay:', seasonDisplay)
-          return {
-            currentSeason: 'POST',
-            currentWeek: weekNum,
-            seasonDisplay,
-            isPreseason: false,
-            isRegularSeason: false,
-            isPostseason: true,
-            preseasonCutoff,
-            seasonYear
-          }
+      const postWeek = pickPostseasonWeek(postseasonGames)
+      if (postWeek !== null) {
+        const seasonDisplay = `POST${postWeek}`
+        console.log('🔍 Season Detection - Postseason mode (upcoming/non-final), current week:', postWeek, 'seasonDisplay:', seasonDisplay)
+        return {
+          currentSeason: 'POST',
+          currentWeek: postWeek,
+          seasonDisplay,
+          isPreseason: false,
+          isRegularSeason: false,
+          isPostseason: true,
+          preseasonCutoff,
+          seasonYear
         }
       }
     }
@@ -241,31 +266,28 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
     if (weekNumbers.length > 0) {
       // Check if we have postseason games
       if (postseasonGames.length > 0) {
+        const postWeek = pickPostseasonWeek(postseasonGames)
+        if (postWeek !== null) {
+          const seasonDisplay = `POST${postWeek}`
+          console.log('🔍 Season Detection - Postseason mode (upcoming/non-final), current week:', postWeek, 'seasonDisplay:', seasonDisplay)
+          return {
+            currentSeason: 'POST',
+            currentWeek: postWeek,
+            seasonDisplay,
+            isPreseason: false,
+            isRegularSeason: false,
+            isPostseason: true,
+            preseasonCutoff,
+            seasonYear
+          }
+        }
+
         const postWeekNumbers = Array.from(new Set(
           postseasonGames
             .map(m => m.season)
             .filter((s): s is string => typeof s === 'string' && s.startsWith('POST'))
             .map(s => parseInt(s.replace('POST', '')))
-        )).sort((a, b) => a - b)
-
-        for (const weekNum of postWeekNumbers) {
-          const gamesThisWeek = postseasonGames.filter(m => parseInt((m.season || 'POST0').replace('POST', '')) === weekNum)
-          const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
-          if (anyNonFinal) {
-            const seasonDisplay = `POST${weekNum}`
-            console.log('🔍 Season Detection - Postseason mode (non-final present), current week:', weekNum, 'seasonDisplay:', seasonDisplay)
-            return {
-              currentSeason: 'POST',
-              currentWeek: weekNum,
-              seasonDisplay,
-              isPreseason: false,
-              isRegularSeason: false,
-              isPostseason: true,
-              preseasonCutoff,
-              seasonYear
-            }
-          }
-        }
+        ))
 
         // All postseason weeks are final, use last postseason week
         if (postWeekNumbers.length > 0) {
@@ -303,31 +325,28 @@ export async function getCurrentSeasonInfo(): Promise<SeasonInfo> {
 
     // Check for postseason games if no regular season games
     if (postseasonGames.length > 0) {
+      const postWeek = pickPostseasonWeek(postseasonGames)
+      if (postWeek !== null) {
+        const seasonDisplay = `POST${postWeek}`
+        console.log('🔍 Season Detection - Postseason mode (upcoming/non-final), current week:', postWeek)
+        return {
+          currentSeason: 'POST',
+          currentWeek: postWeek,
+          seasonDisplay,
+          isPreseason: false,
+          isRegularSeason: false,
+          isPostseason: true,
+          preseasonCutoff,
+          seasonYear
+        }
+      }
+
       const postWeekNumbers = Array.from(new Set(
         postseasonGames
           .map(m => m.season)
           .filter((s): s is string => typeof s === 'string' && s.startsWith('POST'))
           .map(s => parseInt(s.replace('POST', '')))
-      )).sort((a, b) => a - b)
-
-      for (const weekNum of postWeekNumbers) {
-        const gamesThisWeek = postseasonGames.filter(m => parseInt((m.season || 'POST0').replace('POST', '')) === weekNum)
-        const anyNonFinal = gamesThisWeek.some(g => g.status !== 'final')
-        if (anyNonFinal) {
-          const seasonDisplay = `POST${weekNum}`
-          console.log('🔍 Season Detection - Postseason mode (non-final present), current week:', weekNum)
-          return {
-            currentSeason: 'POST',
-            currentWeek: weekNum,
-            seasonDisplay,
-            isPreseason: false,
-            isRegularSeason: false,
-            isPostseason: true,
-            preseasonCutoff,
-            seasonYear
-          }
-        }
-      }
+      ))
 
       // All postseason weeks final, use last one
       if (postWeekNumbers.length > 0) {

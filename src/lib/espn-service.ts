@@ -129,7 +129,15 @@ export class ESPNService {
       
       const espnSeasonType = seasonTypeMap[seasonType] || '2'
       
-      const url = `${this.baseUrl}/football/nfl/scoreboard?week=${week}&year=${season}&seasontype=${espnSeasonType}`
+      // ESPN postseason weeks: 1=Wild Card, 2=Divisional, 3=Championship, 4=Pro Bowl, 5=Super Bowl
+      // Our POST weeks: POST1=Wild Card, POST2=Divisional, POST3=Championship, POST4=Super Bowl
+      // So POST4 needs to fetch ESPN week 5, not week 4
+      let espnWeek = week
+      if (seasonType === 'POST' && week === 4) {
+        espnWeek = 5 // POST4 (Super Bowl) = ESPN week 5
+      }
+      
+      const url = `${this.baseUrl}/football/nfl/scoreboard?week=${espnWeek}&year=${season}&seasontype=${espnSeasonType}`
       
       console.log(`Fetching ESPN NFL schedule: ${url}`)
       

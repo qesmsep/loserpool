@@ -52,14 +52,14 @@ export async function POST(request: NextRequest) {
     console.log(`Season detection → ${seasonType}${currentWeek}, year=${currentYear}, seasonDisplay=${seasonInfo.seasonDisplay}`)
 
     // Get ESPN games for current week - try all season types to catch any games
-    // For playoffs, also check weeks 1-4 since ESPN uses week 1-4 for playoffs
+    // For playoffs, ESPN uses weeks 1-5: 1=Wild Card, 2=Divisional, 3=Championship, 4=Pro Bowl, 5=Super Bowl
     const allEspnGames: ESPNGame[] = []
     const seasonTypes = ['PRE', 'REG', 'POST']
     
     for (const st of seasonTypes) {
-      // For POST season, check weeks 1-4 (playoff weeks)
+      // For POST season, check weeks 1-5 (playoff weeks including Super Bowl)
       // For other seasons, use the detected current week
-      const weeksToCheck = st === 'POST' ? [1, 2, 3, 4] : [currentWeek]
+      const weeksToCheck = st === 'POST' ? [1, 2, 3, 4, 5] : [currentWeek]
       
       for (const weekToCheck of weeksToCheck) {
         try {
@@ -149,10 +149,20 @@ export async function POST(request: NextRequest) {
           
           // ESPN season types: 1 = Preseason, 2 = Regular Season, 3 = Postseason
           if (espnSeasonType === 3) {
-            // This is a playoff game - ESPN uses weeks 1-4 for playoffs
-            seasonDisplay = `POST${espnWeek}`
-            dbWeek = 18 + espnWeek // POST1 → 19, POST2 → 20, POST3 → 21, POST4 → 22
-            console.log(`Detected playoff game: ${convertedGame.away_team} @ ${convertedGame.home_team} - ESPN week ${espnWeek} → DB week ${dbWeek}, season ${seasonDisplay}`)
+            // ESPN postseason: week 1=Wild Card, 2=Divisional, 3=Championship, 4=Pro Bowl, 5=Super Bowl
+            // Our POST: POST1=Wild Card, POST2=Divisional, POST3=Championship, POST4=Super Bowl
+            // So ESPN week 5 maps to POST4
+            let postWeek = espnWeek
+            if (espnWeek === 5) {
+              postWeek = 4 // ESPN week 5 (Super Bowl) = POST4
+            } else if (espnWeek === 4) {
+              // Skip Pro Bowl (week 4) - it's not part of our postseason
+              console.log(`Skipping Pro Bowl (ESPN week 4) - not part of postseason`)
+              continue
+            }
+            seasonDisplay = `POST${postWeek}`
+            dbWeek = 18 + postWeek // POST1 → 19, POST2 → 20, POST3 → 21, POST4 → 22
+            console.log(`Detected playoff game: ${convertedGame.away_team} @ ${convertedGame.home_team} - ESPN week ${espnWeek} → POST${postWeek} → DB week ${dbWeek}, season ${seasonDisplay}`)
           } else if (espnSeasonType === 1) {
             // Preseason
             seasonDisplay = `PRE${espnWeek}`
@@ -286,11 +296,20 @@ export async function POST(request: NextRequest) {
         // DOUBLE VERIFICATION: Check week number (required) and game date (warning if mismatch)
         // Week match is required to prevent updating wrong matchup when teams play twice
         // Date mismatch is logged but we still update (ESPN is source of truth for dates)
-        // For playoffs: ESPN week 1-4 maps to DB week 19-22
+        // For playoffs: ESPN week 1-3 maps to DB week 19-21, ESPN week 5 maps to DB week 22 (POST4)
         let expectedDbWeek = espnGame.week
         if (matchup.season && matchup.season.startsWith('POST')) {
-          // This is a playoff matchup, ESPN week 1-4 should match DB week 19-22
-          expectedDbWeek = 18 + espnGame.week // POST1 (ESPN week 1) → DB week 19
+          // This is a playoff matchup
+          if (espnGame.week === 5) {
+            // ESPN week 5 (Super Bowl) = POST4 = DB week 22
+            expectedDbWeek = 22
+          } else if (espnGame.week <= 3) {
+            // ESPN week 1-3 (Wild Card, Divisional, Championship) = POST1-3 = DB week 19-21
+            expectedDbWeek = 18 + espnGame.week
+          } else {
+            // ESPN week 4 is Pro Bowl, skip it
+            continue
+          }
         }
         const weekMatch = expectedDbWeek === matchup.week
         const currentGameDate = matchup.game_time.split('T')[0] // Extract YYYY-MM-DD

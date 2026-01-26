@@ -332,6 +332,93 @@ export class MatchupDataService {
         throw new Error(`Database fetch error: ${fetchError.message}`)
       }
 
+      const isPlaceholderTeam = (team: string | null | undefined): boolean => {
+        if (!team) return true
+        const normalized = team.trim().toUpperCase()
+        if (!normalized) return true
+
+        const placeholders = new Set([
+          'TBD',
+          'TBA',
+          'N/A',
+          'UNKNOWN',
+          'AFC',
+          'NFC'
+        ])
+
+        if (placeholders.has(normalized)) {
+          return true
+        }
+
+        if (normalized.includes('CHAMP') && (normalized.includes('AFC') || normalized.includes('NFC'))) {
+          return true
+        }
+
+        if (normalized.includes('WINNER') || normalized.includes('LOSER')) {
+          return true
+        }
+
+        return false
+      }
+
+      const findFallbackMatchup = (gameTime: string): Record<string, unknown> | undefined => {
+        if (!existingMatchups || existingMatchups.length === 0) {
+          return undefined
+        }
+
+        const gameTimeMs = new Date(gameTime).getTime()
+        const timeMatch = existingMatchups.find((m: Record<string, unknown>) => {
+          if (!m.game_time) return false
+          const matchupTimeMs = new Date(m.game_time as string).getTime()
+          const diffHours = Math.abs(gameTimeMs - matchupTimeMs) / (60 * 60 * 1000)
+          return diffHours <= 36
+        })
+
+        if (timeMatch) {
+          return timeMatch
+        }
+
+        if (existingMatchups.length === 1) {
+          return existingMatchups[0]
+        }
+
+        return existingMatchups.find((m: Record<string, unknown>) => {
+          const away = m.away_team as string | null | undefined
+          const home = m.home_team as string | null | undefined
+          return isPlaceholderTeam(away) || isPlaceholderTeam(home)
+        })
+      }
+
+      // For POST4 (Super Bowl), if ESPN API returns placeholders, scrape the schedule page
+      const getSuperBowlTeamsFromScraper = async (): Promise<{ awayTeam: string | null, homeTeam: string | null }> => {
+        if (seasonDisplay !== 'POST4') {
+          return { awayTeam: null, homeTeam: null }
+        }
+
+        try {
+          const { espnScheduleScraper } = await import('@/lib/espn-scraper')
+          const scrapedGames = await espnScheduleScraper.scrapeSchedule()
+          
+          // Find Super Bowl game (usually the last game or has "Super Bowl" in the name)
+          const superBowlGame = scrapedGames.find(g => 
+            g.awayTeam && g.homeTeam && 
+            !isPlaceholderTeam(g.awayTeam) && !isPlaceholderTeam(g.homeTeam) &&
+            (g.season === 'POST' || scrapedGames.length === 1)
+          )
+
+          if (superBowlGame && superBowlGame.awayTeam && superBowlGame.homeTeam) {
+            console.log(`Found Super Bowl teams from scraper: ${superBowlGame.awayTeam} @ ${superBowlGame.homeTeam}`)
+            return { awayTeam: superBowlGame.awayTeam, homeTeam: superBowlGame.homeTeam }
+          }
+        } catch (error) {
+          console.error('Error scraping Super Bowl teams from schedule page:', error)
+        }
+
+        return { awayTeam: null, homeTeam: null }
+      }
+
+      const superBowlTeams = await getSuperBowlTeamsFromScraper()
+
       // Process each ESPN game
       for (const espnGame of espnGames) {
         try {
@@ -343,23 +430,66 @@ export class MatchupDataService {
             continue
           }
 
+          // For POST4, if ESPN returned placeholders, use derived teams
+          let finalAwayTeam = gameData.away_team as string
+          let finalHomeTeam = gameData.home_team as string
+          let finalGameTime = gameData.game_time as string
+          let finalVenue = gameData.venue as string | null
+          
+          if (seasonDisplay === 'POST4' && superBowlTeams.awayTeam && superBowlTeams.homeTeam) {
+            const espnHasPlaceholders = isPlaceholderTeam(gameData.away_team) || isPlaceholderTeam(gameData.home_team)
+            if (espnHasPlaceholders) {
+              finalAwayTeam = superBowlTeams.awayTeam
+              finalHomeTeam = superBowlTeams.homeTeam
+              console.log(`Using derived Super Bowl teams: ${finalAwayTeam} @ ${finalHomeTeam}`)
+            }
+          }
+
+          // Override bad ESPN data for Super Bowl (POST4)
+          if (seasonDisplay === 'POST4') {
+            // Super Bowl is always first Sunday in February
+            // For 2026: February 8, 2026 at 6:30 PM ET = 11:30 PM UTC
+            const correctSuperBowlDate = '2026-02-08T23:30:00Z'
+            const gameDate = new Date(finalGameTime)
+            const correctDate = new Date(correctSuperBowlDate)
+            
+            // If ESPN date is more than 2 days off, use correct date
+            const daysDiff = Math.abs((gameDate.getTime() - correctDate.getTime()) / (1000 * 60 * 60 * 24))
+            if (daysDiff > 2) {
+              finalGameTime = correctSuperBowlDate
+              console.log(`Overriding bad Super Bowl date from ESPN: ${gameData.game_time} → ${finalGameTime}`)
+            }
+            
+            // Override obviously wrong venues (like "Moscone Center")
+            const badVenues = ['Moscone Center', 'TBD', 'TBA']
+            if (finalVenue && badVenues.some(bad => finalVenue.includes(bad))) {
+              // Use a reasonable default - actual venue will be updated when known
+              finalVenue = 'TBD'
+              console.log(`Overriding bad Super Bowl venue from ESPN: ${gameData.venue} → ${finalVenue}`)
+            }
+          }
+
           // Find matching matchup in database
-          const existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
-            m.away_team === gameData.away_team && m.home_team === gameData.home_team
+          let existingMatchup = existingMatchups?.find((m: Record<string, unknown>) =>
+            m.away_team === finalAwayTeam && m.home_team === finalHomeTeam
           )
+
+          if (!existingMatchup) {
+            existingMatchup = findFallbackMatchup(gameData.game_time as string)
+          }
 
           if (!existingMatchup) {
             // Create new matchup
             const insertData = {
               week: currentWeek,
               season: seasonDisplay,
-              away_team: gameData.away_team as string,
-              home_team: gameData.home_team as string,
-              game_time: gameData.game_time as string,
+              away_team: finalAwayTeam,
+              home_team: finalHomeTeam,
+              game_time: finalGameTime,
               status: (gameData.status as string) || 'scheduled',
               away_score: gameData.away_score as number | null,
               home_score: gameData.home_score as number | null,
-              venue: gameData.venue as string | null,
+              venue: finalVenue,
               away_spread: gameData.away_spread as number | null,
               home_spread: gameData.home_spread as number | null
             }
@@ -369,29 +499,41 @@ export class MatchupDataService {
               .insert(insertData)
 
             if (insertError) {
-              console.error(`Error creating matchup ${gameData.away_team} @ ${gameData.home_team}: ${insertError.message}`)
+              console.error(`Error creating matchup ${finalAwayTeam} @ ${finalHomeTeam}: ${insertError.message}`)
             } else {
               gamesCreated++
-              console.log(`Created new matchup: ${gameData.away_team} @ ${gameData.home_team}`)
+              console.log(`Created new matchup: ${finalAwayTeam} @ ${finalHomeTeam}`)
             }
           } else {
             // Update existing matchup
-            const hasChanges = this.hasDataChanged(existingMatchup, gameData)
+            const existingAway = existingMatchup.away_team as string | null | undefined
+            const existingHome = existingMatchup.home_team as string | null | undefined
+            const newAway = finalAwayTeam
+            const newHome = finalHomeTeam
+            const existingHasPlaceholder = isPlaceholderTeam(existingAway) || isPlaceholderTeam(existingHome)
+            const newTeamsAreReal = !isPlaceholderTeam(newAway) && !isPlaceholderTeam(newHome)
+            
+            const hasChanges = this.hasDataChanged(existingMatchup, gameData) || (existingHasPlaceholder && newTeamsAreReal)
             
             if (!hasChanges) {
-              console.log(`No changes detected for ${gameData.away_team} @ ${gameData.home_team}`)
+              console.log(`No changes detected for ${finalAwayTeam} @ ${finalHomeTeam}`)
               continue
             }
 
             // Prepare update data
             const updateData: Record<string, unknown> = {
-              game_time: gameData.game_time,
+              game_time: finalGameTime,
               status: gameData.status as string,
-              venue: gameData.venue as string,
+              venue: finalVenue,
               away_score: gameData.away_score,
               home_score: gameData.home_score,
               away_spread: gameData.away_spread,
               home_spread: gameData.home_spread
+            }
+
+            if (existingHasPlaceholder && newTeamsAreReal) {
+              updateData.away_team = newAway
+              updateData.home_team = newHome
             }
 
             // Update the matchup in database
@@ -404,7 +546,7 @@ export class MatchupDataService {
               console.error(`Update error for ${existingMatchup.id}: ${updateError.message}`)
             } else {
               gamesUpdated++
-              console.log(`Updated matchup: ${gameData.away_team} @ ${gameData.home_team}`)
+              console.log(`Updated matchup: ${finalAwayTeam} @ ${finalHomeTeam}`)
             }
           }
 
