@@ -104,7 +104,7 @@ export class ESPNScheduleScraper {
   /**
    * Parse a game row from the schedule table
    */
-  private parseGameRow($row: cheerio.Cheerio<cheerio.Element>, $: cheerio.Root): ScrapedGame | null {
+  private parseGameRow($row: cheerio.Cheerio, $: cheerio.Root): ScrapedGame | null {
     try {
       // Look for team links - ESPN uses links like /nfl/team/_/name/{abbrev}/{team-name}
       const teamLinks = $row.find('a[href*="/nfl/team/_/name/"]')
@@ -210,10 +210,10 @@ export class ESPNScheduleScraper {
     try {
       // Look for common patterns of embedded JSON
       const patterns = [
-        /window\['__espnfitt__'\]\s*=\s*({.+?});/s,
-        /window\.__espnfitt__\s*=\s*({.+?});/s,
-        /<script[^>]*id="__NEXT_DATA__"[^>]*>({.+?})<\/script>/s,
-        /"pageProps":\s*({.+?})/s
+        /window\['__espnfitt__'\]\s*=\s*({[\s\S]+?});/,
+        /window\.__espnfitt__\s*=\s*({[\s\S]+?});/,
+        /<script[^>]*id="__NEXT_DATA__"[^>]*>({[\s\S]+?})<\/script>/,
+        /"pageProps":\s*({[\s\S]+?})/
       ]
 
       for (const pattern of patterns) {

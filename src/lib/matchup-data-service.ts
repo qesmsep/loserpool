@@ -437,7 +437,7 @@ export class MatchupDataService {
           let finalVenue = gameData.venue as string | null
           
           if (seasonDisplay === 'POST4' && superBowlTeams.awayTeam && superBowlTeams.homeTeam) {
-            const espnHasPlaceholders = isPlaceholderTeam(gameData.away_team) || isPlaceholderTeam(gameData.home_team)
+            const espnHasPlaceholders = isPlaceholderTeam(gameData.away_team as string | null | undefined) || isPlaceholderTeam(gameData.home_team as string | null | undefined)
             if (espnHasPlaceholders) {
               finalAwayTeam = superBowlTeams.awayTeam
               finalHomeTeam = superBowlTeams.homeTeam
@@ -462,7 +462,7 @@ export class MatchupDataService {
             
             // Override obviously wrong venues (like "Moscone Center")
             const badVenues = ['Moscone Center', 'TBD', 'TBA']
-            if (finalVenue && badVenues.some(bad => finalVenue.includes(bad))) {
+            if (finalVenue && badVenues.some(bad => finalVenue!.includes(bad))) {
               // Use a reasonable default - actual venue will be updated when known
               finalVenue = 'TBD'
               console.log(`Overriding bad Super Bowl venue from ESPN: ${gameData.venue} → ${finalVenue}`)
