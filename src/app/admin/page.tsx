@@ -161,17 +161,64 @@ export default function AdminPage() {
       // Check if user is admin
       const checkAdminStatus = async () => {
         try {
+          // Get the current session token using the supabase client directly
+          const { supabase } = await import('@/lib/supabase')
+          const { data: { session } } = await supabase.auth.getSession()
+          const accessToken = session?.access_token
+          
+          // Prepare headers with authorization
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+          }
+          
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`
+          }
+          
           const response = await fetch('/api/check-admin-users', {
-            credentials: 'include' // Include cookies for authentication
+            credentials: 'include', // Include cookies for authentication
+            headers
           })
+          
           if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+              console.log('User is not admin, redirecting to dashboard')
+              router.push('/dashboard')
+              return
+            }
+            // For other errors, log but don't redirect (might be temporary network issue)
+            console.error('Admin check failed with status:', response.status)
+            try {
+              const errorData = await response.json()
+              console.error('Error response:', errorData)
+            } catch {
+              const errorText = await response.text()
+              console.error('Error response (text):', errorText)
+            }
+            return
+          }
+          
+          const data = await response.json()
+          console.log('Admin check response:', data)
+          
+          if (!data.success || !data.isAdmin) {
+            console.log('User is not admin, redirecting to dashboard')
             router.push('/dashboard')
             return
           }
+          
+          console.log('✅ Admin status verified, user is admin')
         } catch (error) {
           console.error('Error checking admin status:', error)
-          router.push('/dashboard')
-          return
+          // Don't redirect on network errors - let the page load
+          // The user might be able to access it if they're actually admin
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            console.error('Network error checking admin status - allowing page to load')
+            // Don't redirect - let user see the page
+          } else {
+            console.error('Unexpected error, redirecting to dashboard')
+            router.push('/dashboard')
+          }
         }
       }
       

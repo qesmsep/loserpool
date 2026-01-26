@@ -1,53 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { headers } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createServiceRoleClient()
+    // Check for bearer token first (same pattern as other admin routes)
+    const headersList = await headers()
+    const authHeader = headersList.get('authorization')
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
     
-    console.log('=== CHECKING ADMIN USERS IN DATABASE ===')
+    let authenticatedUser: { id: string; email?: string } | null = null
     
-    // Get all users to see what's in the database
-    const { data: allUsers, error: allUsersError } = await supabase
-      .from('users')
-      .select('id, email, first_name, last_name, is_admin, created_at')
-      .order('created_at', { ascending: false })
-
-    if (allUsersError) {
-      console.error('Error fetching all users:', allUsersError)
-      return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
-    }
-
-    // Get admin users specifically
-    const { data: adminUsers, error: adminError } = await supabase
-      .from('users')
-      .select('id, email, first_name, last_name, is_admin, created_at')
-      .eq('is_admin', true)
-      .order('created_at', { ascending: false })
-
-    if (adminError) {
-      console.error('Error fetching admin users:', adminError)
-      return NextResponse.json({ error: 'Failed to fetch admin users' }, { status: 500 })
-    }
-
-    console.log(`Total users in database: ${allUsers?.length || 0}`)
-    console.log(`Admin users in database: ${adminUsers?.length || 0}`)
-
-    return NextResponse.json({
-      message: 'Admin users check completed',
-      totalUsers: allUsers?.length || 0,
-      adminUsers: adminUsers?.length || 0,
-      allUsers: allUsers || [],
-      adminUsersList: adminUsers || [],
-      summary: {
-        totalUsers: allUsers?.length || 0,
-        adminUsers: adminUsers?.length || 0,
-        nonAdminUsers: (allUsers?.length || 0) - (adminUsers?.length || 0)
+    if (bearer) {
+      // Create a client with the bearer token
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: { headers: { Authorization: bearer } },
+          auth: { persistSession: false, autoRefreshToken: false }
+        }
+      )
+      
+      const { data: { user: bearerUser }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('Bearer token auth error:', error)
+      } else if (bearerUser) {
+        authenticatedUser = bearerUser
+        console.log('✅ User authenticated via bearer token:', authenticatedUser.email)
       }
+    }
+    
+    // Fall back to cookie-based authentication if bearer token failed
+    if (!authenticatedUser) {
+      try {
+        const supabase = await createServerSupabaseClient()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Cookie session error:', sessionError.message)
+        } else if (session?.user) {
+          authenticatedUser = session.user
+          console.log('✅ User authenticated via cookie:', authenticatedUser.email)
+        }
+      } catch (error) {
+        console.error('Cookie authentication error:', error)
+      }
+    }
+    
+    if (!authenticatedUser) {
+      console.log('❌ No authenticated user found for admin check')
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+    
+    // Check if user is admin using service role client
+    const supabaseAdmin = createServiceRoleClient()
+    const { data: userProfile, error: adminError } = await supabaseAdmin
+      .from('users')
+      .select('is_admin')
+      .eq('id', authenticatedUser.id)
+      .single()
+    
+    console.log('🔍 Admin check result:', {
+      hasProfile: !!userProfile,
+      isAdmin: userProfile?.is_admin,
+      error: adminError?.message
+    })
+    
+    if (adminError) {
+      console.error('Admin check error:', adminError.message)
+      return NextResponse.json({ error: 'Admin verification failed' }, { status: 403 })
+    }
+    
+    if (!userProfile?.is_admin) {
+      console.log('❌ User is not admin')
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    
+    // User is admin - return success
+    console.log('✅ User is admin, allowing access')
+    return NextResponse.json({
+      success: true,
+      isAdmin: true,
+      userId: authenticatedUser.id
     })
 
   } catch (error) {
-    console.error('Error checking admin users:', error)
+    console.error('Error checking admin status:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

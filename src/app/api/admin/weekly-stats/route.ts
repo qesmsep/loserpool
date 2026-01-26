@@ -231,6 +231,10 @@ export async function GET(request: Request) {
       }
     }
 
+    // Track remaining picks from previous week
+    // This represents ALL picks that survived previous weeks (not just allocated to a specific week)
+    let previousWeekRemainingPicks = 0
+    
     for (const weekInfo of weekColumns) {
       const { column, week, name } = weekInfo
       
@@ -262,8 +266,28 @@ export async function GET(request: Request) {
       const matchupKey = `${seasonKey}-${matchupWeek}`
       const validIds = validMatchupsBySeasonWeek.get(matchupKey) || new Set<string>()
 
-      // Active picks for historic weeks = sum of picks_count where week column exists and maps to this week's matchups
+      // Active picks at START of week = all picks that survived from previous weeks
+      // This is the pool of picks available to be allocated this week
       let activePicks = 0
+      
+      if (week === 1) {
+        // Week 1: Count all picks allocated to this week
+        for (const pick of allPicks) {
+          const raw = (pick as { [key: string]: string | number | null })[column] as string
+          if (!raw) continue
+          const parts = raw.split('_')
+          if (parts.length < 2) continue
+          const actualMatchupId = parts[0]
+          if (!validIds.has(actualMatchupId)) continue
+          activePicks += ((pick.picks_count as number) || 0)
+        }
+      } else {
+        // Week 2+: Active picks = previous week's remaining picks
+        // This represents ALL picks that survived previous weeks
+        activePicks = previousWeekRemainingPicks
+      }
+
+      // Find picks that were allocated to THIS week (for elimination calculation)
       const weekPicks: Array<{ [key: string]: string | number | null }> = []
       for (const pick of allPicks) {
         const raw = (pick as { [key: string]: string | number | null })[column] as string
@@ -272,11 +296,11 @@ export async function GET(request: Request) {
         if (parts.length < 2) continue
         const actualMatchupId = parts[0]
         if (!validIds.has(actualMatchupId)) continue
-        activePicks += ((pick.picks_count as number) || 0)
         weekPicks.push(pick)
       }
 
-      // Eliminated picks = picks in this week whose picked team won or tied (final only), same as team breakdown
+      // Eliminated picks = picks allocated to THIS week whose picked team won or tied (final only)
+      // This counts picks that were eliminated THIS week from the active pool
       let eliminatedPicks = 0
       for (const pick of weekPicks) {
         const raw = (pick as { [key: string]: string | number | null })[column] as string
@@ -338,16 +362,40 @@ export async function GET(request: Request) {
         }
       }
 
-      const remainingPicks = Math.max(0, activePicks - eliminatedPicks)
+      // Remaining picks = active picks at start of week - eliminated picks this week
+      // This represents ALL picks that survive to the next week (allocated or not)
+      // 
+      // IMPORTANT: activePicks represents ALL picks that survived previous weeks.
+      // Some of these picks may have been allocated to this week (and some eliminated),
+      // but picks that weren't allocated to this week also survive.
+      // So: remainingPicks = activePicks - eliminatedPicks
+      let remainingPicks = Math.max(0, activePicks - eliminatedPicks)
+      
+      // For weeks after Week 1, verify that activePicks makes sense
+      // If activePicks is less than the picks allocated to this week, it means
+      // previousWeekRemainingPicks was calculated incorrectly (too low)
+      if (week > 1) {
+        const allocatedThisWeek = weekPicks.reduce((sum, p) => sum + ((p.picks_count as number) || 0), 0)
+        
+        // Active picks should be >= allocated picks (you can't allocate more than you have)
+        if (activePicks < allocatedThisWeek) {
+          console.warn(`⚠️ Week ${week}: activePicks (${activePicks}) < allocatedThisWeek (${allocatedThisWeek}). Adjusting activePicks.`)
+          // The active picks should be at least as many as were allocated
+          // This suggests previousWeekRemainingPicks was calculated incorrectly
+          // Adjust activePicks to match reality
+          activePicks = allocatedThisWeek
+          // Recalculate remainingPicks with corrected activePicks
+          remainingPicks = Math.max(0, activePicks - eliminatedPicks)
+        }
+      }
+      
       weeklyStats.push({ week, weekName: name, activePicks, eliminatedPicks, remainingPicks })
-    }
-
-    // Ensure current week Active = prior week's Remaining, per request
-    weeklyStats.sort((a, b) => a.week - b.week)
-    const currentIdx = weeklyStats.findIndex(s => s.week === currentDbWeek)
-    if (currentIdx > 0) {
-      weeklyStats[currentIdx].activePicks = weeklyStats[currentIdx - 1].remainingPicks
-      weeklyStats[currentIdx].remainingPicks = Math.max(0, weeklyStats[currentIdx].activePicks - weeklyStats[currentIdx].eliminatedPicks)
+      
+      // Update for next iteration - this becomes the active picks at the start of next week
+      // IMPORTANT: This should represent ALL picks that survived to the next week,
+      // which includes both picks allocated to this week (that survived) AND picks
+      // that weren't allocated to this week (but survived from previous weeks)
+      previousWeekRemainingPicks = remainingPicks
     }
 
     // Sort by week number

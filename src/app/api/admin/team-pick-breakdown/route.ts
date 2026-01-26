@@ -22,7 +22,7 @@ interface TeamPickBreakdown {
 
 export async function GET(request: Request) {
   try {
-    // Check for bearer token first
+    // Check for bearer token first (same pattern as /api/admin/users)
     const headersList = await headers()
     const authHeader = headersList.get('authorization')
     const bearer = authHeader?.startsWith('Bearer ') ? authHeader : null
@@ -46,29 +46,37 @@ export async function GET(request: Request) {
         console.error('Bearer token auth error:', error)
       } else if (bearerUser) {
         user = bearerUser
+        console.log('✅ User authenticated via bearer token for team-pick-breakdown:', user.email)
       }
     }
     
     // Fall back to cookie-based authentication if bearer token failed
     if (!user) {
       user = await getCurrentUser()
+      if (user) {
+        console.log('✅ User authenticated via cookie for team-pick-breakdown:', user.email)
+      }
     }
     
     if (!user) {
+      console.log('❌ No authenticated user found for team-pick-breakdown')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     
-    // Check if user is admin
+    // Check if user is admin using service role client
     const supabaseAdmin = createServiceRoleClient()
-    const { data: userProfile, error } = await supabaseAdmin
+    const { data: userProfile, error: adminError } = await supabaseAdmin
       .from('users')
       .select('is_admin')
       .eq('id', user.id)
       .single()
     
-    if (error || !userProfile?.is_admin) {
+    if (adminError || !userProfile?.is_admin) {
+      console.log('❌ User is not admin for team-pick-breakdown')
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
+    
+    console.log('✅ Admin verified for team-pick-breakdown')
 
     // Get current season/week using the same logic as the dashboard
     const { getCurrentSeasonInfo } = await import('@/lib/season-detection')
